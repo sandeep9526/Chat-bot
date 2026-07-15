@@ -1,0 +1,28 @@
+# ── Secrets (NEVER commit) ───────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Python / backend ─────────────────────────────────────
+zeva-backend/venv/
+**/venv/
+**/__pycache__/
+*.pyc
+
+# ── Local data stores (regenerable) ──────────────────────
+zeva-backend/chroma_db/
+**/chroma_db/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Frontend has its own git repo (absorbed in 0.1 restructure) ──
+fortend/
+
+# ── OS / editor cruft ────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.log

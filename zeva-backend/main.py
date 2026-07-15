@@ -1,0 +1,363 @@
+"""
+Zeva backend — FastAPI server.
+
+Phase 2: basic server ( /  aur  /health ).
+Phase 3: OpenAI se jud kar  /chat  endpoint (abhi RAG/documents nahi — seedha AI).
+"""
+
+import json
+import os
+import time
+from collections import defaultdict
+from urllib.parse import urlparse
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from openai import OpenAI
+from dotenv import load_dotenv
+
+import db
+from ingest import save_and_ingest
+from rag import retrieve
+from auth import CurrentUser, get_current_user
+
+# .env file me se secret keys ko memory (environment) me load karo.
+load_dotenv()
+
+# SQLite tables (bots, leads, chats) ready karo + demo bot seed karo.
+db.init_db()
+
+# OpenRouter OpenAI-compatible hai — isliye wahi `openai` SDK use hota hai,
+# bas base URL aur key badalte hain. `:free` models bina paise ke chalte hain.
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+# Free models kabhi-kabhi "temporarily rate-limited" (429) ho jaate hain. Isliye
+# ek list order me try karte hain — pehla jo available ho, wahi jawaab de deta hai.
+# Sirf achhe, bharose-mand instruct models. (auto-router "openrouter/free" hata
+# diya kyunki wo kabhi-kabhi Nemotron jaise models pe ja kar bakwaas jawaab deta tha.)
+FALLBACK_MODELS = [
+    "google/gemma-4-31b-it:free",
+    "openai/gpt-oss-120b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "google/gemma-4-26b-a4b-it:free",
+]
+
+# .env me OPENROUTER_MODEL set ho to sirf wahi use hoga (list ignore).
+_forced = os.getenv("OPENROUTER_MODEL")
+MODELS = [_forced] if _forced else FALLBACK_MODELS
+
+app = FastAPI(title="Zeva Backend")
+
+# Frontend (Next.js) ko backend se baat karne dene ke liye CORS on karo.
+# Production me sirf apna domain allow karo (wildcard + credentials = security risk).
+_cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+CORS_ORIGINS = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---- Request bodies (Pydantic models) --------------------------------------
+class ChatRequest(BaseModel):
+    message: str
+    botId: str = "acme-salon"  # kis client ka bot (multi-tenant ka base)
+
+
+class LeadRequest(BaseModel):
+    name: str
+    email: str
+    phone: str | None = None
+    message: str | None = None
+    botId: str = "acme-salon"
+
+
+class CreateBotRequest(BaseModel):
+    botId: str
+    name: str
+    accent: str = "#4f46e5"
+    welcome: str = ""
+    suggestions: list[str] = []
+    allowedDomains: list[str] = ["*"]
+
+
+class IngestRequest(BaseModel):
+    botId: str
+    filename: str
+    text: str
+
+
+# Admin key — /admin/* aur /ingest ke liye backup auth (jab JWT na ho).
+ADMIN_KEY = os.getenv("ADMIN_KEY")
+
+
+# ---- OpenRouter client ------------------------------------------------------
+# Client ko "lazy" banaya hai: bina API key ke bhi server chalu ho jaaye (taaki
+# /  aur  /health  test ho sakein). Key na hone par error sirf /chat par aayega.
+def get_client() -> OpenAI:
+    return OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        timeout=30,       # 30s baad clean error do (hang na ho)
+        max_retries=0,    # ek model par retry nahi — seedha agla model try karo
+    )
+
+
+# ---- Endpoints --------------------------------------------------------------
+# "/" = home (root). GET request par yeh message milega.
+@app.get("/")
+def home():
+    return {"message": "Zeva backend chal raha hai"}
+
+
+# Health check — server zinda hai ya nahi, yeh batata hai (deploy me kaam aata hai).
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+# /config = widget load hote hi ye call karta hai aur apne aap brand ho jaata hai
+# (naam, color, welcome, suggested questions). Client badalne ke liye code nahi chhuna padta.
+@app.get("/config")
+def config(botId: str = "acme-salon"):
+    bot = db.get_bot(botId)
+    if not bot:
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    return {
+        "botId": bot["bot_id"],
+        "name": bot["name"],
+        "accent": bot["accent"],
+        "welcome": bot["welcome"],
+        "suggestions": json.loads(bot["suggestions"] or "[]"),
+    }
+
+
+# ---- Lead scoring (Phase 05): bina AI ke bhi chalta hai --------------------
+HOT_WORDS = [
+    "price", "cost", "charge", "fees", "book", "booking", "buy", "order",
+    "appointment", "demo", "quote", "interested", "kitna", "kab", "chahiye",
+    "abhi", "today", "urgent",
+]
+
+
+def score_lead(message: str | None, phone: str | None) -> str:
+    """hot / warm / cold — buying-intent shabd + phone diya ya nahi."""
+    text = (message or "").lower()
+    has_keyword = any(w in text for w in HOT_WORDS)
+    has_phone = bool(phone and phone.strip())
+    if has_phone and has_keyword:
+        return "hot"
+    if has_phone or has_keyword:
+        return "warm"
+    return "cold"
+
+
+def make_handoff_summary(bot_name: str, name: str, message: str | None) -> str:
+    """Sales team ke liye 1-line summary. LLM fail ho to template."""
+    try:
+        summary, _ = call_llm(
+            [
+                {
+                    "role": "system",
+                    "content": "Tum ek sales assistant ho. Ek lead ka bahut chhota "
+                    "(1 line) Hinglish summary do: kaun, kya chahiye, next action.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Business: {bot_name}. Lead: {name}. "
+                    f"Unhone likha/poocha: {message or '(kuch nahi)'}",
+                },
+            ]
+        )
+        return summary
+    except Exception:
+        return f"{name} — {message or 'details chahiye'}. Jaldi follow-up karo."
+
+
+# /lead = warm-lead ticket submit hone par yahan aata hai → DB me save + score.
+@app.post("/lead")
+def lead(req: LeadRequest):
+    if not req.name.strip() or not req.email.strip():
+        raise HTTPException(status_code=400, detail="name and email are required")
+    score = score_lead(req.message, req.phone)
+    lead_id = db.save_lead(
+        req.botId, req.name.strip(), req.email.strip(), req.phone, req.message, score
+    )
+    # HOT/WARM lead → human handoff: AI summary sales team ke liye (abhi DB me;
+    # Phase 05 guide me bataya hai isse Slack/WhatsApp/email par kaise bhejein).
+    if score in ("hot", "warm"):
+        bot = db.get_bot(req.botId)
+        summary = make_handoff_summary(
+            bot["name"] if bot else req.botId, req.name.strip(), req.message
+        )
+        db.save_handoff(req.botId, req.name.strip(), req.phone or req.email, summary)
+    return {"ok": True, "leadId": lead_id, "score": score}
+
+
+# /leads = ek bot ke saare leads (dashboard/testing ke liye). JWT auth zaroori.
+@app.get("/leads")
+def leads(botId: str = "acme-salon", user: CurrentUser = None):
+    return {"leads": db.list_leads(botId)}
+
+
+# ===== Onboarding (Phase 03) — naya client bina code likhe live karo =====
+
+# Naya bot ek command me banao (ya mojood ko update). JWT auth zaroori.
+@app.post("/admin/create-bot")
+def create_bot(req: CreateBotRequest, user: CurrentUser = None):
+    db.upsert_bot(
+        req.botId, req.name, req.accent, req.welcome, req.suggestions, req.allowedDomains
+    )
+    return {"ok": True, "botId": req.botId}
+
+
+# Saare bots ki list (admin view). JWT auth zaroori.
+@app.get("/admin/bots")
+def admin_bots(user: CurrentUser = None):
+    return {"bots": db.list_bots()}
+
+
+# Dashboard ke numbers ek bot ke liye. JWT auth zaroori.
+@app.get("/admin/stats")
+def admin_stats(botId: str, user: CurrentUser = None):
+    return db.stats(botId)
+
+
+# Human handoff feed — hot/warm leads ke AI summaries (sales team dekhe). JWT auth zaroori.
+@app.get("/admin/handoffs")
+def admin_handoffs(botId: str, user: CurrentUser = None):
+    return {"handoffs": db.list_handoffs(botId)}
+
+
+# Client ki docs (text) bot me daalo aur re-index karo — code chhue bina. JWT auth zaroori.
+@app.post("/ingest")
+def ingest(req: IngestRequest, user: CurrentUser = None):
+    if not db.get_bot(req.botId):
+        raise HTTPException(
+            status_code=404, detail=f"bot '{req.botId}' pehle create karo"
+        )
+    result = save_and_ingest(req.botId, req.filename, req.text)
+    return {"ok": True, **result}
+
+
+# /chat = POST endpoint. User ka message OpenAI ko bhejta hai aur jawaab laata hai.
+# Is % se kam match = "document me yeh baat nahi mili" → guess mat karo.
+# On-topic sawaal ~31-59% aate hain, off-topic (jaise "capital of France") ~7%.
+# 20 unke beech safe gap me hai.
+RELEVANCE_THRESHOLD = 20
+
+
+# Max tokens per LLM response — cost control + reasonable answer length.
+MAX_TOKENS = 500
+
+
+def call_llm(messages: list[dict]) -> tuple[str, str]:
+    """Model chain try karo, pehla non-empty jawaab lauta do → (reply, model)."""
+    client = get_client()
+    last_error = None
+    for model in MODELS:
+        try:
+            resp = client.chat.completions.create(
+                model=model, messages=messages, max_tokens=MAX_TOKENS
+            )
+            reply = resp.choices[0].message.content
+            if reply and reply.strip():
+                return reply.strip(), model
+        except Exception as e:
+            last_error = e  # 429/error → agla model
+            continue
+    raise HTTPException(
+        status_code=502,
+        detail=f"Sabhi free models abhi busy hain, thodi der baad try karo. ({last_error})",
+    )
+
+
+def check_domain(bot_id: str, origin: str | None) -> dict:
+    """Widget sirf client ki allowed site se hi chale (widget churaya na jaye)."""
+    bot = db.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail=f"bot '{bot_id}' not found")
+    allowed = json.loads(bot["allowed_domains"] or '["*"]')
+    if "*" not in allowed and origin:
+        host = urlparse(origin).hostname or ""
+        if host not in allowed:
+            raise HTTPException(
+                status_code=403, detail=f"'{host}' is bot ke liye allowed nahi hai"
+            )
+    return bot
+
+
+# ---- Security (Phase 06): rate limit + input validation --------------------
+# Har (bot + IP) par prati-minute limit — warna koi spam karke OpenRouter bill
+# uda de. (In-memory; multi-server par Redis chahiye — DEPLOY-SECURITY.md me note.)
+RATE_LIMIT_PER_MIN = 20
+MAX_MESSAGE_LEN = 1000
+_hits: dict[str, list[float]] = defaultdict(list)
+
+
+def check_rate_limit(key: str) -> None:
+    now = time.time()
+    recent = [t for t in _hits[key] if t > now - 60]
+    if len(recent) >= RATE_LIMIT_PER_MIN:
+        raise HTTPException(status_code=429, detail="Too many requests — thodi der ruko")
+    recent.append(now)
+    _hits[key] = recent
+
+
+@app.post("/chat")
+def chat(req: ChatRequest, request: Request):
+    # 0a. Input validation: khaali / bahut lamba message reject.
+    msg = req.message.strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="message khaali hai")
+    if len(msg) > MAX_MESSAGE_LEN:
+        raise HTTPException(status_code=400, detail="message bahut lamba hai")
+
+    # 0b. Rate limit per bot + IP (bill safe).
+    ip = request.client.host if request.client else "?"
+    check_rate_limit(f"{req.botId}:{ip}")
+
+    # 0c. Domain allow-list: widget sirf client ki site se chale.
+    bot = check_domain(req.botId, request.headers.get("origin"))
+
+    # 1. RAG retrieval: SIRF is bot ke documents me se related chunks dhoondo.
+    try:
+        hits = retrieve(req.message, req.botId, k=3)
+    except Exception:
+        hits = []  # DB missing/khaali → neeche guardrail par chala jaayega
+    good = [h for h in hits if h["match"] >= RELEVANCE_THRESHOLD]
+
+    # 2. Kuch relevant nahi mila → guess mat karo, human ko route karo (guardrail).
+    if not good:
+        answer = (
+            "I couldn’t find that in the documents — so I won’t guess. "
+            "Let me hand you to the team instead."
+        )
+        db.save_chat(req.botId, req.message, answer, is_guardrail=True)
+        return {"answer": answer, "sources": [], "isGuardrail": True}
+
+    # 3. Mila → SIRF context se grounded jawaab do, aur proof sources laut do.
+    #    Context me poora chunk (h['text']) bhejo — snip truncate ho jaata hai.
+    context = "\n\n".join(f"[{h['file']}]\n{h['text']}" for h in good)
+    answer, model = call_llm(
+        [
+            {
+                "role": "system",
+                "content": (
+                    f"Tum {bot['name']} ki helpful assistant ho. Sirf niche diye "
+                    "gaye CONTEXT se jawaab do. Agar jawaab context me nahi hai to "
+                    "saaf bolo ki pata nahi. Chhota aur saaf jawaab do."
+                ),
+            },
+            {"role": "user", "content": f"CONTEXT:\n{context}\n\nQUESTION: {req.message}"},
+        ]
+    )
+    db.save_chat(req.botId, req.message, answer, is_guardrail=False)
+    # sources me sirf top proof (prototype ki tarah ek card). model debug ke liye.
+    return {"answer": answer, "sources": good[:1], "model": model, "isGuardrail": False}

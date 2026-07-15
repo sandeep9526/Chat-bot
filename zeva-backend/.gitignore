@@ -1,0 +1,15 @@
+# Secrets — kabhi commit mat karo
+.env
+
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# ChromaDB local store
+chroma_db/
+
+# SQLite database
+zeva.db

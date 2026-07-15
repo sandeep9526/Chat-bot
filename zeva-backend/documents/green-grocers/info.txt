@@ -1,0 +1,7 @@
+Green Grocers — Fresh vegetables and fruits delivered daily.
+
+Delivery: Home delivery is free on orders above Rs. 500. Below that, delivery charge is Rs. 40.
+
+Timings: We are open every day from 8:00 AM to 10:00 PM.
+
+Payment: We accept UPI, credit/debit cards, and cash on delivery.

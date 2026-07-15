@@ -1,0 +1,7 @@
+Acme Salon — Services & Pricing
+
+Haircut starts from Rs. 499.
+Hair color starts from Rs. 1,499.
+Full styling package is Rs. 2,999.
+
+Prices may vary based on hair length and the stylist you choose.

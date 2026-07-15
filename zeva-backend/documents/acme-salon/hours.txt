@@ -1,0 +1,6 @@
+Acme Salon — Store Hours
+
+Acme Salon is open Monday to Saturday, 10:00 AM to 7:00 PM.
+We are closed on Sundays and public holidays.
+
+The last appointment of the day is taken at 6:00 PM.
