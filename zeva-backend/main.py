@@ -165,24 +165,28 @@ def make_handoff_summary(bot_name: str, name: str, message: str | None) -> str:
             [
                 {
                     "role": "system",
-                    "content": "Tum ek sales assistant ho. Ek lead ka bahut chhota "
-                    "(1 line) Hinglish summary do: kaun, kya chahiye, next action.",
+                    "content": "You are a sales assistant. Give a very short "
+                    "(1 line) summary of this lead: who they are, what they want, "
+                    "and the next action.",
                 },
                 {
                     "role": "user",
                     "content": f"Business: {bot_name}. Lead: {name}. "
-                    f"Unhone likha/poocha: {message or '(kuch nahi)'}",
+                    f"They wrote/asked: {message or '(nothing)'}",
                 },
             ]
         )
         return summary
     except Exception:
-        return f"{name} — {message or 'details chahiye'}. Jaldi follow-up karo."
+        return f"{name} — {message or 'wants details'}. Follow up soon."
 
 
 # /lead = warm-lead ticket submit hone par yahan aata hai → DB me save + score.
 @app.post("/lead")
-def lead(req: LeadRequest):
+def lead(req: LeadRequest, request: Request):
+    # Rate-limit lead submissions too (spam / PII-flooding protection).
+    ip = request.client.host if request.client else "?"
+    check_rate_limit(f"lead:{req.botId}:{ip}")
     if not req.name.strip() or not req.email.strip():
         raise HTTPException(status_code=400, detail="name and email are required")
     score = score_lead(req.message, req.phone)
@@ -264,7 +268,10 @@ def call_llm(messages: list[dict]) -> tuple[str, str]:
     for model in MODELS:
         try:
             resp = client.chat.completions.create(
-                model=model, messages=messages, max_tokens=MAX_TOKENS
+                model=model,
+                messages=messages,
+                max_tokens=MAX_TOKENS,
+                temperature=0,  # grounded + deterministic — minimise hallucination
             )
             reply = resp.choices[0].message.content
             if reply and reply.strip():
@@ -350,9 +357,11 @@ def chat(req: ChatRequest, request: Request):
             {
                 "role": "system",
                 "content": (
-                    f"Tum {bot['name']} ki helpful assistant ho. Sirf niche diye "
-                    "gaye CONTEXT se jawaab do. Agar jawaab context me nahi hai to "
-                    "saaf bolo ki pata nahi. Chhota aur saaf jawaab do."
+                    f"You are the helpful assistant for {bot['name']}. "
+                    "Answer ONLY using the CONTEXT below. If the answer is not in "
+                    "the context, clearly say you don't know and offer to connect "
+                    "the visitor with the team. Keep answers short and clear, and "
+                    "reply in the same language the visitor used."
                 ),
             },
             {"role": "user", "content": f"CONTEXT:\n{context}\n\nQUESTION: {req.message}"},
