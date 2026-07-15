@@ -5,13 +5,13 @@ Phase 2: basic server ( /  aur  /health ).
 Phase 3: OpenAI se jud kar  /chat  endpoint (abhi RAG/documents nahi — seedha AI).
 """
 
-import json
 import os
 import time
 from collections import defaultdict
 from urllib.parse import urlparse
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+import psycopg
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -20,12 +20,13 @@ from dotenv import load_dotenv
 import db
 from ingest import save_and_ingest
 from rag import retrieve
-from auth import CurrentUser, get_current_user
+from auth import CurrentUser
 
 # .env file me se secret keys ko memory (environment) me load karo.
 load_dotenv()
 
-# SQLite tables (bots, leads, chats) ready karo + demo bot seed karo.
+# Fail fast if Postgres is unreachable. Schema + RLS live in schema.sql
+# (applied once via the admin connection) — not recreated on every boot.
 db.init_db()
 
 # OpenRouter OpenAI-compatible hai — isliye wahi `openai` SDK use hota hai,
@@ -134,7 +135,7 @@ def config(botId: str = "acme-salon"):
         "name": bot["name"],
         "accent": bot["accent"],
         "welcome": bot["welcome"],
-        "suggestions": json.loads(bot["suggestions"] or "[]"),
+        "suggestions": bot["suggestions"] or [],
     }
 
 
@@ -204,45 +205,58 @@ def lead(req: LeadRequest, request: Request):
     return {"ok": True, "leadId": lead_id, "score": score}
 
 
-# /leads = ek bot ke saare leads (dashboard/testing ke liye). JWT auth zaroori.
+# /leads = ek bot ke saare leads (dashboard). JWT auth zaroori + must own the bot.
 @app.get("/leads")
-def leads(botId: str = "acme-salon", user: CurrentUser = None):
-    return {"leads": db.list_leads(botId)}
+def leads(botId: str, user: CurrentUser):
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    return {"leads": db.list_leads(botId, user["id"])}
 
 
 # ===== Onboarding (Phase 03) — naya client bina code likhe live karo =====
 
 # Naya bot ek command me banao (ya mojood ko update). JWT auth zaroori.
 @app.post("/admin/create-bot")
-def create_bot(req: CreateBotRequest, user: CurrentUser = None):
-    db.upsert_bot(
-        req.botId, req.name, req.accent, req.welcome, req.suggestions, req.allowedDomains
-    )
+def create_bot(req: CreateBotRequest, user: CurrentUser):
+    try:
+        db.upsert_bot(
+            req.botId, user["id"], req.name, req.accent, req.welcome,
+            req.suggestions, req.allowedDomains,
+        )
+    except psycopg.errors.InsufficientPrivilege:
+        # RLS blocked it: bot_id already exists and belongs to someone else.
+        raise HTTPException(
+            status_code=403, detail=f"bot '{req.botId}' already exists"
+        )
     return {"ok": True, "botId": req.botId}
 
 
-# Saare bots ki list (admin view). JWT auth zaroori.
+# Saare bots ki list (admin view) — sirf apne bots. JWT auth zaroori.
 @app.get("/admin/bots")
-def admin_bots(user: CurrentUser = None):
-    return {"bots": db.list_bots()}
+def admin_bots(user: CurrentUser):
+    return {"bots": db.list_bots_for_owner(user["id"])}
 
 
-# Dashboard ke numbers ek bot ke liye. JWT auth zaroori.
+# Dashboard ke numbers ek bot ke liye. JWT auth zaroori + must own the bot.
 @app.get("/admin/stats")
-def admin_stats(botId: str, user: CurrentUser = None):
-    return db.stats(botId)
+def admin_stats(botId: str, user: CurrentUser):
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    return db.stats(botId, user["id"])
 
 
-# Human handoff feed — hot/warm leads ke AI summaries (sales team dekhe). JWT auth zaroori.
+# Human handoff feed — hot/warm leads ke AI summaries. JWT auth zaroori + must own the bot.
 @app.get("/admin/handoffs")
-def admin_handoffs(botId: str, user: CurrentUser = None):
-    return {"handoffs": db.list_handoffs(botId)}
+def admin_handoffs(botId: str, user: CurrentUser):
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    return {"handoffs": db.list_handoffs(botId, user["id"])}
 
 
-# Client ki docs (text) bot me daalo aur re-index karo — code chhue bina. JWT auth zaroori.
+# Client ki docs (text) bot me daalo aur re-index karo. JWT auth zaroori + must own the bot.
 @app.post("/ingest")
-def ingest(req: IngestRequest, user: CurrentUser = None):
-    if not db.get_bot(req.botId):
+def ingest(req: IngestRequest, user: CurrentUser):
+    if not db.get_bot_for_owner(req.botId, user["id"]):
         raise HTTPException(
             status_code=404, detail=f"bot '{req.botId}' pehle create karo"
         )
@@ -290,7 +304,7 @@ def check_domain(bot_id: str, origin: str | None) -> dict:
     bot = db.get_bot(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail=f"bot '{bot_id}' not found")
-    allowed = json.loads(bot["allowed_domains"] or '["*"]')
+    allowed = bot["allowed_domains"] or ["*"]
     if "*" not in allowed and origin:
         host = urlparse(origin).hostname or ""
         if host not in allowed:

@@ -5,42 +5,22 @@ This module verifies JWT tokens issued by Better Auth (Next.js frontend)
 using the JWKS (JSON Web Key Set) endpoint.
 """
 
+import os
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends
 from fastapi_betterauth import BetterAuth, User
 
-# Better Auth base URL - where Next.js app runs
-# In production, this should be your actual domain
-BETTER_AUTH_BASE_URL = "http://localhost:3000"
+# Better Auth base URL - where Next.js app runs.
+# In production, set BETTER_AUTH_BASE_URL to the real deployed frontend origin.
+BETTER_AUTH_BASE_URL = os.getenv("BETTER_AUTH_BASE_URL", "http://localhost:3000")
 
-# Create Better Auth instance
+# `BetterAuth` is itself a FastAPI-injectable dependency (it subclasses
+# HTTPBearer): it extracts the bearer token, verifies it against the JWKS
+# endpoint in a threadpool, and returns the decoded user — use it directly.
+# Do NOT call `.fetch_token()` yourself: it's a *sync* method, so `await`-ing
+# it raises TypeError, which previously got swallowed into a false 401.
 better_auth = BetterAuth(BETTER_AUTH_BASE_URL)
 
-# HTTP Bearer token extractor
-security = HTTPBearer()
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> User:
-    """
-    Extract and verify JWT token from Authorization header.
-    
-    Returns the decoded user payload if token is valid.
-    Raises 401 if token is missing, invalid, or expired.
-    """
-    try:
-        user = await better_auth.fetch_token(credentials.credentials)
-        return user
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
 # Dependency type for routes that require authentication
-CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentUser = Annotated[User, Depends(better_auth)]
