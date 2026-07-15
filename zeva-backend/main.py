@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
 
+import billing
 import db
 from ingest import save_and_ingest
 from rag import retrieve
@@ -51,15 +52,23 @@ MODELS = [_forced] if _forced else FALLBACK_MODELS
 
 app = FastAPI(title="Zeva Backend")
 
-# Frontend (Next.js) ko backend se baat karne dene ke liye CORS on karo.
-# Production me sirf apna domain allow karo (wildcard + credentials = security risk).
-_cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-CORS_ORIGINS = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
-
+# CORS: wildcard origins, NO credentials. This is deliberate, not the
+# audit-flagged "wildcard + credentials" antipattern — those two together are
+# dangerous because they let any site ride a victim's ambient cookies. This
+# app never uses cookies against this backend: Better Auth issues a Bearer
+# JWT that the frontend attaches manually (adminApi.ts), which isn't ambient
+# — a malicious page can't attach a token it was never given. The real
+# authorization boundaries are unaffected by this setting: JWT + Postgres
+# RLS gate every /admin/*, /leads, /ingest call; check_domain() gates /chat
+# per-bot against that bot's own allowed_domains. Wildcard CORS is required
+# here because the actual product need is "any client's own website can
+# embed the widget and call /config, /chat, /lead" — a static CORS_ORIGINS
+# allowlist would need a backend redeploy for every new client onboarded,
+# which doesn't scale for a multi-tenant SaaS (found via live testing).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -92,10 +101,6 @@ class IngestRequest(BaseModel):
     botId: str
     filename: str
     text: str
-
-
-# Admin key — /admin/* aur /ingest ke liye backup auth (jab JWT na ho).
-ADMIN_KEY = os.getenv("ADMIN_KEY")
 
 
 # ---- OpenRouter client ------------------------------------------------------
@@ -228,7 +233,35 @@ def create_bot(req: CreateBotRequest, user: CurrentUser):
         raise HTTPException(
             status_code=403, detail=f"bot '{req.botId}' already exists"
         )
+    except db.BotLimitExceeded as e:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Your plan allows up to {e.max_bots} bot(s). Upgrade to add another.",
+        )
     return {"ok": True, "botId": req.botId}
+
+
+# Caller's own plan/status — user panel billing view. JWT auth zaroori.
+@app.get("/subscription")
+def subscription(user: CurrentUser):
+    sub = db.get_subscription(user["id"])
+    if not sub:
+        return {"plan": None, "status": "none"}
+    return sub
+
+
+# Paddle webhook — keeps `subscriptions` in sync with real payment events.
+# NOT user-auth-gated (Paddle's servers call this, not a logged-in browser)
+# — instead gated by HMAC signature verification. See billing.py's module
+# docstring: structurally complete but not yet exercised against a live
+# Paddle account (none exists for this project yet).
+@app.post("/billing/paddle-webhook")
+async def paddle_webhook(request: Request):
+    raw_body = await request.body()
+    if not billing.verify_signature(raw_body, request.headers.get("paddle-signature")):
+        raise HTTPException(status_code=401, detail="invalid webhook signature")
+    billing.handle_event(await request.json())
+    return {"ok": True}
 
 
 # Saare bots ki list (admin view) — sirf apne bots. JWT auth zaroori.
@@ -346,6 +379,26 @@ def chat(req: ChatRequest, request: Request):
 
     # 0c. Domain allow-list: widget sirf client ki site se chale.
     bot = check_domain(req.botId, request.headers.get("origin"))
+
+    # 0d. License gate: expired/canceled subscription → widget goes dark
+    # server-side, regardless of what code is on the client's page. Bots
+    # with no owner (pre-existing demo bots) are never gated.
+    if not bot["is_active"]:
+        answer = "This chat is temporarily unavailable — please contact the business directly."
+        db.save_chat(req.botId, req.message, answer, is_guardrail=True)
+        return {"answer": answer, "sources": [], "isGuardrail": True}
+
+    # 0e. Monthly message cap (cost control) — only meaningful once a bot
+    # has an owner+subscription; is_active above already confirmed one exists.
+    if bot["owner_user_id"] and not db.check_usage_limit(
+        req.botId, bot["owner_user_id"], bot["max_messages_per_month"]
+    ):
+        answer = (
+            "This bot has reached its monthly message limit — please try again "
+            "next month, or the owner can upgrade their plan."
+        )
+        db.save_chat(req.botId, req.message, answer, is_guardrail=True)
+        return {"answer": answer, "sources": [], "isGuardrail": True}
 
     # 1. RAG retrieval: SIRF is bot ke documents me se related chunks dhoondo.
     try:

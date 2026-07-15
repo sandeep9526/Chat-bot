@@ -55,13 +55,42 @@ def _set_public_bot(cur, bot_id: str) -> None:
     cur.execute("SELECT set_config('app.public_bot_id', %s, true)", (bot_id,))
 
 
+class BotLimitExceeded(Exception):
+    """Raised when creating a NEW bot would exceed the owner's plan limit."""
+
+    def __init__(self, max_bots: int):
+        self.max_bots = max_bots
+        super().__init__(f"plan allows at most {max_bots} bot(s)")
+
+
+# A bot with no owner (the pre-existing demo bots) is never license-gated —
+# treat it as always active. An owned bot is active if its owner's
+# subscription is a live trial or a paid period that hasn't lapsed.
+_IS_ACTIVE_SQL = """
+  CASE
+    WHEN b.owner_user_id IS NULL THEN true
+    WHEN s.status = 'trialing' AND s.trial_ends_at > now() THEN true
+    WHEN s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > now()) THEN true
+    ELSE false
+  END AS is_active
+"""
+
+
 # ---- reads / writes --------------------------------------------------------
 def get_bot(bot_id: str) -> dict | None:
     """Public lookup — used by /config, /chat, /lead. Scoped to exactly this
-    bot_id; RLS blocks reading any other bot through this path."""
+    bot_id; RLS blocks reading any other bot through this path. Includes
+    is_active (license/trial status) so callers can gate on it."""
     with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         _set_public_bot(cur, bot_id)
-        cur.execute("SELECT * FROM bots WHERE bot_id = %s", (bot_id,))
+        cur.execute(
+            f"""
+            SELECT b.*, s.max_messages_per_month, {_IS_ACTIVE_SQL}
+            FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
+            WHERE b.bot_id = %s
+            """,
+            (bot_id,),
+        )
         row = cur.fetchone()
         return dict(row) if row else None
 
@@ -72,9 +101,107 @@ def get_bot_for_owner(bot_id: str, owner_user_id: str) -> dict | None:
     caller, so main.py can turn both into an honest 404)."""
     with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         _set_owner(cur, owner_user_id)
-        cur.execute("SELECT * FROM bots WHERE bot_id = %s", (bot_id,))
+        cur.execute(
+            f"""
+            SELECT b.*, s.max_messages_per_month, {_IS_ACTIVE_SQL}
+            FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
+            WHERE b.bot_id = %s
+            """,
+            (bot_id,),
+        )
         row = cur.fetchone()
         return dict(row) if row else None
+
+
+def _ensure_trial_subscription(cur, owner_user_id: str) -> int:
+    """Idempotent: create a 14-day trial subscription for this owner if they
+    don't have one yet (called from within upsert_bot's transaction — same
+    cur, same app.user_id already set). Returns their current max_bots."""
+    cur.execute("SELECT max_bots FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    cur.execute(
+        """
+        INSERT INTO subscriptions (owner_user_id, plan, status, trial_ends_at)
+        VALUES (%s, 'trial', 'trialing', now() + interval '14 days')
+        RETURNING max_bots
+        """,
+        (owner_user_id,),
+    )
+    return cur.fetchone()[0]
+
+
+def get_subscription(owner_user_id: str) -> dict | None:
+    """The caller's own plan/status — for the user panel's billing view."""
+    with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        _set_owner(cur, owner_user_id)
+        cur.execute("SELECT * FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def upsert_subscription_from_paddle(
+    owner_user_id: str,
+    plan: str | None = None,
+    status: str | None = None,
+    max_bots: int | None = None,
+    max_messages_per_month: int | None = None,
+    current_period_end: str | None = None,
+    paddle_subscription_id: str | None = None,
+    paddle_customer_id: str | None = None,
+) -> None:
+    """Trusted write path for the Paddle webhook handler ONLY — never call
+    from a user-facing endpoint (see schema.sql's comment on subscriptions:
+    writes only ever come from trial auto-provisioning or here). The caller
+    (billing.py) must already have verified the Paddle webhook signature
+    before this runs — that signature check is the real gate, this function
+    trusts its caller completely. COALESCE means an unset field here leaves
+    the existing value alone (a cancel event, e.g., only touches status)."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_owner(cur, owner_user_id)
+        cur.execute(
+            """
+            INSERT INTO subscriptions (
+                owner_user_id, plan, status, max_bots, max_messages_per_month,
+                current_period_end, paddle_subscription_id, paddle_customer_id
+            )
+            VALUES (%s, COALESCE(%s,'trial'), COALESCE(%s,'trialing'), COALESCE(%s,1),
+                    COALESCE(%s,500), %s, %s, %s)
+            ON CONFLICT (owner_user_id) DO UPDATE SET
+              plan = COALESCE(excluded.plan, subscriptions.plan),
+              status = COALESCE(excluded.status, subscriptions.status),
+              max_bots = COALESCE(excluded.max_bots, subscriptions.max_bots),
+              max_messages_per_month = COALESCE(excluded.max_messages_per_month, subscriptions.max_messages_per_month),
+              current_period_end = COALESCE(excluded.current_period_end, subscriptions.current_period_end),
+              paddle_subscription_id = COALESCE(excluded.paddle_subscription_id, subscriptions.paddle_subscription_id),
+              paddle_customer_id = COALESCE(excluded.paddle_customer_id, subscriptions.paddle_customer_id),
+              updated_at = now()
+            """,
+            (
+                owner_user_id, plan, status, max_bots, max_messages_per_month,
+                current_period_end, paddle_subscription_id, paddle_customer_id,
+            ),
+        )
+
+
+def check_usage_limit(bot_id: str, owner_user_id: str, max_messages_per_month: int) -> bool:
+    """True if this bot's owner is within their monthly /chat cap. Runs with
+    app.user_id set to the BOT'S OWNER (not the anonymous /chat caller) —
+    the app is checking cost-control state on the owner's behalf; the count
+    itself is only used for an allow/deny decision, never returned to the
+    (anonymous) caller, so this doesn't leak owner-scoped data to them."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_owner(cur, owner_user_id)
+        cur.execute(
+            """
+            SELECT COUNT(*) FROM chats
+            WHERE bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = %s)
+              AND created_at >= date_trunc('month', now())
+            """,
+            (owner_user_id,),
+        )
+        return cur.fetchone()[0] < max_messages_per_month
 
 
 def list_bots_for_owner(owner_user_id: str) -> list[dict]:
@@ -94,11 +221,22 @@ def upsert_bot(
     allowed_domains: list[str] | None = None,
 ) -> None:
     """Create a bot (or update one you already own). RLS blocks re-registering
-    someone else's bot_id — raises psycopg.errors.InsufficientPrivilege."""
+    someone else's bot_id (raises psycopg.errors.InsufficientPrivilege).
+    Raises BotLimitExceeded if this is a genuinely NEW bot beyond the
+    owner's plan limit (first bot ever auto-provisions a 14-day trial)."""
     import json
 
     with _get_pool().connection() as conn, conn.cursor() as cur:
         _set_owner(cur, owner_user_id)
+
+        cur.execute("SELECT 1 FROM bots WHERE bot_id = %s", (bot_id,))
+        is_new_bot = cur.fetchone() is None
+        if is_new_bot:
+            max_bots = _ensure_trial_subscription(cur, owner_user_id)
+            cur.execute("SELECT COUNT(*) FROM bots WHERE owner_user_id = %s", (owner_user_id,))
+            if cur.fetchone()[0] >= max_bots:
+                raise BotLimitExceeded(max_bots)
+
         cur.execute(
             """
             INSERT INTO bots (bot_id, owner_user_id, name, accent, welcome, suggestions, allowed_domains)
