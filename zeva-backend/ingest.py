@@ -22,6 +22,23 @@ DOCS_ROOT = os.path.join(HERE, "documents")
 DB_DIR = os.path.join(HERE, "chroma_db")
 COLLECTION = "zeva_docs"
 
+# Defense-in-depth: the frontend's file input already rejects this (a
+# .docx's raw zip bytes were found live to have been silently ingested and
+# embedded as a bot's entire "knowledge base" — the accept=".txt" filter on
+# an <input type=file> is only a UI hint, not enforced by the browser), but
+# /ingest is callable directly, so the same check has to exist here too.
+_BINARY_SIGNATURES = ("PK", "%PDF", "\x89PNG", "GIF8", "\xff\xd8\xff", "MZ")
+
+
+def looks_like_binary(text: str) -> bool:
+    if text.startswith(_BINARY_SIGNATURES):
+        return True
+    sample = text[:4000]
+    if not sample:
+        return False
+    suspicious = sum(1 for c in sample if c == "�" or (ord(c) < 32 and c not in "\n\r\t"))
+    return suspicious / len(sample) > 0.02
+
 
 def chunk_text(text: str, size: int = 600) -> list[str]:
     """
@@ -87,7 +104,13 @@ def _safe_name(filename: str) -> str:
 
 
 def save_and_ingest(bot_id: str, filename: str, text: str) -> dict:
-    """Text ko documents/<bot_id>/<filename> me save karo, phir bot re-index karo."""
+    """Text ko documents/<bot_id>/<filename> me save karo, phir bot re-index karo.
+    Raises ValueError if `text` looks like binary data, not real text."""
+    if looks_like_binary(text):
+        raise ValueError(
+            "Ye content text nahi lagta (.docx/.pdf/image ho sakta hai). "
+            "Plain text paste karo ya .txt file upload karo."
+        )
     docs_dir = os.path.join(DOCS_ROOT, bot_id)
     os.makedirs(docs_dir, exist_ok=True)
     with open(os.path.join(docs_dir, _safe_name(filename)), "w", encoding="utf-8") as f:

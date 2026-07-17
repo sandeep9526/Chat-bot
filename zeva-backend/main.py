@@ -356,7 +356,10 @@ def ingest(req: IngestRequest, user: CurrentUser):
         raise HTTPException(
             status_code=404, detail=f"bot '{req.botId}' pehle create karo"
         )
-    result = save_and_ingest(req.botId, req.filename, req.text)
+    try:
+        result = save_and_ingest(req.botId, req.filename, req.text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True, **result}
 
 
