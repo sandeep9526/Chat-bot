@@ -11,6 +11,7 @@ from collections import defaultdict
 from urllib.parse import urlparse
 
 import psycopg
+import sentry_sdk
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -25,6 +26,16 @@ from auth import CurrentUser
 
 # .env file me se secret keys ko memory (environment) me load karo.
 load_dotenv()
+
+# Error tracking — a genuine no-op until SENTRY_DSN is set (sentry_sdk.init
+# with an empty/missing DSN is documented-safe, verified: raises nothing,
+# just never reports). Get a DSN from sentry.io → new project → FastAPI, and
+# set SENTRY_DSN in .env — nothing else needs to change.
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    environment=os.getenv("SENTRY_ENVIRONMENT", "development"),
+    traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+)
 
 # Fail fast if Postgres is unreachable. Schema + RLS live in schema.sql
 # (applied once via the admin connection) — not recreated on every boot.
@@ -113,6 +124,17 @@ class IngestRequest(BaseModel):
     botId: str
     filename: str
     text: str
+
+
+class SuspendBotRequest(BaseModel):
+    botId: str
+    suspended: bool
+
+
+class SetPlanRequest(BaseModel):
+    ownerUserId: str
+    plan: str
+    status: str
 
 
 # ---- OpenRouter client ------------------------------------------------------
@@ -247,6 +269,15 @@ def leads(botId: str, user: CurrentUser):
     return {"leads": db.list_leads(botId, user["id"])}
 
 
+# GDPR-style delete-on-request. JWT auth zaroori + must own the bot the lead belongs to.
+@app.delete("/leads/{lead_id}")
+def delete_lead(lead_id: int, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.delete_lead(lead_id, user["id"]):
+        raise HTTPException(status_code=404, detail="lead not found")
+    return {"ok": True}
+
+
 # ===== Onboarding (Phase 03) — naya client bina code likhe live karo =====
 
 # Naya bot ek command me banao (ya mojood ko update). JWT auth zaroori.
@@ -344,6 +375,36 @@ def superadmin_stats(user: CurrentUser):
     _require_platform_admin(user)
     check_rate_limit(f"admin:{user['id']}")
     return db.platform_stats()
+
+
+# Suspend/reactivate any bot, regardless of owner. See bots_update_platform_admin
+# in schema.sql and db.set_bot_suspended()'s docstring for the trust model.
+@app.post("/superadmin/suspend-bot")
+def superadmin_suspend_bot(req: SuspendBotRequest, user: CurrentUser):
+    _require_platform_admin(user)
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.set_bot_suspended(req.botId, req.suspended):
+        raise HTTPException(status_code=404, detail=f"bot '{req.botId}' not found")
+    return {"ok": True, "botId": req.botId, "suspended": req.suspended}
+
+
+VALID_PLANS = {"trial", "starter", "pro", "business"}
+VALID_STATUSES = {"trialing", "active", "past_due", "canceled", "expired"}
+
+
+# Manually set any account's plan/status — e.g. comping a client or fixing
+# an out-of-band payment. Same trust model as billing.py's Paddle webhook,
+# just gated by is_platform_admin() instead of a signature check.
+@app.post("/superadmin/set-plan")
+def superadmin_set_plan(req: SetPlanRequest, user: CurrentUser):
+    _require_platform_admin(user)
+    check_rate_limit(f"admin:{user['id']}")
+    if req.plan not in VALID_PLANS:
+        raise HTTPException(status_code=400, detail=f"plan must be one of {sorted(VALID_PLANS)}")
+    if req.status not in VALID_STATUSES:
+        raise HTTPException(status_code=400, detail=f"status must be one of {sorted(VALID_STATUSES)}")
+    db.set_owner_plan(req.ownerUserId, req.plan, req.status)
+    return {"ok": True}
 
 
 # Client ki docs (text) bot me daalo aur re-index karo. JWT auth zaroori + must own the bot.

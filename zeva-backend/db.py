@@ -85,11 +85,13 @@ class BotLimitExceeded(Exception):
         super().__init__(f"plan allows at most {max_bots} bot(s)")
 
 
-# A bot with no owner (the pre-existing demo bots) is never license-gated —
-# treat it as always active. An owned bot is active if its owner's
-# subscription is a live trial or a paid period that hasn't lapsed.
+# A platform-admin-suspended bot is always inactive, regardless of plan. A
+# bot with no owner (the pre-existing demo bots) is never license-gated —
+# treat it as always active. Otherwise, an owned bot is active if its
+# owner's subscription is a live trial or a paid period that hasn't lapsed.
 _IS_ACTIVE_SQL = """
   CASE
+    WHEN b.suspended THEN false
     WHEN b.owner_user_id IS NULL THEN true
     WHEN s.status = 'trialing' AND s.trial_ends_at > now() THEN true
     WHEN s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > now()) THEN true
@@ -155,12 +157,28 @@ def _ensure_trial_subscription(cur, owner_user_id: str) -> int:
 
 
 def get_subscription(owner_user_id: str) -> dict | None:
-    """The caller's own plan/status — for the user panel's billing view."""
+    """The caller's own plan/status + actual usage — for the dashboard's
+    billing view. botsUsed/messagesThisMonth are real counts, not just the
+    plan's limits, so the UI can show e.g. '342 / 500 this month'."""
     with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         _set_owner(cur, owner_user_id)
         cur.execute("SELECT * FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
         row = cur.fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        sub = dict(row)
+        cur.execute("SELECT COUNT(*) AS n FROM bots WHERE owner_user_id = %s", (owner_user_id,))
+        sub["bots_used"] = cur.fetchone()["n"]
+        cur.execute(
+            """
+            SELECT COUNT(*) AS n FROM chats
+            WHERE bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = %s)
+              AND created_at >= date_trunc('month', now())
+            """,
+            (owner_user_id,),
+        )
+        sub["messages_this_month"] = cur.fetchone()["n"]
+        return sub
 
 
 def upsert_subscription_from_paddle(
@@ -327,6 +345,17 @@ def list_leads(bot_id: str, owner_user_id: str) -> list[dict]:
         return [dict(r) for r in cur.fetchall()]
 
 
+def delete_lead(lead_id: int, owner_user_id: str) -> bool:
+    """GDPR-style delete-on-request. Returns False if the lead doesn't exist
+    OR isn't owned by this user (RLS enforces the latter — leads_delete_owner
+    in schema.sql — so a mismatched owner silently deletes 0 rows rather than
+    erroring, same pattern as get_bot_for_owner)."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_owner(cur, owner_user_id)
+        cur.execute("DELETE FROM leads WHERE id = %s", (lead_id,))
+        return cur.rowcount > 0
+
+
 def save_chat(bot_id: str, question: str, answer: str, is_guardrail: bool) -> None:
     """Public — every /chat turn, including guardrail refusals."""
     with _get_pool().connection() as conn, conn.cursor() as cur:
@@ -380,7 +409,7 @@ def list_all_bots() -> list[dict]:
         cur.execute(
             f"""
             SELECT b.bot_id, b.name, b.accent, b.owner_user_id, u.email AS owner_email,
-                   b.created_at, s.plan, s.status, {_IS_ACTIVE_SQL}
+                   b.created_at, b.suspended, s.plan, s.status, {_IS_ACTIVE_SQL}
             FROM bots b
             LEFT JOIN "user" u ON u.id = b.owner_user_id
             LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
@@ -411,3 +440,26 @@ def platform_stats() -> dict:
             "totalChats": total_chats,
             "byPlan": by_plan,
         }
+
+
+def set_bot_suspended(bot_id: str, suspended: bool) -> bool:
+    """Platform-admin only — see bots_update_platform_admin in schema.sql.
+    Deliberately touches ONLY the suspended column (never a generic
+    "update any bot field" query) — RLS allows a wider UPDATE for this
+    role, but the application layer is what keeps this action narrow.
+    Returns False if bot_id doesn't exist."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_platform_admin(cur)
+        cur.execute("UPDATE bots SET suspended = %s WHERE bot_id = %s", (suspended, bot_id))
+        return cur.rowcount > 0
+
+
+def set_owner_plan(owner_user_id: str, plan: str, status: str) -> None:
+    """Platform-admin manual override — e.g. comping a client, or manually
+    marking them active after an out-of-band payment. Reuses the exact same
+    owner-scoped write path Paddle's webhook uses (upsert_subscription_from_paddle
+    sets app.user_id = owner_user_id before writing, so RLS's
+    subscriptions_update_owner policy is what actually allows this — the
+    platform-admin check that gates *reaching* this function happens in
+    main.py, same trust model as the webhook's signature check)."""
+    upsert_subscription_from_paddle(owner_user_id, plan=plan, status=status)

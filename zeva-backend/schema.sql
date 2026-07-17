@@ -14,8 +14,13 @@ CREATE TABLE IF NOT EXISTS bots (
   welcome         TEXT,
   suggestions     JSONB DEFAULT '[]'::jsonb,
   allowed_domains JSONB DEFAULT '["*"]'::jsonb,
+  suspended       BOOLEAN NOT NULL DEFAULT false,
   created_at      TIMESTAMPTZ DEFAULT now()
 );
+-- ALTER for environments where this table already existed before `suspended`
+-- was added (CREATE TABLE IF NOT EXISTS above is a no-op against an
+-- existing table — this is what actually adds the column there).
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS leads (
   id         BIGSERIAL PRIMARY KEY,
@@ -70,6 +75,7 @@ DROP POLICY IF EXISTS bots_insert_owner     ON bots;
 DROP POLICY IF EXISTS bots_update_owner     ON bots;
 DROP POLICY IF EXISTS leads_select_owner    ON leads;
 DROP POLICY IF EXISTS leads_insert_any      ON leads;
+DROP POLICY IF EXISTS leads_delete_owner    ON leads;
 DROP POLICY IF EXISTS chats_select_owner    ON chats;
 DROP POLICY IF EXISTS chats_insert_any      ON chats;
 DROP POLICY IF EXISTS handoffs_select_owner ON handoffs;
@@ -106,6 +112,12 @@ CREATE POLICY leads_select_owner ON leads
 CREATE POLICY leads_insert_any ON leads
   FOR INSERT
   WITH CHECK (bot_id IN (SELECT bot_id FROM bots));
+-- GDPR-style delete-on-request: only the owning bot's owner can delete a lead.
+CREATE POLICY leads_delete_owner ON leads
+  FOR DELETE
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
 
 CREATE POLICY chats_select_owner ON chats
   FOR SELECT
@@ -193,17 +205,26 @@ CREATE POLICY subscriptions_update_owner ON subscriptions
 -- email (main.py's is_platform_admin(), checked before any of this code
 -- runs) may set app.is_platform_admin = 'true' to read across every tenant.
 -- This flag is never derived from anything a client sends directly — only
--- backend code that has already done the email check sets it. Scoped to
--- SELECT only (no platform-admin INSERT/UPDATE/DELETE policy exists — this
--- panel is read-only by design, so a compromised admin session still can't
--- mutate another tenant's data).
+-- backend code that has already done the email check sets it.
+--
+-- Mostly SELECT-only (leads/chats/subscriptions: read-only, so a
+-- compromised admin session can't mutate another tenant's leads/chats/
+-- billing). bots also gets a platform-admin UPDATE policy — RLS applies
+-- row-wide, not per-column, so the real narrowing (only the `suspended`
+-- column, via db.set_bot_suspended()) is enforced at the application layer,
+-- not by Postgres; this policy is the coarser backstop underneath it.
 DROP POLICY IF EXISTS bots_select_platform_admin ON bots;
+DROP POLICY IF EXISTS bots_update_platform_admin ON bots;
 DROP POLICY IF EXISTS leads_select_platform_admin ON leads;
 DROP POLICY IF EXISTS chats_select_platform_admin ON chats;
 DROP POLICY IF EXISTS subscriptions_select_platform_admin ON subscriptions;
 
 CREATE POLICY bots_select_platform_admin ON bots
   FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY bots_update_platform_admin ON bots
+  FOR UPDATE
   USING (current_setting('app.is_platform_admin', true) = 'true');
 
 CREATE POLICY leads_select_platform_admin ON leads
