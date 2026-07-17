@@ -30,6 +30,18 @@ load_dotenv()
 # (applied once via the admin connection) — not recreated on every boot.
 db.init_db()
 
+# Platform admin (superadmin panel — sees every tenant, not just their own
+# bots). Comma-separated allow-list, checked against the JWT's own email
+# (Better Auth's token — not client-suppliable). Empty by default: the
+# superadmin panel is fail-closed for everyone until this is explicitly set.
+PLATFORM_ADMIN_EMAILS = {
+    e.strip().lower() for e in os.getenv("PLATFORM_ADMIN_EMAILS", "").split(",") if e.strip()
+}
+
+
+def is_platform_admin(user: dict) -> bool:
+    return (user.get("email") or "").lower() in PLATFORM_ADMIN_EMAILS
+
 # OpenRouter OpenAI-compatible hai — isliye wahi `openai` SDK use hota hai,
 # bas base URL aur key badalte hain. `:free` models bina paise ke chalte hain.
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
@@ -306,6 +318,32 @@ def admin_handoffs(botId: str, user: CurrentUser):
     if not db.get_bot_for_owner(botId, user["id"]):
         raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
     return {"handoffs": db.list_handoffs(botId, user["id"])}
+
+
+# ===== Platform admin (superadmin panel) — sees every tenant, not just their
+# own bots. Gated on PLATFORM_ADMIN_EMAILS, not ownership — every route here
+# checks is_platform_admin() first and 403s otherwise, same as any other
+# caller would get. This is a completely separate access model from the
+# owner-scoped /admin/* routes above (which any signed-in user can use for
+# their own bots) — the /superadmin prefix exists specifically so the two
+# can never be confused with each other.
+def _require_platform_admin(user: dict) -> None:
+    if not is_platform_admin(user):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+
+@app.get("/superadmin/bots")
+def superadmin_bots(user: CurrentUser):
+    _require_platform_admin(user)
+    check_rate_limit(f"admin:{user['id']}")
+    return {"bots": db.list_all_bots()}
+
+
+@app.get("/superadmin/stats")
+def superadmin_stats(user: CurrentUser):
+    _require_platform_admin(user)
+    check_rate_limit(f"admin:{user['id']}")
+    return db.platform_stats()
 
 
 # Client ki docs (text) bot me daalo aur re-index karo. JWT auth zaroori + must own the bot.

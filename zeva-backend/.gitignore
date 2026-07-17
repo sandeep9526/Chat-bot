@@ -13,3 +13,15 @@ chroma_db/
 
 # SQLite database
 zeva.db
+
+# Real client-uploaded documents — this is user business data, not
+# application code, and shouldn't land in git by default (found live: a
+# real client's docs from testing Google login were about to get swept into
+# a commit). The demo bots below are intentionally committed as seed
+# content — everything else under documents/ is excluded.
+documents/*
+!documents/acme-salon/
+!documents/bright-dental/
+!documents/green-grocers/
+!documents/sharma-tiffin/
+!documents/test-cafe/

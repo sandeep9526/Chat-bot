@@ -187,6 +187,37 @@ CREATE POLICY subscriptions_update_owner ON subscriptions
   FOR UPDATE
   USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
 
+-- ---- Platform admin (Phase: superadmin panel) ---------------------------
+-- One narrow, explicit exception on top of everything above: a request that
+-- the backend has ALREADY verified comes from an allow-listed platform-admin
+-- email (main.py's is_platform_admin(), checked before any of this code
+-- runs) may set app.is_platform_admin = 'true' to read across every tenant.
+-- This flag is never derived from anything a client sends directly — only
+-- backend code that has already done the email check sets it. Scoped to
+-- SELECT only (no platform-admin INSERT/UPDATE/DELETE policy exists — this
+-- panel is read-only by design, so a compromised admin session still can't
+-- mutate another tenant's data).
+DROP POLICY IF EXISTS bots_select_platform_admin ON bots;
+DROP POLICY IF EXISTS leads_select_platform_admin ON leads;
+DROP POLICY IF EXISTS chats_select_platform_admin ON chats;
+DROP POLICY IF EXISTS subscriptions_select_platform_admin ON subscriptions;
+
+CREATE POLICY bots_select_platform_admin ON bots
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY leads_select_platform_admin ON leads
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY chats_select_platform_admin ON chats
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY subscriptions_select_platform_admin ON subscriptions
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
 -- ---- Grants for the least-privilege runtime role -----------------------
 -- zeva_app (NOBYPASSRLS) is what the FastAPI backend actually connects as;
 -- neondb_owner (BYPASSRLS, used to run this file) stays reserved for
@@ -197,3 +228,7 @@ GRANT USAGE ON SCHEMA public TO zeva_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON bots, leads, chats, handoffs, subscriptions TO zeva_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO zeva_app;
 GRANT REFERENCES ON "user" TO zeva_app;
+-- The superadmin bots listing joins in each bot's owner email — "user" has
+-- no sensitive columns beyond what Better Auth itself already returns to a
+-- signed-in session (name/email/image), so a full-table grant is fine.
+GRANT SELECT ON "user" TO zeva_app;

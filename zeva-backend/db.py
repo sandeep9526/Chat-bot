@@ -34,7 +34,20 @@ def _get_pool() -> ConnectionPool:
     # here would always capture None.
     global _pool
     if _pool is None:
-        _pool = ConnectionPool(os.getenv("APP_DATABASE_URL"), min_size=1, max_size=5, open=True)
+        _pool = ConnectionPool(
+            os.getenv("APP_DATABASE_URL"),
+            min_size=1,
+            max_size=5,
+            open=True,
+            # Neon (and networks generally) can silently drop an idle
+            # connection; without a liveness check the pool hands out a dead
+            # one and the request 500s with "SSL connection has been closed
+            # unexpectedly" — found live in production testing. This probes
+            # each connection before handing it out and transparently
+            # reconnects if it's dead, instead of surfacing the failure to
+            # a real request.
+            check=ConnectionPool.check_connection,
+        )
     return _pool
 
 
@@ -53,6 +66,15 @@ def _set_owner(cur, owner_user_id: str) -> None:
 def _set_public_bot(cur, bot_id: str) -> None:
     """Scope this transaction to the one bot a public/anonymous caller asked about."""
     cur.execute("SELECT set_config('app.public_bot_id', %s, true)", (bot_id,))
+
+
+def _set_platform_admin(cur) -> None:
+    """Scope this transaction to cross-tenant read access. Callers MUST have
+    already verified the caller's email against the platform-admin allow-list
+    (main.py's is_platform_admin()) before calling this — this function
+    trusts its caller completely, same trust model as _set_owner for a
+    Paddle-verified webhook."""
+    cur.execute("SELECT set_config('app.is_platform_admin', 'true', true)")
 
 
 class BotLimitExceeded(Exception):
@@ -343,4 +365,49 @@ def stats(bot_id: str, owner_user_id: str) -> dict:
             "chats": chats,
             "unanswered": unanswered,
             "topQuestions": [{"question": r[0], "count": r[1]} for r in top],
+        }
+
+
+# ---- Platform admin (superadmin panel) -------------------------------------
+# Every function below reads across ALL tenants. Callers must already have
+# verified the caller's email against the platform-admin allow-list — see
+# _set_platform_admin()'s docstring.
+def list_all_bots() -> list[dict]:
+    """Every bot on the platform with its owner's email (NULL for the
+    pre-existing unowned demo bots) and current plan/status."""
+    with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        _set_platform_admin(cur)
+        cur.execute(
+            f"""
+            SELECT b.bot_id, b.name, b.accent, b.owner_user_id, u.email AS owner_email,
+                   b.created_at, s.plan, s.status, {_IS_ACTIVE_SQL}
+            FROM bots b
+            LEFT JOIN "user" u ON u.id = b.owner_user_id
+            LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
+            ORDER BY b.created_at DESC
+            """
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def platform_stats() -> dict:
+    """Totals across the whole platform, for the superadmin overview."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_platform_admin(cur)
+        cur.execute("SELECT COUNT(*) FROM bots")
+        total_bots = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT owner_user_id) FROM bots WHERE owner_user_id IS NOT NULL")
+        total_owners = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM leads")
+        total_leads = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM chats")
+        total_chats = cur.fetchone()[0]
+        cur.execute("SELECT plan, COUNT(*) FROM subscriptions GROUP BY plan")
+        by_plan = {r[0]: r[1] for r in cur.fetchall()}
+        return {
+            "totalBots": total_bots,
+            "totalOwners": total_owners,
+            "totalLeads": total_leads,
+            "totalChats": total_chats,
+            "byPlan": by_plan,
         }
