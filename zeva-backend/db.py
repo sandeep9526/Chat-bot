@@ -85,7 +85,7 @@ def get_bot(bot_id: str) -> dict | None:
         _set_public_bot(cur, bot_id)
         cur.execute(
             f"""
-            SELECT b.*, s.max_messages_per_month, {_IS_ACTIVE_SQL}
+            SELECT b.*, s.plan, s.max_messages_per_month, {_IS_ACTIVE_SQL}
             FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
             WHERE b.bot_id = %s
             """,
@@ -103,7 +103,7 @@ def get_bot_for_owner(bot_id: str, owner_user_id: str) -> dict | None:
         _set_owner(cur, owner_user_id)
         cur.execute(
             f"""
-            SELECT b.*, s.max_messages_per_month, {_IS_ACTIVE_SQL}
+            SELECT b.*, s.plan, s.max_messages_per_month, {_IS_ACTIVE_SQL}
             FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
             WHERE b.bot_id = %s
             """,

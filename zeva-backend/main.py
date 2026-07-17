@@ -130,17 +130,33 @@ def health():
 
 # /config = widget load hote hi ye call karta hai aur apne aap brand ho jaata hai
 # (naam, color, welcome, suggested questions). Client badalne ke liye code nahi chhuna padta.
+# Feature-wise plan gating: which plans unlock which widget features. Kept
+# as a simple in-code map (not a DB table) — there are no real Paddle price
+# IDs yet (billing.py's PRICE_TO_PLAN is still empty), so a full feature-flag
+# system would be speculative. Add rows here as new gated features ship.
+PLAN_FEATURES = {
+    "trial": {"whitelabel": False},
+    "starter": {"whitelabel": False},
+    "pro": {"whitelabel": True},
+    "business": {"whitelabel": True},
+}
+
+
 @app.get("/config")
 def config(botId: str = "acme-salon"):
     bot = db.get_bot(botId)
     if not bot:
         raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    features = PLAN_FEATURES.get(bot["plan"], {})
     return {
         "botId": bot["bot_id"],
         "name": bot["name"],
         "accent": bot["accent"],
         "welcome": bot["welcome"],
         "suggestions": bot["suggestions"] or [],
+        # Server-authoritative — the embed's own data-whitelabel attribute is
+        # only a request; this is the grant. See public/widget.js.
+        "whitelabelAllowed": bool(features.get("whitelabel", False)),
     }
 
 
@@ -213,6 +229,7 @@ def lead(req: LeadRequest, request: Request):
 # /leads = ek bot ke saare leads (dashboard). JWT auth zaroori + must own the bot.
 @app.get("/leads")
 def leads(botId: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
     if not db.get_bot_for_owner(botId, user["id"]):
         raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
     return {"leads": db.list_leads(botId, user["id"])}
@@ -223,6 +240,7 @@ def leads(botId: str, user: CurrentUser):
 # Naya bot ek command me banao (ya mojood ko update). JWT auth zaroori.
 @app.post("/admin/create-bot")
 def create_bot(req: CreateBotRequest, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
     try:
         db.upsert_bot(
             req.botId, user["id"], req.name, req.accent, req.welcome,
@@ -244,6 +262,7 @@ def create_bot(req: CreateBotRequest, user: CurrentUser):
 # Caller's own plan/status — user panel billing view. JWT auth zaroori.
 @app.get("/subscription")
 def subscription(user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
     sub = db.get_subscription(user["id"])
     if not sub:
         return {"plan": None, "status": "none"}
@@ -267,12 +286,14 @@ async def paddle_webhook(request: Request):
 # Saare bots ki list (admin view) — sirf apne bots. JWT auth zaroori.
 @app.get("/admin/bots")
 def admin_bots(user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
     return {"bots": db.list_bots_for_owner(user["id"])}
 
 
 # Dashboard ke numbers ek bot ke liye. JWT auth zaroori + must own the bot.
 @app.get("/admin/stats")
 def admin_stats(botId: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
     if not db.get_bot_for_owner(botId, user["id"]):
         raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
     return db.stats(botId, user["id"])
@@ -281,14 +302,18 @@ def admin_stats(botId: str, user: CurrentUser):
 # Human handoff feed — hot/warm leads ke AI summaries. JWT auth zaroori + must own the bot.
 @app.get("/admin/handoffs")
 def admin_handoffs(botId: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
     if not db.get_bot_for_owner(botId, user["id"]):
         raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
     return {"handoffs": db.list_handoffs(botId, user["id"])}
 
 
 # Client ki docs (text) bot me daalo aur re-index karo. JWT auth zaroori + must own the bot.
+# Tighter limit than other admin routes — this recomputes embeddings, more
+# expensive per call.
 @app.post("/ingest")
 def ingest(req: IngestRequest, user: CurrentUser):
+    check_rate_limit(f"ingest:{user['id']}", limit=10)
     if not db.get_bot_for_owner(req.botId, user["id"]):
         raise HTTPException(
             status_code=404, detail=f"bot '{req.botId}' pehle create karo"
@@ -355,10 +380,10 @@ MAX_MESSAGE_LEN = 1000
 _hits: dict[str, list[float]] = defaultdict(list)
 
 
-def check_rate_limit(key: str) -> None:
+def check_rate_limit(key: str, limit: int = RATE_LIMIT_PER_MIN) -> None:
     now = time.time()
     recent = [t for t in _hits[key] if t > now - 60]
-    if len(recent) >= RATE_LIMIT_PER_MIN:
+    if len(recent) >= limit:
         raise HTTPException(status_code=429, detail="Too many requests — thodi der ruko")
     recent.append(now)
     _hits[key] = recent
