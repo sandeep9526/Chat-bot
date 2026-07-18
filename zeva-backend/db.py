@@ -85,6 +85,20 @@ class BotLimitExceeded(Exception):
         super().__init__(f"plan allows at most {max_bots} bot(s)")
 
 
+# Single source of truth for what each plan grants. Keep the plan names in sync
+# with VALID_PLANS in main.py and PLAN_FEATURES in the dashboard UI. The Paddle
+# webhook may still pass explicit overrides, but every plan *change* (trial
+# auto-provision, an admin "set plan", or a future checkout) resolves its caps
+# from here so the label and the enforced limits can never drift apart.
+#   plan: (max_bots, max_messages_per_month)
+PLAN_LIMITS: dict[str, tuple[int, int]] = {
+    "trial": (1, 500),
+    "starter": (1, 2_000),
+    "pro": (5, 10_000),
+    "business": (25, 50_000),
+}
+
+
 # A platform-admin-suspended bot is always inactive, regardless of plan. A
 # bot with no owner (the pre-existing demo bots) is never license-gated —
 # treat it as always active. Otherwise, an owned bot is active if its
@@ -461,5 +475,16 @@ def set_owner_plan(owner_user_id: str, plan: str, status: str) -> None:
     sets app.user_id = owner_user_id before writing, so RLS's
     subscriptions_update_owner policy is what actually allows this — the
     platform-admin check that gates *reaching* this function happens in
-    main.py, same trust model as the webhook's signature check)."""
-    upsert_subscription_from_paddle(owner_user_id, plan=plan, status=status)
+    main.py, same trust model as the webhook's signature check).
+
+    Applies the plan's bot/message caps from PLAN_LIMITS so the limits always
+    match the label — previously this only changed the plan *name*, leaving a
+    freshly-upgraded 'pro' account still enforced at the trial's 1-bot cap."""
+    max_bots, max_msgs = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    upsert_subscription_from_paddle(
+        owner_user_id,
+        plan=plan,
+        status=status,
+        max_bots=max_bots,
+        max_messages_per_month=max_msgs,
+    )
