@@ -10,7 +10,9 @@ import chromadb
 from embeddings import embed
 
 HERE = os.path.dirname(__file__)
-DB_DIR = os.path.join(HERE, "chroma_db")
+# Same persistent Chroma path as ingest.py — override via CHROMA_DB_DIR on a
+# host with a mounted volume so the index survives redeploys.
+DB_DIR = os.getenv("CHROMA_DB_DIR", os.path.join(HERE, "chroma_db"))
 COLLECTION = "zeva_docs"
 
 _col = None

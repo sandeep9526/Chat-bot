@@ -19,8 +19,11 @@ import chromadb
 from embeddings import embed
 
 HERE = os.path.dirname(__file__)
-DOCS_ROOT = os.path.join(HERE, "documents")
-DB_DIR = os.path.join(HERE, "chroma_db")
+# Persistent paths — override via env on a host with a mounted volume (e.g. a
+# Railway/Render disk at /data) so uploaded docs + the Chroma index survive
+# redeploys. Default to the local backend dir for dev.
+DOCS_ROOT = os.getenv("ZEVA_DOCS_DIR", os.path.join(HERE, "documents"))
+DB_DIR = os.getenv("CHROMA_DB_DIR", os.path.join(HERE, "chroma_db"))
 COLLECTION = "zeva_docs"
 
 # Defense-in-depth: the frontend's file input already rejects this (a
