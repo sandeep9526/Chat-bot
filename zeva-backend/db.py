@@ -106,6 +106,7 @@ PLAN_LIMITS: dict[str, tuple[int, int]] = {
 _IS_ACTIVE_SQL = """
   CASE
     WHEN b.suspended THEN false
+    WHEN b.paused THEN false
     WHEN b.owner_user_id IS NULL THEN true
     WHEN s.status = 'trialing' AND s.trial_ends_at > now() THEN true
     WHEN s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > now()) THEN true
@@ -259,10 +260,49 @@ def check_usage_limit(bot_id: str, owner_user_id: str, max_messages_per_month: i
 
 
 def list_bots_for_owner(owner_user_id: str) -> list[dict]:
+    """Every bot this owner has, with the full fields the management dashboard
+    needs — including the derived `is_active` and the owner's own `paused` flag.
+    RLS (bots_select) restricts the rows to this owner; the subscriptions join is
+    visible via subscriptions_select_owner."""
     with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         _set_owner(cur, owner_user_id)
-        cur.execute("SELECT bot_id, name, accent FROM bots ORDER BY bot_id")
+        cur.execute(
+            f"""
+            SELECT b.bot_id, b.name, b.accent, b.welcome, b.suggestions,
+                   b.allowed_domains, b.suspended, b.paused, b.created_at, b.design,
+                   {_IS_ACTIVE_SQL}
+            FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
+            ORDER BY b.created_at DESC
+            """
+        )
         return [dict(r) for r in cur.fetchall()]
+
+
+def set_bot_paused(bot_id: str, owner_user_id: str, paused: bool) -> bool:
+    """Owner's own pause/resume switch. RLS (bots_update_owner) makes this a
+    no-op for a bot the caller doesn't own — returns False (rowcount 0) rather
+    than erroring, same pattern as get_bot_for_owner. Deliberately touches only
+    the `paused` column (never `suspended`, which is platform-admin's)."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_owner(cur, owner_user_id)
+        cur.execute("UPDATE bots SET paused = %s WHERE bot_id = %s", (paused, bot_id))
+        return cur.rowcount > 0
+
+
+def delete_bot_for_owner(bot_id: str, owner_user_id: str) -> bool:
+    """Permanently delete a bot the caller owns, plus its leads/chats/handoffs.
+    Children are deleted explicitly (each has its own *_delete_owner RLS policy)
+    BEFORE the bot row, so their ownership subquery still sees the bot. Returns
+    False if the bot didn't exist or isn't the caller's (RLS → 0 rows). The
+    bot's documents + vector chunks are cleaned up separately by the route
+    (ingest.delete_bot_docs) after this returns True."""
+    with _get_pool().connection() as conn, conn.cursor() as cur:
+        _set_owner(cur, owner_user_id)
+        cur.execute("DELETE FROM handoffs WHERE bot_id = %s", (bot_id,))
+        cur.execute("DELETE FROM chats WHERE bot_id = %s", (bot_id,))
+        cur.execute("DELETE FROM leads WHERE bot_id = %s", (bot_id,))
+        cur.execute("DELETE FROM bots WHERE bot_id = %s", (bot_id,))
+        return cur.rowcount > 0
 
 
 def upsert_bot(
@@ -273,11 +313,16 @@ def upsert_bot(
     welcome: str = "",
     suggestions: list[str] | None = None,
     allowed_domains: list[str] | None = None,
+    design: dict | None = None,
 ) -> None:
     """Create a bot (or update one you already own). RLS blocks re-registering
     someone else's bot_id (raises psycopg.errors.InsufficientPrivilege).
     Raises BotLimitExceeded if this is a genuinely NEW bot beyond the
-    owner's plan limit (first bot ever auto-provisions a 14-day trial)."""
+    owner's plan limit (first bot ever auto-provisions a 14-day trial).
+
+    `design` is the full Studio look ({config, websiteUrl}); pass None to leave
+    an existing bot's saved design untouched (so a caller that only edits the
+    brand columns never wipes the stored look)."""
     import json
 
     with _get_pool().connection() as conn, conn.cursor() as cur:
@@ -291,18 +336,23 @@ def upsert_bot(
             if cur.fetchone()[0] >= max_bots:
                 raise BotLimitExceeded(max_bots)
 
+        # design=None → keep the row's existing design on update (COALESCE with
+        # the new value only when one is provided); new bots default to {}.
         cur.execute(
             """
-            INSERT INTO bots (bot_id, owner_user_id, name, accent, welcome, suggestions, allowed_domains)
-            VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
+            INSERT INTO bots (bot_id, owner_user_id, name, accent, welcome, suggestions, allowed_domains, design)
+            VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, COALESCE(%s::jsonb, '{}'::jsonb))
             ON CONFLICT (bot_id) DO UPDATE SET
               name = excluded.name, accent = excluded.accent,
               welcome = excluded.welcome, suggestions = excluded.suggestions,
-              allowed_domains = excluded.allowed_domains
+              allowed_domains = excluded.allowed_domains,
+              design = COALESCE(%s::jsonb, bots.design)
             """,
             (
                 bot_id, owner_user_id, name, accent, welcome,
                 json.dumps(suggestions or []), json.dumps(allowed_domains or ["*"]),
+                json.dumps(design) if design is not None else None,
+                json.dumps(design) if design is not None else None,
             ),
         )
 

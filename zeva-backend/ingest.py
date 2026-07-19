@@ -11,6 +11,7 @@ Sirf usi bot ke purane chunks hatte hain — baaki bots ka data safe rehta hai.
 import glob
 import os
 import re
+import shutil
 import sys
 
 import chromadb
@@ -92,6 +93,25 @@ def ingest_bot(bot_id: str) -> dict:
     if docs:
         col.add(ids=ids, documents=docs, metadatas=metas, embeddings=embed(docs))
     return {"bot_id": bot_id, "files": len(files), "chunks": len(docs)}
+
+
+def delete_bot_docs(bot_id: str) -> None:
+    """Remove a bot's vector chunks + on-disk .txt files — called when an owner
+    deletes the bot. Best-effort and never raises: the DB row is already the
+    source of truth (deleted first by the route), so an orphaned vector/file is
+    harmless and a same-named future bot would overwrite them on next ingest."""
+    try:
+        client = chromadb.PersistentClient(path=DB_DIR)
+        col = client.get_or_create_collection(COLLECTION, metadata={"hnsw:space": "cosine"})
+        col.delete(where={"bot_id": bot_id})
+    except Exception:
+        pass
+    try:
+        docs_dir = os.path.join(DOCS_ROOT, bot_id)
+        if os.path.isdir(docs_dir):
+            shutil.rmtree(docs_dir)
+    except Exception:
+        pass
 
 
 def _safe_name(filename: str) -> str:

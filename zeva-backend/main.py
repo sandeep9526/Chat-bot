@@ -5,6 +5,7 @@ Phase 2: basic server ( /  aur  /health ).
 Phase 3: OpenAI se jud kar  /chat  endpoint (abhi RAG/documents nahi — seedha AI).
 """
 
+import base64
 import os
 import time
 from collections import defaultdict
@@ -12,7 +13,7 @@ from urllib.parse import urlparse
 
 import psycopg
 import sentry_sdk
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -20,7 +21,8 @@ from dotenv import load_dotenv
 
 import billing
 import db
-from ingest import save_and_ingest
+import extract
+from ingest import save_and_ingest, delete_bot_docs
 from rag import retrieve
 from auth import CurrentUser
 
@@ -59,19 +61,34 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Free models kabhi-kabhi "temporarily rate-limited" (429) ho jaate hain. Isliye
 # ek list order me try karte hain — pehla jo available ho, wahi jawaab de deta hai.
-# Sirf achhe, bharose-mand instruct models. (auto-router "openrouter/free" hata
-# diya kyunki wo kabhi-kabhi Nemotron jaise models pe ja kar bakwaas jawaab deta tha.)
+# NOTE: OpenRouter free slugs badalte rehte hain — kai purane slugs ab 404
+# ("unavailable for free") ya hang ho jaate hain, jo /chat ko 30-90s tak latka
+# deta tha. Ye list current me live-verified free slugs se hai (openrouter.ai
+# /api/v1/models se cross-check). Nemotron avoid kiya (bakwaas jawaab); coder
+# models avoid kiye (chat ke liye nahi). gpt-oss-20b pehle — abhi sabse
+# reliable/available. Free tier phir bhi throttle hota hai — production ke liye
+# OpenRouter me thoda credit daalo (README/DEPLOY note).
 FALLBACK_MODELS = [
-    "google/gemma-4-31b-it:free",
-    "openai/gpt-oss-120b:free",
+    "openai/gpt-oss-20b:free",
     "meta-llama/llama-3.3-70b-instruct:free",
     "qwen/qwen3-next-80b-a3b-instruct:free",
-    "google/gemma-4-26b-a4b-it:free",
+    "google/gemma-4-31b-it:free",
 ]
 
 # .env me OPENROUTER_MODEL set ho to sirf wahi use hoga (list ignore).
 _forced = os.getenv("OPENROUTER_MODEL")
 MODELS = [_forced] if _forced else FALLBACK_MODELS
+
+# Free *vision* models for reading uploaded images (PNG/JPG) — used to OCR a
+# screenshot of prices/hours or describe a photo into knowledge text. Same
+# fallback-chain idea as chat: try in order, first non-empty answer wins. These
+# are live-verified free image-input slugs (openrouter.ai/api/v1/models filtered
+# by input_modalities=image); gemma-4 doubles as a chat + vision model.
+VISION_MODELS = [
+    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "openrouter/free",
+]
 
 app = FastAPI(title="Zeva Backend")
 
@@ -118,6 +135,9 @@ class CreateBotRequest(BaseModel):
     welcome: str = ""
     suggestions: list[str] = []
     allowedDomains: list[str] = ["*"]
+    # Full Studio look ({config, websiteUrl}) for signed-in owners. None = don't
+    # touch the stored design (brand-only edits keep the saved look intact).
+    design: dict | None = None
 
 
 class IngestRequest(BaseModel):
@@ -129,6 +149,11 @@ class IngestRequest(BaseModel):
 class SuspendBotRequest(BaseModel):
     botId: str
     suspended: bool
+
+
+class PauseBotRequest(BaseModel):
+    botId: str
+    paused: bool
 
 
 class SetPlanRequest(BaseModel):
@@ -144,7 +169,7 @@ def get_client() -> OpenAI:
     return OpenAI(
         base_url=OPENROUTER_BASE_URL,
         api_key=os.getenv("OPENROUTER_API_KEY"),
-        timeout=30,       # 30s baad clean error do (hang na ho)
+        timeout=18,       # 18s baad clean error do → agla model (hang na ho).
         max_retries=0,    # ek model par retry nahi — seedha agla model try karo
     )
 
@@ -188,6 +213,9 @@ def config(botId: str = "acme-salon"):
         "accent": bot["accent"],
         "welcome": bot["welcome"],
         "suggestions": bot["suggestions"] or [],
+        # Full Studio look for signed-in owners ({config, websiteUrl}); {} when
+        # never saved from Studio — the client then falls back to localStorage.
+        "design": bot.get("design") or {},
         # Server-authoritative — the embed's own data-whitelabel attribute is
         # only a request; this is the grant. See public/widget.js.
         "whitelabelAllowed": bool(features.get("whitelabel", False)),
@@ -287,7 +315,7 @@ def create_bot(req: CreateBotRequest, user: CurrentUser):
     try:
         db.upsert_bot(
             req.botId, user["id"], req.name, req.accent, req.welcome,
-            req.suggestions, req.allowedDomains,
+            req.suggestions, req.allowedDomains, req.design,
         )
     except psycopg.errors.InsufficientPrivilege:
         # RLS blocked it: bot_id already exists and belongs to someone else.
@@ -331,6 +359,30 @@ async def paddle_webhook(request: Request):
 def admin_bots(user: CurrentUser):
     check_rate_limit(f"admin:{user['id']}")
     return {"bots": db.list_bots_for_owner(user["id"])}
+
+
+# Owner pause/resume their OWN bot — the widget goes dark (is_active=false)
+# without deleting anything. Distinct from /superadmin/suspend-bot, which is
+# platform moderation the owner can't touch; this only flips the owner's
+# `paused` flag and is scoped to bots they own. JWT auth zaroori.
+@app.post("/admin/pause-bot")
+def admin_pause_bot(req: PauseBotRequest, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.set_bot_paused(req.botId, user["id"], req.paused):
+        raise HTTPException(status_code=404, detail=f"bot '{req.botId}' not found")
+    return {"ok": True, "botId": req.botId, "paused": req.paused}
+
+
+# Permanently delete an owned bot + its leads/chats/handoffs (DB cascade via
+# explicit child deletes) and its documents/vectors (disk + ChromaDB).
+# Irreversible. JWT auth zaroori + must own the bot.
+@app.delete("/admin/bots/{bot_id}")
+def admin_delete_bot(bot_id: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.delete_bot_for_owner(bot_id, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{bot_id}' not found")
+    delete_bot_docs(bot_id)  # best-effort; the DB row is already gone
+    return {"ok": True, "botId": bot_id}
 
 
 # Dashboard ke numbers ek bot ke liye. JWT auth zaroori + must own the bot.
@@ -422,6 +474,104 @@ def ingest(req: IngestRequest, user: CurrentUser):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True, **result}
+
+
+# Uploaded knowledge files can't exceed this — protects the extractor + embedder
+# from a giant file, and vision models cap out on huge images anyway.
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB
+
+_IMAGE_PROMPT = (
+    "You are reading a business document image for a support chatbot's knowledge "
+    "base. Transcribe ALL text in the image exactly and completely — prices, "
+    "hours, names, contact details, every line. Preserve the order. Then, if "
+    "there are meaningful non-text visuals, add one short line describing them. "
+    "Output only the transcription and that optional line — no preamble."
+)
+
+
+def extract_image_text(data: bytes, mime: str) -> str:
+    """OCR/describe an uploaded image via the free vision-model chain. Same
+    try-in-order fallback as chat, since free slugs get rate-limited."""
+    b64 = base64.b64encode(data).decode()
+    url = f"data:{mime};base64,{b64}"
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": _IMAGE_PROMPT},
+                {"type": "image_url", "image_url": {"url": url}},
+            ],
+        }
+    ]
+    client = get_client()
+    last_error = None
+    for model in VISION_MODELS:
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=1200,
+                temperature=0,
+            )
+            text = resp.choices[0].message.content
+            if text and text.strip():
+                return text.strip()
+        except Exception as e:
+            last_error = e
+            continue
+    raise HTTPException(
+        status_code=502,
+        detail=f"Image ko abhi padh nahi paaye, thodi der baad try karo. ({last_error})",
+    )
+
+
+# Upload a real file (PDF / Word / text / Markdown / PNG / JPG) as knowledge.
+# Text is extracted server-side (docs via pure-Python parsers, images via a
+# vision model), then chunked + embedded like any pasted text. Same auth,
+# ownership and rate limit as /ingest.
+@app.post("/ingest-file")
+async def ingest_file(
+    user: CurrentUser,
+    botId: str = Form(...),
+    file: UploadFile = File(...),
+):
+    check_rate_limit(f"ingest:{user['id']}", limit=10)
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' pehle create karo")
+
+    filename = file.filename or "upload"
+    ext = extract.file_ext(filename)
+    if ext not in extract.SUPPORTED_EXTS and ext != ".doc":
+        raise HTTPException(
+            status_code=400,
+            detail="Sirf PDF, Word (.docx), text, Markdown, PNG ya JPG file upload karo.",
+        )
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="File empty hai.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File bahut badi hai (max {MAX_UPLOAD_BYTES // (1024 * 1024)}MB).",
+        )
+
+    try:
+        if extract.is_image(filename):
+            mime = file.content_type or "image/png"
+            text = extract_image_text(data, mime)
+        else:
+            text = extract.extract_document_text(filename, data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Save the *extracted* text as a .txt doc and re-index (reuses the same
+    # chunk+embed path as pasted text). save_and_ingest re-validates it as text.
+    try:
+        result = save_and_ingest(botId, filename, text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "filename": filename, "chars": len(text), **result}
 
 
 # /chat = POST endpoint. User ka message OpenAI ko bhejta hai aur jawaab laata hai.

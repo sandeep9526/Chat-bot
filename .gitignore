@@ -18,8 +18,12 @@ zeva-backend/chroma_db/
 *.sqlite
 *.sqlite3
 
-# ── Frontend has its own git repo (absorbed in 0.1 restructure) ──
-fortend/
+# ── Frontend (fortend/) is part of this monorepo now. Its own
+#    fortend/.gitignore still excludes node_modules/.next/.env* there. ──
+
+# ── Local agent/tooling artifacts (not product code) ─────
+**/.claude/
+**/skills-lock.json
 
 # ── OS / editor cruft ────────────────────────────────────
 .DS_Store

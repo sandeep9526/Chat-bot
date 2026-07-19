@@ -21,6 +21,18 @@ CREATE TABLE IF NOT EXISTS bots (
 -- was added (CREATE TABLE IF NOT EXISTS above is a no-op against an
 -- existing table — this is what actually adds the column there).
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT false;
+-- `paused` is the OWNER's own on/off switch (pause my bot without deleting it),
+-- distinct from `suspended` which is a platform-admin moderation flag the owner
+-- can't touch. Both make a bot inactive; see is_active in db.py.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS paused BOOLEAN NOT NULL DEFAULT false;
+-- `design` holds the FULL Studio look for a signed-in owner's bot — the fields
+-- the columns above don't cover (logo, panel bg, corners, font, launcher,
+-- subtitle, glass, position…) plus the preview website URL. Shape:
+-- { "config": {<ZevaConfig>}, "websiteUrl": "..." }. Empty {} = never saved from
+-- Studio (older bots / anonymous funnel), in which case the client falls back to
+-- its localStorage stash. Only name/accent/welcome/suggestions stay as real
+-- columns (the widget/backend read them directly); the rest is opaque JSON.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS design JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS leads (
   id         BIGSERIAL PRIMARY KEY,
@@ -73,13 +85,16 @@ ALTER TABLE handoffs FORCE  ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS bots_select           ON bots;
 DROP POLICY IF EXISTS bots_insert_owner     ON bots;
 DROP POLICY IF EXISTS bots_update_owner     ON bots;
+DROP POLICY IF EXISTS bots_delete_owner     ON bots;
 DROP POLICY IF EXISTS leads_select_owner    ON leads;
 DROP POLICY IF EXISTS leads_insert_any      ON leads;
 DROP POLICY IF EXISTS leads_delete_owner    ON leads;
 DROP POLICY IF EXISTS chats_select_owner    ON chats;
 DROP POLICY IF EXISTS chats_insert_any      ON chats;
+DROP POLICY IF EXISTS chats_delete_owner    ON chats;
 DROP POLICY IF EXISTS handoffs_select_owner ON handoffs;
 DROP POLICY IF EXISTS handoffs_insert_any   ON handoffs;
+DROP POLICY IF EXISTS handoffs_delete_owner ON handoffs;
 
 -- bots: the owner sees their own bots (admin listing / dashboard). An
 -- anonymous/public caller (widget, /config, /chat, /lead) can only see the
@@ -98,6 +113,13 @@ CREATE POLICY bots_insert_owner ON bots
 
 CREATE POLICY bots_update_owner ON bots
   FOR UPDATE
+  USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+-- The owner may delete their own bot (dashboard "Delete bot"). Child rows in
+-- leads/chats/handoffs are removed first by the app (delete_bot_for_owner),
+-- each gated by its own *_delete_owner policy below.
+CREATE POLICY bots_delete_owner ON bots
+  FOR DELETE
   USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
 
 -- leads/chats/handoffs: only the owning bot's owner can read them (dashboard
@@ -127,6 +149,13 @@ CREATE POLICY chats_select_owner ON chats
 CREATE POLICY chats_insert_any ON chats
   FOR INSERT
   WITH CHECK (bot_id IN (SELECT bot_id FROM bots));
+-- Only used as part of an owner deleting their own bot (delete_bot_for_owner
+-- clears chats/handoffs before the bot row itself).
+CREATE POLICY chats_delete_owner ON chats
+  FOR DELETE
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
 
 CREATE POLICY handoffs_select_owner ON handoffs
   FOR SELECT
@@ -136,6 +165,11 @@ CREATE POLICY handoffs_select_owner ON handoffs
 CREATE POLICY handoffs_insert_any ON handoffs
   FOR INSERT
   WITH CHECK (bot_id IN (SELECT bot_id FROM bots));
+CREATE POLICY handoffs_delete_owner ON handoffs
+  FOR DELETE
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
 
 -- ---- Subscriptions (Phase 3 foundation: license gate + plan limits) ----
 -- One row per paying account (owner_user_id = Better Auth user.id — a solo
