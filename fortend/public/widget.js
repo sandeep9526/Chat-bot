@@ -752,6 +752,7 @@
     tmp.innerHTML = buildLauncherHtml();
     var fresh = tmp.firstChild;
     old.parentNode.replaceChild(fresh, old);
+    fresh.addEventListener("click", openPanel);
     if (RAW.draggable) setupDrag(fresh);
   }
 
