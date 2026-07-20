@@ -5,6 +5,9 @@ import { cn } from "@/lib/cn";
 import type { AdminBot } from "@/lib/adminApi";
 import { markSetupDone } from "@/lib/setupProgress";
 import { CopyIcon, CheckIcon } from "./panelIcons";
+import { buildEmbedRows } from "@/lib/embed";
+import type { ZevaConfig } from "@/lib/types";
+import { DEFAULTS } from "@/lib/defaults";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 const WIDGET_SRC = "https://cdn.zeva.app/widget.js";
@@ -54,13 +57,14 @@ const WHERE_TO_PASTE: Record<PlatformKey, string[]> = {
 };
 
 function scriptSnippet(bot: AdminBot): string {
+  const cfg: ZevaConfig = bot.design && "config" in bot.design && (bot.design as { config: ZevaConfig }).config
+    ? (bot.design as { config: ZevaConfig }).config
+    : { ...DEFAULTS, name: bot.name, accent: bot.accent };
+  const rows = buildEmbedRows(cfg, bot.bot_id);
   return [
     "<script",
     `  src="${WIDGET_SRC}"`,
-    `  data-bot-id="${bot.bot_id}"`,
-    `  data-name="${bot.name}"`,
-    `  data-accent="${bot.accent.toLowerCase()}"`,
-    `  data-api-url="${API_URL}"`,
+    ...rows.map(([k, v]) => `  data-${k}="${v}"`),
     "  async></script>",
   ].join("\n");
 }

@@ -105,11 +105,8 @@
     offsetX: toPx(getAttr("data-offset-x", "24"), 24),
     offsetY: toPx(getAttr("data-offset-y", "24"), 24),
     whitelabel: getAttr("data-whitelabel", "off") === "on",
-    // Opt-in: most chat widgets deliberately DON'T let visitors move the
-    // launcher (position should stay predictable page-to-page) — off by
-    // default so existing embeds are unaffected unless the site owner
-    // explicitly wants this.
     draggable: getAttr("data-draggable", "off") === "on",
+    logo: getAttr("data-logo", ""),
   };
 
   var HAS_FETCH = typeof fetch === "function";
@@ -248,6 +245,8 @@
       ".zeva-launcher-icon{display:grid;place-items:center;flex-shrink:0;overflow:hidden;border-radius:999px;width:25px;height:25px;}" +
       ".zeva-variant-bubble .zeva-launcher-icon{width:30px;height:30px;}" +
       ".zeva-launcher-icon.zeva-orb{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;}" +
+      ".zeva-launcher-icon img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
+      ".zeva-launcher-icon.zeva-orb img{border-radius:50%;}" +
       ".zeva-launcher-icon svg{width:14px;height:14px;}" +
       ".zeva-variant-bubble .zeva-launcher-icon svg{width:26px;height:26px;color:#fff;}" +
       ".zeva-launcher-label{line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}" +
@@ -262,6 +261,7 @@
       ".zeva-panel.zeva-open{opacity:1;transform:scale(1) translateY(0);pointer-events:auto;height:560px;max-height:calc(100vh - 150px);border-width:1px;border-style:solid;border-color:var(--border);}" +
       ".zeva-header{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}" +
       ".zeva-header-avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:0 0 0 4px var(--accent-soft);}" +
+      ".zeva-header-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
       ".zeva-header-name{flex:1;min-width:0;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
       ".zeva-header-close{all:unset;box-sizing:border-box;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);}" +
       ".zeva-header-close:hover{background:var(--ring);color:var(--text);}" +
@@ -549,11 +549,14 @@
     var variant = ["pill", "bubble", "bar"].indexOf(RAW.launcher) >= 0 ? RAW.launcher : "pill";
     var glassClass = variant === "bubble" ? "" : RAW.glass ? "zeva-glass" : "zeva-solid";
     var label = state.configStatus === "error" ? "Chat unavailable" : "Ask " + state.name;
+    var launcherIcon = RAW.logo
+      ? '<span class="zeva-launcher-icon' + (variant === "bubble" ? "" : " zeva-orb") + '"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></span>'
+      : '<span class="zeva-launcher-icon' + (variant === "bubble" ? "" : " zeva-orb") + '">' + ICON_SPARK + "</span>";
     var html =
       '<button type="button" class="zeva-launcher zeva-variant-' + variant + " " + glassClass +
       (state.configStatus !== "error" ? " zeva-breathe" : "") +
       '" aria-label="' + escapeHtml(label) + '" id="zeva-launcher-btn">' +
-      '<span class="zeva-launcher-icon' + (variant === "bubble" ? "" : " zeva-orb") + '">' + ICON_SPARK + "</span>";
+      launcherIcon;
     if (variant !== "bubble") {
       html +=
         '<span class="zeva-launcher-label" id="zeva-launcher-label">' + escapeHtml(label) + "</span>" +
@@ -570,9 +573,12 @@
     // only if the server actually allows it. Prevents a free-tier embed from
     // simply setting data-whitelabel="on" itself to remove branding for free.
     var brandRow = '<span class="zeva-footer-brand" id="zeva-footer-brand">Powered by <b>Zeva</b></span>';
+    var headerAvatar = RAW.logo
+      ? '<div class="zeva-header-avatar"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></div>'
+      : '<div class="zeva-header-avatar"></div>';
     return (
       '<div class="zeva-header">' +
-      '<div class="zeva-header-avatar"></div>' +
+      headerAvatar +
       '<div class="zeva-header-name" id="zeva-header-name"></div>' +
       '<button type="button" class="zeva-header-close" id="zeva-close-btn" aria-label="Close">' + ICON_CLOSE + "</button>" +
       "</div>" +
@@ -715,6 +721,58 @@
     if (panelEl) panelEl.setAttribute("aria-label", "Ask " + state.name);
   }
 
+  /** Update logo in header + launcher after /config loads with a saved logo. */
+  function refreshLogo() {
+    if (!RAW.logo) return;
+    // Header avatar
+    var avatarEl = shadow.querySelector(".zeva-header-avatar");
+    if (avatarEl && !avatarEl.querySelector("img")) {
+      var img = document.createElement("img");
+      img.src = RAW.logo;
+      img.alt = "";
+      avatarEl.innerHTML = "";
+      avatarEl.appendChild(img);
+    }
+    // Launcher icon
+    var launcherIcon = shadow.querySelector(".zeva-launcher-icon");
+    if (launcherIcon && !launcherIcon.querySelector("img")) {
+      var img2 = document.createElement("img");
+      img2.src = RAW.logo;
+      img2.alt = "";
+      launcherIcon.innerHTML = "";
+      launcherIcon.appendChild(img2);
+    }
+  }
+
+  /** Re-render the entire launcher (used when launcher style changes from config). */
+  function refreshLauncher() {
+    var old = shadow.getElementById("zeva-launcher-btn");
+    if (!old) return;
+    var tmp = document.createElement("div");
+    tmp.innerHTML = buildLauncherHtml();
+    var fresh = tmp.firstChild;
+    old.parentNode.replaceChild(fresh, old);
+    attachDragListeners();
+  }
+
+  /** Apply a font family to the widget shadow root. */
+  function applyFontFamily(family) {
+    if (!family || !shadow) return;
+    shadow.host.style.setProperty("--widget-font", '"' + family + '", sans-serif');
+    var styleTag = shadow.querySelector("style");
+    if (styleTag) {
+      var css = styleTag.textContent;
+      // Inject or update font-family override at the end
+      var marker = "/* @zeva-font-override */";
+      var override = marker + "\n.zeva-panel,.zeva-launcher{font-family:\"" + family + "\",sans-serif !important;}";
+      if (css.indexOf(marker) >= 0) {
+        styleTag.textContent = css.replace(new RegExp(marker[0] + ".*?" + marker.slice(-1) + "[\\s\\S]*$"), override);
+      } else {
+        styleTag.textContent = css + "\n" + override;
+      }
+    }
+  }
+
   function refreshLauncherAvailability() {
     var btn = shadow.getElementById("zeva-launcher-btn");
     if (!btn) return;
@@ -845,12 +903,63 @@
     if (cfg.welcome) state.welcome = cfg.welcome;
     if (Array.isArray(cfg.suggestions) && cfg.suggestions.length) state.suggestions = cfg.suggestions;
 
-    // Whitelabel is server-authoritative: only hide "Powered by Zeva" when
-    // BOTH the embed requested it (data-whitelabel="on") AND the bot's
-    // owner's plan actually grants it (cfg.whitelabelAllowed).
-    if (RAW.whitelabel && cfg.whitelabelAllowed) {
-      var brandEl = shadow.getElementById("zeva-footer-brand");
-      if (brandEl) brandEl.style.display = "none";
+    // Apply design settings from /config (Studio-saved look)
+    var design = cfg.design && cfg.design.config ? cfg.design.config : null;
+    if (design) {
+      // Logo: only apply if not explicitly set via data-logo
+      if (!RAW.logo && design.logo) {
+        RAW.logo = design.logo;
+        refreshLogo();
+      }
+      // Fonts: only apply if not explicitly set via data-font
+      if (getAttr("data-font", "") === "" && design.fontSrc) {
+        if (design.fontSrc === "google" && design.gFont) {
+          loadGoogleFont(design.gFont);
+          applyFontFamily(design.gFont);
+        } else if (design.fontSrc === "custom" && design.cFam && design.cUrl) {
+          loadCustomFont(design.cFam, design.cUrl);
+          applyFontFamily(design.cFam);
+        } else if (design.fontSrc === "preset" && design.font && design.font !== "system") {
+          var presetMap = { rounded: "Nunito", serif: "Playfair Display", mono: "JetBrains Mono" };
+          var gFontName = presetMap[design.font];
+          if (gFontName) { loadGoogleFont(gFontName); applyFontFamily(gFontName); }
+        }
+      }
+      // Surface theme
+      if (getAttr("data-surface", "") === "" && design.surface) {
+        RAW.surface = design.surface;
+        applyTheme();
+      }
+      // Corners
+      if (getAttr("data-corners", "") === "" && design.corners) {
+        RAW.corners = design.corners;
+        applyTheme();
+      }
+      // Glass mode
+      if (!hasAttr("data-glass") && typeof design.glass === "boolean") {
+        RAW.glass = design.glass;
+        applyTheme();
+      }
+      // Launcher style
+      if (getAttr("data-launcher", "") === "" && design.launcher) {
+        RAW.launcher = design.launcher;
+        refreshLauncher();
+      }
+      // Sources toggle
+      if (!hasAttr("data-sources") && typeof design.sources === "boolean") {
+        RAW.sources = design.sources;
+      }
+      // Whitelabel: server-authoritative
+      if (RAW.whitelabel && cfg.whitelabelAllowed) {
+        var brandEl = shadow.getElementById("zeva-footer-brand");
+        if (brandEl) brandEl.style.display = "none";
+      }
+    } else {
+      // No design blob — still apply whitelabel if both sides agree
+      if (RAW.whitelabel && cfg.whitelabelAllowed) {
+        var brandEl2 = shadow.getElementById("zeva-footer-brand");
+        if (brandEl2) brandEl2.style.display = "none";
+      }
     }
 
     refreshBranding();

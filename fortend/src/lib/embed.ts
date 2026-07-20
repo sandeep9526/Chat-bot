@@ -18,7 +18,25 @@ export function buildEmbedRows(cfg: ZevaConfig, botId: string = BOT_ID): [string
     ["position", cfg.anchor],
     ["api-url", API_URL],
   ];
+  // Visual settings from Studio
+  if (cfg.logo) rows.push(["logo", cfg.logo]);
+  if (cfg.surface !== "auto") rows.push(["surface", cfg.surface]);
+  if (cfg.corners !== "soft") rows.push(["corners", cfg.corners]);
+  if (cfg.launcher !== "pill") rows.push(["launcher", cfg.launcher]);
+  if (!cfg.glass) rows.push(["glass", "off"]);
+  if (!cfg.sources) rows.push(["sources", "off"]);
   if (!cfg.brand) rows.push(["whitelabel", "on"]);
+  if (cfg.offX !== 24) rows.push(["offset-x", String(cfg.offX)]);
+  if (cfg.offY !== 24) rows.push(["offset-y", String(cfg.offY)]);
+  // Font settings
+  if (cfg.fontSrc === "google" && cfg.gFont) {
+    rows.push(["font", "google:" + cfg.gFont]);
+  } else if (cfg.fontSrc === "custom" && cfg.cFam && cfg.cUrl) {
+    rows.push(["font-family", cfg.cFam]);
+    rows.push(["font-url", cfg.cUrl]);
+  } else if (cfg.fontSrc === "preset" && cfg.font && cfg.font !== "system") {
+    rows.push(["font", cfg.font]);
+  }
   return rows;
 }
 
