@@ -752,7 +752,7 @@
     tmp.innerHTML = buildLauncherHtml();
     var fresh = tmp.firstChild;
     old.parentNode.replaceChild(fresh, old);
-    attachDragListeners();
+    if (RAW.draggable) setupDrag(fresh);
   }
 
   /** Apply a font family to the widget shadow root. */
