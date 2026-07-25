@@ -16,10 +16,15 @@ export function MarketingThemeInit() {
     } catch {
       /* private mode */
     }
-    document.documentElement.setAttribute(
-      "data-theme",
-      saved === "dark" ? "dark" : "light",
-    );
+    if (saved === "dark" || saved === "light") {
+      document.documentElement.setAttribute("data-theme", saved);
+    } else {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.setAttribute(
+        "data-theme",
+        prefersDark ? "dark" : "light"
+      );
+    }
   }, []);
 
   return null;

@@ -13,7 +13,12 @@ import {
   deleteLead,
   deleteBot,
   setBotPaused,
+  fetchDocs,
+  deleteDocFile,
+  createStripeCheckoutSession,
+  createRazorpaySubscription,
   type CreateBotPayload,
+  type BillingPlan,
 } from "@/lib/adminApi";
 
 export function useBots() {
@@ -96,10 +101,42 @@ export function useSubscription() {
   return useQuery({ queryKey: ["admin", "subscription"], queryFn: fetchSubscription });
 }
 
+/** Global (non-India) upgrade — resolves to the Stripe Checkout URL to redirect to. */
+export function useCreateStripeCheckout() {
+  return useMutation({
+    mutationFn: (v: { plan: BillingPlan; successUrl: string; cancelUrl: string }) =>
+      createStripeCheckoutSession(v.plan, v.successUrl, v.cancelUrl),
+  });
+}
+
+/** India upgrade — resolves to the Razorpay subscription to open Checkout.js against. */
+export function useCreateRazorpaySubscription() {
+  return useMutation({
+    mutationFn: (plan: BillingPlan) => createRazorpaySubscription(plan),
+  });
+}
+
 export function useDeleteLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (leadId: number) => deleteLead(leadId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
+  });
+}
+
+export function useDocs(botId: string) {
+  return useQuery({
+    queryKey: ["admin", "docs", botId],
+    queryFn: () => fetchDocs(botId),
+    enabled: Boolean(botId),
+  });
+}
+
+export function useDeleteDoc() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { botId: string; filename: string }) =>
+      deleteDocFile(v.botId, v.filename),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
   });
 }

@@ -7,8 +7,8 @@ export const DEMO_KB: KbEntry[] = [
     answer: "We're open Monday to Saturday, 10 AM\u20137 PM, and closed on Sundays.",
     file: "hours.pdf",
     match: 96,
-    snip: "Store hours \u2014 Acme Salon is open Monday to Saturday, 10:00 AM to 7:00 PM. Closed Sundays and public holidays.",
-    hi: "Acme Salon is open Monday to Saturday, 10:00 AM to 7:00 PM.",
+    snip: "Store hours \u2014 Zeva AI is open Monday to Saturday, 10:00 AM to 7:00 PM. Closed Sundays and public holidays.",
+    hi: "Zeva AI is open Monday to Saturday, 10:00 AM to 7:00 PM.",
   },
   {
     keys: ["price", "cost", "haircut", "how much", "pricing", "rate"],
@@ -39,7 +39,7 @@ export const DEMO_KB: KbEntry[] = [
     answer: "We\u2019re in Phase 7 Market, Mohali, with free parking behind the building.",
     file: "contact.pdf",
     match: 88,
-    snip: "Find us \u2014 Acme Salon, Phase 7 Market, Mohali. Free customer parking behind the building.",
+    snip: "Find us \u2014 Zeva AI, Phase 7 Market, Mohali. Free customer parking behind the building.",
     hi: "Phase 7 Market, Mohali. Free customer parking behind the building.",
   },
 ];

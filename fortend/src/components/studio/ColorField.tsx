@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { Plus as PlusIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ACCENT_SWATCHES } from "@/lib/defaults";
 
@@ -65,6 +66,7 @@ export function ColorField({ value, onChange }: ColorFieldProps) {
           <input
             ref={pickerRef}
             type="color"
+            aria-label="Custom accent color"
             className="absolute inset-[-6px] w-[200%] h-[200%] cursor-pointer border-none p-0 opacity-0"
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -72,21 +74,5 @@ export function ColorField({ value, onChange }: ColorFieldProps) {
         </label>
       </div>
     </div>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
   );
 }

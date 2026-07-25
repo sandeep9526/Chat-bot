@@ -23,7 +23,7 @@ def get_collection():
     global _col
     if _col is None:
         client = chromadb.PersistentClient(path=DB_DIR)
-        _col = client.get_collection(COLLECTION)
+        _col = client.get_or_create_collection(COLLECTION, metadata={"hnsw:space": "cosine"})
     return _col
 
 
@@ -44,9 +44,12 @@ def retrieve(query: str, bot_id: str, k: int = 3) -> list[dict]:
         where={"bot_id": bot_id},
     )
 
-    docs = res["documents"][0]
-    metas = res["metadatas"][0]
-    dists = res["distances"][0]
+    docs = res.get("documents", [[]])[0]
+    metas = res.get("metadatas", [[]])[0]
+    dists = res.get("distances", [[]])[0]
+
+    if not docs:
+        return []
 
     hits: list[dict] = []
     for doc, meta, dist in zip(docs, metas, dists):

@@ -3,7 +3,8 @@
  * Rule: Zustand = what the user is configuring/seeing; React Query = what the server owns.
  */
 import { create } from "zustand";
-import { DEFAULTS } from "@/lib/defaults";
+import { DEFAULTS, BOT_ID } from "@/lib/defaults";
+
 import type {
   ZevaConfig,
   Anchor,
@@ -23,8 +24,11 @@ interface ConfigSlice {
   config: ZevaConfig;
   accentStrong: string;
   websiteUrl: string;
+  botId: string;
+  setBotId: (id: string) => void;
   setWebsiteUrl: (url: string) => void;
   setAccent: (hex: string, strong?: string) => void;
+
   setSurface: (v: SurfaceMode) => void;
   setCorners: (v: CornersMode) => void;
   setLauncher: (v: LauncherStyle) => void;
@@ -64,6 +68,9 @@ interface SessionSlice {
   pushMessage: (msg: ChatMessage) => void;
   updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
   resetSession: () => void;
+
+  isQuestionProcessing: boolean;
+  setIsQuestionProcessing: (v: boolean) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -76,6 +83,8 @@ export const useZevaStore = create<ZevaState>((set) => ({
   config: { ...DEFAULTS },
   accentStrong: shade(DEFAULTS.accent),
   websiteUrl: "",
+  botId: BOT_ID,
+  setBotId: (id) => set({ botId: id }),
   setWebsiteUrl: (url) => set({ websiteUrl: url }),
 
   setAccent: (hex, strong) =>
@@ -84,7 +93,18 @@ export const useZevaStore = create<ZevaState>((set) => ({
       config: { ...s.config, accent: hex },
     })),
 
-  setSurface: (v) => set((s) => ({ config: { ...s.config, surface: v } })),
+  setSurface: (v) => {
+    if (typeof window !== "undefined") {
+      try {
+        if (v === "dark" || v === "light") {
+          localStorage.setItem("zeva-theme", v);
+        }
+      } catch {
+        /* private mode */
+      }
+    }
+    set((s) => ({ config: { ...s.config, surface: v } }));
+  },
   setCorners: (v) => set((s) => ({ config: { ...s.config, corners: v } })),
   setLauncher: (v) => set((s) => ({ config: { ...s.config, launcher: v } })),
 
@@ -137,4 +157,7 @@ export const useZevaStore = create<ZevaState>((set) => ({
       messages: s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
     })),
   resetSession: () => set({ messages: [] }),
+
+  isQuestionProcessing: false,
+  setIsQuestionProcessing: (v) => set({ isQuestionProcessing: v }),
 }));

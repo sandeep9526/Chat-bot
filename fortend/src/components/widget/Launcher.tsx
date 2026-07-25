@@ -1,6 +1,8 @@
 "use client";
 
+import { forwardRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { Sparkle as SparkIcon } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 import type { LauncherStyle } from "@/lib/types";
@@ -31,7 +33,7 @@ interface LauncherProps {
   onPointerUp: (e: ReactPointerEvent<HTMLButtonElement>) => void;
 }
 
-export function Launcher({
+export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function Launcher({
   label,
   variant,
   glass,
@@ -41,17 +43,18 @@ export function Launcher({
   onPointerDown,
   onPointerMove,
   onPointerUp,
-}: LauncherProps) {
+}, ref) {
   const isBubble = variant === "bubble";
 
   return (
     <button
+      ref={ref}
       type="button"
       className={cn(
         launcher({ variant }),
         // Bubble is always the gradient chip; pill/bar follow the glass toggle.
         isBubble
-          ? "bg-gradient-to-br from-accent to-accent-strong text-white"
+          ? "bg-gradient-to-br from-accent to-accent-strong text-[var(--on-accent)]"
           : glass
             ? "bg-glass backdrop-blur-xl"
             : "bg-surface",
@@ -71,15 +74,19 @@ export function Launcher({
             : "w-[25px] h-[25px]",
           !logo &&
             !isBubble &&
-            "bg-gradient-to-br from-accent to-accent-strong text-white",
+            "bg-gradient-to-br from-accent to-accent-strong text-[var(--on-accent)]",
         )}
       >
         {logo ? (
-          // eslint-disable-next-line @next/next/no-img-element -- runtime data URL / arbitrary logo
-          <img src={logo} alt="" className="h-full w-full object-cover" />
+          logo.startsWith("http") || logo.startsWith("data:") ? (
+            // eslint-disable-next-line @next/next/no-img-element -- runtime data URL / arbitrary logo
+            <img src={logo} alt="" className="h-full w-full object-contain p-[2px] bg-surface rounded-full" />
+          ) : (
+            <span className={cn(isBubble ? "text-lg" : "text-sm")}>{logo}</span>
+          )
         ) : (
           <SparkIcon
-            className={cn(isBubble ? "w-[26px] h-[26px] text-white" : "w-3.5 h-3.5")}
+            className={cn(isBubble ? "w-[26px] h-[26px] text-[var(--on-accent)]" : "w-3.5 h-3.5")}
           />
         )}
       </span>
@@ -93,21 +100,4 @@ export function Launcher({
       )}
     </button>
   );
-}
-
-function SparkIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 3v3M12 18v3M5 12H2M22 12h-3" />
-      <circle cx="12" cy="12" r="3.4" />
-    </svg>
-  );
-}
+});

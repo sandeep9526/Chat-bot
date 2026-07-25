@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Sparkle as SparkSmallIcon, Sparkle as CrosshairIcon, ArrowRight as ArrowIcon, CornerDownLeft } from "lucide-react";
 import { useZevaStore } from "@/stores/zevaStore";
 
 interface ComposerProps {
   name: string;
   value: string;
   isOpen: boolean;
+  isScanning?: boolean;
   onChange: (v: string) => void;
   onSubmit: () => void;
 }
@@ -15,6 +17,7 @@ export function Composer({
   name,
   value,
   isOpen,
+  isScanning = false,
   onChange,
   onSubmit,
 }: ComposerProps) {
@@ -43,15 +46,17 @@ export function Composer({
       </span>
       <input
         ref={inputRef}
-        className="w-full rounded-r2 border border-border bg-surface py-3 pl-[38px] pr-11 font-ui text-[14px] text-fg outline-none focus:border-accent focus:ring-4 focus:ring-accent-ring"
+        className="w-full rounded-r2 border border-border bg-surface py-3 pl-[38px] pr-11 font-ui text-[14px] text-fg outline-none focus:border-accent focus:ring-4 focus:ring-accent-ring disabled:opacity-60"
         placeholder={`Ask anything about ${name}…`}
+        aria-label={`Ask anything about ${name}`}
         value={value}
+        disabled={isScanning}
         onChange={(e) => onChange(e.target.value)}
       />
       <button
         type="submit"
-        className="absolute right-[7px] top-1/2 grid h-[30px] w-[30px] -translate-y-1/2 place-items-center rounded-r1 border-none bg-accent text-white outline-none focus-visible:ring-2 focus-visible:ring-accent-ring disabled:cursor-not-allowed disabled:opacity-35"
-        disabled={!value.trim()}
+        className="tap absolute right-[7px] top-1/2 grid h-[30px] w-[30px] -translate-y-1/2 place-items-center rounded-r1 border-none bg-accent text-[var(--on-accent)] outline-none focus-visible:ring-2 focus-visible:ring-accent-ring disabled:cursor-not-allowed disabled:opacity-35"
+        disabled={!value.trim() || isScanning}
         aria-label="Ask"
       >
         <ArrowIcon className="h-4 w-4" />
@@ -75,10 +80,12 @@ const GENERIC_SUGGESTIONS = [
 
 export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
   const configuredSuggestions = useZevaStore((s) => s.config.suggestions);
-  const websiteUrl = useZevaStore((s) => s.websiteUrl);
   
-  // If website URL is entered, show generic suggestions
-  const suggestions = websiteUrl ? GENERIC_SUGGESTIONS : configuredSuggestions;
+  // Use configured template suggestions if present, otherwise fallback to generic
+  const suggestions =
+    configuredSuggestions && configuredSuggestions.length > 0
+      ? configuredSuggestions
+      : GENERIC_SUGGESTIONS;
   const chips = suggestions.map((q) => q.trim()).filter(Boolean);
   return (
     <div className="flex flex-col gap-[7px]">
@@ -91,61 +98,11 @@ export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
         >
           <SparkSmallIcon className="h-3.5 w-3.5 shrink-0 text-accent" />
           {q}
-          <span className="ml-auto rounded-[5px] border border-border px-[5px] py-px font-mono text-[10px] text-faint">
-            {"↵"}
+          <span className="ml-auto grid place-items-center rounded-[5px] border border-border px-[5px] py-px text-faint">
+            <CornerDownLeft className="h-2.5 w-2.5" />
           </span>
         </button>
       ))}
     </div>
-  );
-}
-
-function SparkSmallIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 3v3M12 18v3M5 12H2M22 12h-3" />
-      <circle cx="12" cy="12" r="3.4" />
-    </svg>
-  );
-}
-
-function CrosshairIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 3v3M12 18v3M5 12H2M22 12h-3" />
-      <circle cx="12" cy="12" r="3.4" />
-    </svg>
-  );
-}
-
-function ArrowIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
   );
 }

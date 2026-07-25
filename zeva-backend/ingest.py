@@ -68,6 +68,7 @@ def ingest_bot(bot_id: str) -> dict:
     """Ek bot ke documents/<bot_id>/*.txt ko (re-)index karo. Counts lauta do."""
     docs_dir = os.path.join(DOCS_ROOT, bot_id)
     if not os.path.isdir(docs_dir):
+        print(f"[ingest] Warning: no docs dir for bot '{bot_id}' at {docs_dir}")
         return {"bot_id": bot_id, "files": 0, "chunks": 0}
 
     client = chromadb.PersistentClient(path=DB_DIR)
@@ -83,7 +84,11 @@ def ingest_bot(bot_id: str) -> dict:
     docs: list[str] = []
     metas: list[dict] = []
 
-    files = sorted(glob.glob(os.path.join(docs_dir, "*.txt")))
+    files = [
+        os.path.join(docs_dir, f)
+        for f in sorted(os.listdir(docs_dir))
+        if os.path.isfile(os.path.join(docs_dir, f)) and not f.startswith(".")
+    ]
     for path in files:
         fname = os.path.basename(path)
         with open(path, "r", encoding="utf-8") as f:
@@ -95,6 +100,9 @@ def ingest_bot(bot_id: str) -> dict:
 
     if docs:
         col.add(ids=ids, documents=docs, metadatas=metas, embeddings=embed(docs))
+        print(f"[ingest] ✓ bot '{bot_id}': {len(docs)} chunks from {len(files)} files")
+    else:
+        print(f"[ingest] Warning: bot '{bot_id}' has {len(files)} files but 0 chunks after processing")
     return {"bot_id": bot_id, "files": len(files), "chunks": len(docs)}
 
 
@@ -138,6 +146,42 @@ def save_and_ingest(bot_id: str, filename: str, text: str) -> dict:
     os.makedirs(docs_dir, exist_ok=True)
     with open(os.path.join(docs_dir, _safe_name(filename)), "w", encoding="utf-8") as f:
         f.write(text)
+    return ingest_bot(bot_id)
+
+
+def list_bot_docs(bot_id: str) -> list[dict]:
+    """Return all uploaded/saved document files for a bot."""
+    docs_dir = os.path.join(DOCS_ROOT, bot_id)
+    if not os.path.isdir(docs_dir):
+        return []
+    result = []
+    for fname in sorted(os.listdir(docs_dir)):
+        if fname.startswith("."):
+            continue
+        path = os.path.join(docs_dir, fname)
+        if not os.path.isfile(path):
+            continue
+        stat = os.stat(path)
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                char_count = len(f.read())
+        except Exception:
+            char_count = 0
+        result.append({
+            "filename": fname,
+            "size": stat.st_size,
+            "chars": char_count,
+            "updatedAt": stat.st_mtime * 1000,
+        })
+    return result
+
+
+def delete_single_doc(bot_id: str, filename: str) -> dict:
+    """Delete a single document file for a bot and re-index ChromaDB."""
+    safe = _safe_name(filename)
+    target = os.path.join(DOCS_ROOT, bot_id, safe)
+    if os.path.isfile(target):
+        os.remove(target)
     return ingest_bot(bot_id)
 
 

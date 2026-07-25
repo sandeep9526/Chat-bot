@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2 as CheckCircleIcon, AlertTriangle as WarningIcon, UserPlus as UserPlusIcon } from "lucide-react";
 import { ProofCard } from "./ProofCard";
 import { LeadTicket, LeadStub } from "./LeadTicket";
 import { useZevaStore } from "@/stores/zevaStore";
@@ -28,7 +29,7 @@ export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
   // User question bubble.
   if (message.role === "user") {
     return (
-      <div className="max-w-[85%] self-end rounded-r1 rounded-br-[5px] bg-accent px-3 py-2 text-[13px] font-medium text-white">
+      <div className="max-w-[85%] self-end rounded-r1 rounded-br-[5px] bg-accent px-3 py-2 text-[13px] font-medium text-[var(--on-accent)]">
         {message.text}
       </div>
     );
@@ -126,55 +127,5 @@ function TypewriterText({ text }: { text: string }) {
 
   return (
     <span className="text-[15px] font-medium leading-[1.5]">{shown}</span>
-  );
-}
-
-function CheckCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function WarningIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-    </svg>
-  );
-}
-
-function UserPlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 11h-6M19 8v6" />
-    </svg>
   );
 }

@@ -25,14 +25,16 @@ ALTER TABLE bots ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT fal
 -- distinct from `suspended` which is a platform-admin moderation flag the owner
 -- can't touch. Both make a bot inactive; see is_active in db.py.
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS paused BOOLEAN NOT NULL DEFAULT false;
--- `design` holds the FULL Studio look for a signed-in owner's bot — the fields
--- the columns above don't cover (logo, panel bg, corners, font, launcher,
--- subtitle, glass, position…) plus the preview website URL. Shape:
--- { "config": {<ZevaConfig>}, "websiteUrl": "..." }. Empty {} = never saved from
--- Studio (older bots / anonymous funnel), in which case the client falls back to
--- its localStorage stash. Only name/accent/welcome/suggestions stay as real
--- columns (the widget/backend read them directly); the rest is opaque JSON.
+-- `design` holds the FULL Studio look for a signed-in owner's bot
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS design JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS whatsapp_phone_number_id TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS notification_email TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS webhook_url TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS google_sheets_url TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS template_category TEXT DEFAULT 'general';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_whatsapp_phone ON bots(whatsapp_phone_number_id) WHERE whatsapp_phone_number_id IS NOT NULL;
+
 
 CREATE TABLE IF NOT EXISTS leads (
   id         BIGSERIAL PRIMARY KEY,
@@ -178,19 +180,22 @@ CREATE POLICY handoffs_delete_owner ON handoffs
 -- (the 5 pre-existing demo bots) are never gated — see get_bot()'s is_active
 -- computation in db.py.
 --
--- Writes only ever come from two trusted, narrow code paths: trial
+-- Writes only ever come from trusted, narrow code paths: trial
 -- auto-provisioning at first-bot-creation (db.ensure_trial_subscription,
--- runs with the creating user's own app.user_id) and the Paddle webhook
--- handler (verified by webhook signature before it ever touches the DB, and
--- sets app.user_id to the subscription's own owner from Paddle's
--- custom_data). There is no user-facing "set my own plan" endpoint — RLS
--- here is defense-in-depth on top of that, not the only gate.
+-- runs with the creating user's own app.user_id), the three payment-gateway
+-- webhook handlers (each verifies its own webhook signature before ever
+-- touching the DB, and sets app.user_id to the subscription's own owner from
+-- the gateway's echoed-back metadata — Paddle's custom_data, Razorpay's
+-- notes, Stripe's metadata), and the superadmin manual-override endpoint
+-- (gateway='manual', comping a client / fixing an out-of-band payment).
+-- There is no user-facing "set my own plan" endpoint — RLS here is
+-- defense-in-depth on top of that, not the only gate.
 CREATE TABLE IF NOT EXISTS subscriptions (
   id                      BIGSERIAL PRIMARY KEY,
   owner_user_id           TEXT NOT NULL UNIQUE REFERENCES "user"(id) ON DELETE CASCADE,
-  plan                    TEXT NOT NULL DEFAULT 'trial',      -- trial | starter | pro | business
+  plan                    TEXT NOT NULL DEFAULT 'trial',      -- trial | starter | pro | business | enterprise
   status                  TEXT NOT NULL DEFAULT 'trialing',   -- trialing | active | past_due | canceled | expired
-  max_bots                INT NOT NULL DEFAULT 1,
+  max_bots                INT NOT NULL DEFAULT 5,
   max_messages_per_month  INT NOT NULL DEFAULT 500,
   trial_ends_at           TIMESTAMPTZ,
   current_period_end      TIMESTAMPTZ,
@@ -199,6 +204,19 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   created_at              TIMESTAMPTZ DEFAULT now(),
   updated_at              TIMESTAMPTZ DEFAULT now()
 );
+-- ALTER for environments where this table already existed before the
+-- multi-gateway columns were added (mirrors the `bots` table's pattern
+-- above — CREATE TABLE IF NOT EXISTS is a no-op against an existing table).
+-- `gateway` records which payment processor last wrote this row (paddle |
+-- razorpay | stripe | manual) so the dashboard/superadmin panel can show
+-- where a subscription actually came from. Razorpay is used for India
+-- (INR, UPI/netbanking); Stripe for everyone else (USD/global cards).
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS gateway TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_customer_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS currency TEXT;
 
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions FORCE  ROW LEVEL SECURITY;

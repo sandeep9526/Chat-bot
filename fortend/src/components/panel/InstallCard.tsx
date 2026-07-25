@@ -64,10 +64,14 @@ function scriptSnippet(bot: AdminBot): string {
   return [
     "<script",
     `  src="${WIDGET_SRC}"`,
-    ...rows.map(([k, v]) => `  data-${k}="${v}"`),
+    ...rows.map(([k, v]) => {
+      const displayVal = v.startsWith("data:") && v.length > 55 ? v.slice(0, 32) + "...(base64)" : v;
+      return `  data-${k}="${displayVal}"`;
+    }),
     "  async></script>",
   ].join("\n");
 }
+
 
 function reactSnippet(bot: AdminBot): string {
   return [

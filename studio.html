@@ -378,9 +378,9 @@
 
         <div class="group">
           <p class="gtitle">Content</p>
-          <div class="field"><div class="flabel">Assistant name</div><input class="tin" id="inName" value="Acme Salon" /></div>
-          <div class="field"><div class="flabel">Launcher label</div><input class="tin" id="inLabel" value="Ask Acme Salon" /></div>
-          <div class="field"><div class="flabel">Welcome line</div><input class="tin" id="inWelcome" value="Ask in your own words — every answer comes from Acme Salon’s own documents." /></div>
+          <div class="field"><div class="flabel">Assistant name</div><input class="tin" id="inName" value="Zeva AI" /></div>
+          <div class="field"><div class="flabel">Launcher label</div><input class="tin" id="inLabel" value="Ask Zeva AI" /></div>
+          <div class="field"><div class="flabel">Welcome line</div><input class="tin" id="inWelcome" value="Ask in your own words — every answer comes from Zeva AI’s official documents." /></div>
         </div>
 
         <div class="group">
@@ -395,15 +395,15 @@
     <!-- ================= PREVIEW ================= -->
     <div>
       <div class="stage">
-        <div class="bbar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="url">acmesalon.com</span></div>
+        <div class="bbar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="url">zeva.ai</span></div>
         <div class="site">
-          <nav class="snav"><div class="slogo">Acme<span>Salon</span></div><div class="slinks"><span>Home</span><span>Services</span><span>Pricing</span><span>Book</span></div></nav>
+          <nav class="snav"><div class="slogo">Zeva<span>AI</span></div><div class="slinks"><span>Home</span><span>Services</span><span>Pricing</span><span>Book</span></div></nav>
           <div class="shero"><span class="stag">Est. 2019 · Mohali</span><h2>Look good. Feel great.</h2><p>Cuts, color, and care from stylists who actually listen. Ask our assistant anything.</p><a class="scta" href="#" onclick="return false">Book an appointment</a></div>
         </div>
 
         <div class="ae" id="ae" data-open="true" data-side-align="end" data-opendir="up" data-launcher="pill" data-glass="on" data-sources="on" data-brand="on">
           <div class="ae-panel" role="dialog" aria-label="Ask">
-            <div class="ae-head"><div class="ae-orb"></div><div class="ae-title"><b id="waName">Acme Salon</b><small>answer engine · grounded</small></div><button class="ae-x" id="closeBtn" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="ae-head"><div class="ae-orb"></div><div class="ae-title"><b id="waName">Zeva AI</b><small>answer engine · grounded</small></div><button class="ae-x" id="closeBtn" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
             <form class="ae-cmd" id="cmd" autocomplete="off">
               <span class="lead-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="3.4"/></svg></span>
               <input id="input" placeholder="Ask anything…" />
@@ -414,7 +414,7 @@
           </div>
           <button class="ae-launcher" id="launcher" aria-label="Ask">
             <span class="ae-spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="3.4"/></svg></span>
-            <span class="lbl" id="launcherLabel">Ask Acme Salon</span>
+            <span class="lbl" id="launcherLabel">Ask Zeva AI</span>
             <span class="kbd">/</span>
           </button>
         </div>
@@ -438,12 +438,12 @@
     const DEFAULTS = { accent:"#4f46e5", strong:"#4338ca", surface:"auto", corners:"soft",
       fontSrc:"preset", font:"system", gFont:"Poppins", cFam:"", cUrl:"",
       launcher:"pill", anchor:"bottom-right", offX:24, offY:24, glass:true, sources:true, brand:true,
-      name:"Acme Salon", label:"Ask Acme Salon", welcome:"Ask in your own words — every answer comes from Acme Salon’s own documents." };
+      name:"Zeva AI", label:"Ask Zeva AI", welcome:"Ask in your own words — every answer comes from Zeva AI’s official documents." };
     let CFG = Object.assign({}, DEFAULTS);
 
     const KB = [
       { keys:["hour","open","close","time","when"], answer:"We’re open Monday to Saturday, 10 AM–7 PM, and closed on Sundays.", file:"hours.pdf", match:96,
-        snip:"Store hours — Acme Salon is open Monday to Saturday, 10:00 AM to 7:00 PM. Closed Sundays and public holidays.", hi:"Acme Salon is open Monday to Saturday, 10:00 AM to 7:00 PM." },
+        snip:"Store hours — Zeva AI is open Monday to Saturday, 10:00 AM to 7:00 PM. Closed Sundays and public holidays.", hi:"Zeva AI is open Monday to Saturday, 10:00 AM to 7:00 PM." },
       { keys:["price","cost","haircut","how much","pricing","rate"], answer:"A haircut starts at ₹499, and hair color starts at ₹1,499.", file:"pricing.pdf", match:93,
         snip:"Services & pricing — Haircut from ₹499. Hair color from ₹1,499. Full styling package ₹2,999.", hi:"Haircut from ₹499. Hair color from ₹1,499." },
       { keys:["walk","appointment","slot"], answer:"Walk-ins are welcome — on weekends we suggest booking ahead so you don’t wait.", file:"faq.pdf", match:90,
@@ -451,7 +451,7 @@
       { keys:["color","colour","highlight","balayage"], answer:"Yes — global color, highlights, and balayage. Color starts at ₹1,499.", file:"services.pdf", match:92,
         snip:"Color menu — global color, highlights, balayage and root touch-ups. Color services start at ₹1,499.", hi:"Color services start at ₹1,499." },
       { keys:["where","location","address","parking","find"], answer:"We’re in Phase 7 Market, Mohali, with free parking behind the building.", file:"contact.pdf", match:88,
-        snip:"Find us — Acme Salon, Phase 7 Market, Mohali. Free customer parking behind the building.", hi:"Phase 7 Market, Mohali. Free customer parking behind the building." }
+        snip:"Find us — Zeva AI, Phase 7 Market, Mohali. Free customer parking behind the building.", hi:"Phase 7 Market, Mohali. Free customer parking behind the building." }
     ];
 
     function shade(hex, amt = 0.16) {
@@ -543,7 +543,7 @@
 
     function renderEmbed() {
       const rows = [
-        ['bot-id', 'acme-salon'],
+        ['bot-id', 'zeva-ai'],
         ['name', CFG.name],
         ['accent', CFG.accent.toLowerCase()],
         ['surface', CFG.surface],
@@ -562,7 +562,7 @@
       $("#embedCode").innerHTML = html;
     }
     function embedText() {
-      const rows = [['bot-id','acme-salon'],['name',CFG.name],['accent',CFG.accent.toLowerCase()],['surface',CFG.surface],['corners',CFG.corners],...fontRows(),['launcher',CFG.launcher],['position',CFG.anchor],['glass',CFG.glass?'on':'off'],['sources',CFG.sources?'on':'off']];
+      const rows = [['bot-id','zeva-ai'],['name',CFG.name],['accent',CFG.accent.toLowerCase()],['surface',CFG.surface],['corners',CFG.corners],...fontRows(),['launcher',CFG.launcher],['position',CFG.anchor],['glass',CFG.glass?'on':'off'],['sources',CFG.sources?'on':'off']];
       if (CFG.offX !== 24 || CFG.offY !== 24) rows.push(['offset-x',CFG.offX],['offset-y',CFG.offY]);
       if (!CFG.brand) rows.push(['whitelabel','on']);
       return '<script\n  src="https://cdn.zeva.app/widget.js"\n  ' + rows.map(([k,v]) => 'data-'+k+'="'+v+'"').join('\n  ') + '\n  async><\/script>';

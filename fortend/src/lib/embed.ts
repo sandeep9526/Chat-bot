@@ -2,7 +2,15 @@ import type { ZevaConfig } from "./types";
 import { BOT_ID } from "./defaults";
 
 /** Backend API URL for the widget */
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+function api_url(): string {
+  if (typeof window === "undefined") return RAW_API_URL;
+  if (window.location.protocol === "https:" && RAW_API_URL.startsWith("http://")) {
+    return RAW_API_URL.replace("http://", "https://");
+  }
+  return RAW_API_URL;
+}
 
 /**
  * Build the data-* rows for the embed snippet.
@@ -16,7 +24,7 @@ export function buildEmbedRows(cfg: ZevaConfig, botId: string = BOT_ID): [string
     ["name", cfg.name],
     ["accent", cfg.accent.toLowerCase()],
     ["position", cfg.anchor],
-    ["api-url", API_URL],
+    ["api-url", api_url()],
   ];
   // Visual settings from Studio
   if (cfg.logo) rows.push(["logo", cfg.logo]);
@@ -50,6 +58,13 @@ export function buildEmbedText(cfg: ZevaConfig, botId: string = BOT_ID): string 
   );
 }
 
+function truncateVal(val: string, maxLen: number = 55): string {
+  if (val.startsWith("data:") && val.length > maxLen) {
+    return val.slice(0, 32) + "...(base64)";
+  }
+  return val;
+}
+
 /** Build syntax-highlighted embed HTML for display. */
 export function buildEmbedHtml(cfg: ZevaConfig, botId: string = BOT_ID): string {
   const rows = buildEmbedRows(cfg, botId);
@@ -57,11 +72,12 @@ export function buildEmbedHtml(cfg: ZevaConfig, botId: string = BOT_ID): string 
     '<span class="text-sky-300">&lt;script</span>\n' +
     '  <span class="text-indigo-300">src</span>=<span class="text-green-300">"https://cdn.zeva.app/widget.js"</span>';
   rows.forEach(([k, v]) => {
+    const displayVal = truncateVal(v);
     html +=
       '\n  <span class="text-indigo-300">data-' +
       k +
       '</span>=<span class="text-green-300">"' +
-      escapeHtml(v) +
+      escapeHtml(displayVal) +
       '"</span>';
   });
   html += '\n  <span class="text-indigo-300">async</span><span class="text-sky-300">&gt;&lt;/script&gt;</span>';
@@ -71,3 +87,4 @@ export function buildEmbedHtml(cfg: ZevaConfig, botId: string = BOT_ID): string 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 }
+

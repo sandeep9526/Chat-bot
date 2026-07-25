@@ -62,6 +62,7 @@ export function PlacementMap({
               active && "border-solid border-accent",
             )}
             aria-pressed={active}
+            aria-label={`Place launcher ${c.replace("-", " ")}`}
             title={c.replace("-", " ")}
             onClick={() => onChange(c)}
           >

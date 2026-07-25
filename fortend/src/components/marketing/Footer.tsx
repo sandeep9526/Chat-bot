@@ -19,7 +19,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     title: "Explore",
     links: [
       { label: "Live demo", href: "/demo" },
-      { label: "Studio", href: "/studio" },
+      { label: "Studio", href: "/dashboard#appearance" },
       { label: "FAQ", href: "#faq" },
     ],
   },
@@ -116,7 +116,7 @@ export function Footer() {
               </button>
             </div>
             {status === "error" && (
-              <p className="mt-2 text-[12px] text-[#ef4444]">
+              <p className="mt-2 text-[12px] text-bad">
                 Something went wrong — please try again.
               </p>
             )}

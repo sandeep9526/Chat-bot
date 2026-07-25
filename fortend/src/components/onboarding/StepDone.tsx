@@ -1,5 +1,6 @@
 "use client";
 
+import { Check as CheckIcon } from "lucide-react";
 import type { WizardData } from "./types";
 
 interface StepDoneProps {
@@ -25,7 +26,7 @@ export function StepDone({ data, onRestart }: StepDoneProps) {
       <p className="mx-auto mt-3 max-w-md text-[12.5px] text-muted">
         Want to change the colour, welcome message, or suggested questions?{" "}
         <a
-          href={`/studio?bot=${encodeURIComponent(data.botId)}`}
+          href="/dashboard#appearance"
           className="font-[650] text-accent hover:underline"
         >
           Customize it in Studio
@@ -49,21 +50,5 @@ export function StepDone({ data, onRestart }: StepDoneProps) {
         </button>
       </div>
     </div>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

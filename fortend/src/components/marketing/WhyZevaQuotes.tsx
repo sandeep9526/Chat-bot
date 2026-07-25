@@ -54,8 +54,8 @@ export function WhyZevaQuotes() {
                       className="flex items-start gap-2.5 text-[13.5px] leading-snug text-muted"
                     >
                       <span
-                        className="mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-[#ef4444]"
-                        style={{ background: "color-mix(in srgb, #ef4444 12%, transparent)" }}
+                        className="mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-bad"
+                        style={{ background: "color-mix(in srgb, var(--bad) 12%, transparent)" }}
                       >
                         <XIcon className="h-3 w-3" />
                       </span>

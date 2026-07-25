@@ -1,33 +1,82 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useZevaStore } from "@/stores/zevaStore";
-import { useAutoBrand } from "@/hooks/useAutoBrand";
+import { useZevaChat } from "@/hooks/useZevaChat";
 import { DemoSite } from "@/components/studio/DemoSite";
 import { ZevaWidget } from "@/components/widget/ZevaWidget";
-import { BOT_ID } from "@/lib/defaults";
+import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
 import { Eyebrow } from "@/components/marketing/Eyebrow";
 import { Footer } from "@/components/marketing/Footer";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { ArrowRightIcon, CheckIcon } from "@/components/marketing/icons";
+import { Lock, Loader2 } from "lucide-react";
 
 /**
- * Public "watch it work" demo — distinct from /studio, which is a
- * customization tool. This page is deliberately real, not mocked: it calls
- * useAutoBrand(BOT_ID) to pull the live acme-salon bot's branding from the
- * real backend (/config), and the widget's chat/lead calls go through the
- * same real /chat and /lead endpoints a real client's site would use.
+ * Public "watch it work" demo page.
+ * Users can switch between industry presets to see how Zeva adapts its
+ * brand logo, website background, sample questions, and RAG AI knowledge base.
  */
 export default function DemoPage() {
-  useAutoBrand(BOT_ID);
-  const setOpen = useZevaStore((s) => s.setOpen);
+  const store = useZevaStore();
+  const setOpen = store.setOpen;
+  const chat = useZevaChat();
+  const isScanning = store.isQuestionProcessing || chat.isScanning;
+  const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
-  // Open immediately — a demo's whole point is to be seen working with zero
-  // clicks, not discovered behind a launcher bubble.
+  const isProcessing = isScanning || !!applyingTemplate;
+
+  // Open widget immediately on page load
   useEffect(() => {
     setOpen(true);
   }, [setOpen]);
+
+  // Apply a template preset
+  const handleSelectPreset = async (tmpl: IndustryTemplate) => {
+    if (isProcessing) return;
+
+    setApplyingTemplate(tmpl.id);
+    setStatusMsg(null);
+
+    const targetBotId = `demo-${tmpl.id}`;
+    store.setBotId(targetBotId);
+    store.setName(tmpl.botName);
+    store.setAccent(tmpl.accent);
+    store.setWelcome(tmpl.welcome);
+    store.setSuggestions(tmpl.suggestions);
+    if (tmpl.websiteUrl) store.setWebsiteUrl(tmpl.websiteUrl);
+    if (tmpl.logo) store.setLogo(tmpl.logo);
+
+    // Clear previous chat messages & questions
+    store.resetSession();
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_URL}/demo/apply-template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          botId: targetBotId,
+          templateId: tmpl.id,
+          knowledgeText: tmpl.knowledgeText,
+          name: tmpl.botName,
+          accent: tmpl.accent,
+          welcome: tmpl.welcome,
+          suggestions: tmpl.suggestions,
+        }),
+      });
+      if (res.ok) {
+        setStatusMsg(`${tmpl.name} Preset Active!`);
+        setTimeout(() => setStatusMsg(null), 3500);
+      }
+    } catch (err) {
+      console.error("Failed to apply preset:", err);
+    } finally {
+      setApplyingTemplate(null);
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -40,19 +89,11 @@ export default function DemoPage() {
             A real bot, answering from real documents.
           </h1>
           <p className="mt-4 text-[16px] leading-[1.6] text-muted">
-            This is Acme Salon&apos;s actual assistant, backed by the real Zeva
-            API — not a script. Ask it something in-scope (try{" "}
-            <span className="font-[600] text-fg">
-              &ldquo;how much is a haircut?&rdquo;
-            </span>
-            ) and something off-topic (try{" "}
-            <span className="font-[600] text-fg">
-              &ldquo;what&apos;s the capital of France?&rdquo;
-            </span>
-            ) and watch it refuse to guess.
+            This is Zeva AI&apos;s actual assistant, backed by the real Zeva RAG
+            API — not a script. Switch industry presets below to test how the brand, website, sample questions, and AI knowledge adapt live.
           </p>
           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
-            {["Real retrieval, real sources", "No script, no canned answers", "Yours will answer from your docs"].map(
+            {["Real retrieval, real sources", "No script, no canned answers", "Answers from your own docs"].map(
               (r) => (
                 <span
                   key={r}
@@ -66,39 +107,88 @@ export default function DemoPage() {
           </div>
         </div>
 
+        {/* Industry Presets Bar */}
+        <div className="mt-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-[700] uppercase tracking-wider text-muted mr-2">Try Preset:</span>
+            {INDUSTRY_TEMPLATES.map((tmpl) => {
+              const isSelected = store.config.name === tmpl.botName || store.websiteUrl === tmpl.websiteUrl;
+              const isBusy = applyingTemplate === tmpl.id;
+
+              return (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(tmpl)}
+                  disabled={isProcessing}
+                  title={isProcessing ? "Preset locked while question is processing" : tmpl.name}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[12.5px] font-[650] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none ${
+                    isSelected
+                      ? "border-accent bg-accent/10 text-accent ring-1 ring-accent shadow-sm"
+                      : "border-border bg-surface hover:border-accent text-fg"
+                  }`}
+                >
+                  <span className="text-sm">{tmpl.icon}</span>
+                  <span>{tmpl.name}</span>
+                  {isBusy && <Loader2 className="h-3 w-3 animate-spin" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {isScanning && (
+            <div className="mt-2.5 rounded-[8px] bg-warn/10 border border-warn/30 px-3 py-1.5 text-[11.5px] font-[650] text-warn flex items-center gap-2 animate-fade-in">
+              <span className="w-2 h-2 rounded-full bg-warn animate-pulse shrink-0" />
+              <span>Question is processing... Preset selection locked until response completes.</span>
+            </div>
+          )}
+
+          {statusMsg && (
+            <div className="mt-2.5 flex items-center gap-1.5 rounded-[8px] bg-good/10 border border-good/30 px-3 py-1.5 text-[11.5px] font-[650] text-good animate-fade-in">
+              <CheckIcon className="h-3.5 w-3.5 shrink-0" />
+              {statusMsg}
+            </div>
+          )}
+        </div>
+
         {/* Browser frame holding the real DemoSite + working widget */}
-        <div className="relative mt-10 min-h-[620px] overflow-hidden rounded-r3 border border-border bg-surface shadow-panel">
+        <div className="relative mt-8 min-h-[620px] overflow-hidden rounded-r3 border border-border bg-surface shadow-panel">
           <div className="flex items-center gap-2 border-b border-border bg-panel px-4 py-3">
             <span className="h-[11px] w-[11px] rounded-full bg-[#ff5f57]" />
             <span className="h-[11px] w-[11px] rounded-full bg-[#febc2e]" />
             <span className="h-[11px] w-[11px] rounded-full bg-[#28c840]" />
             <span className="ml-2.5 flex items-center gap-1.5 truncate rounded-full border border-border bg-surface px-3 py-1 font-mono text-xs text-faint">
-              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="5" y="11" width="14" height="9" rx="2" />
-                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-              </svg>
-              acmesalon.com
+              <Lock className="h-3 w-3" />
+              {store.websiteUrl ? (() => { try { return new URL(store.websiteUrl).hostname } catch { return store.websiteUrl } })() : "zeva.ai/demo"}
             </span>
           </div>
 
-          <DemoSite />
-          <ZevaWidget />
+          <DemoSite websiteUrl={store.websiteUrl} />
+          <ZevaWidget positionMode="absolute" />
         </div>
 
         {/* Closing CTA */}
         <div className="card mt-8 flex flex-wrap items-center justify-between gap-4 border-accent-ring p-7">
           <p className="m-0 max-w-[52ch] text-[15px] text-muted">
-            Want this for your own business? Bring your own documents, brand it,
-            and get an embed code in minutes.
+            Like what you see? Customize your brand color, welcome greeting & logo in Studio, then get your 1-line embed script.
           </p>
-          <Link
-            href="/sign-up"
-            className="inline-flex shrink-0 items-center gap-2 rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-6 py-3 text-[14.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5"
-          >
-            Get started free
-            <ArrowRightIcon className="h-4 w-4" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard#appearance"
+              className="inline-flex items-center gap-2 rounded-r1 border border-border bg-surface px-5 py-2.5 text-[14px] font-[650] text-fg hover:border-accent"
+            >
+              Customize in Studio
+            </Link>
+            <Link
+              href="/sign-up"
+              className="inline-flex shrink-0 items-center gap-2 rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-6 py-2.5 text-[14px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5"
+            >
+              Get started free
+              <ArrowRightIcon className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
+
       </main>
 
       <Footer />

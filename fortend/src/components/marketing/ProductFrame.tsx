@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import { SourceCheckIcon } from "./icons";
 
 /**
@@ -19,11 +20,8 @@ export function ProductFrame() {
             <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
           </div>
           <div className="flex flex-1 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-[11px] text-faint">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-            </svg>
-            acmesalon.com
+            <Lock className="h-3 w-3" />
+            zeva.ai
           </div>
         </div>
 
@@ -32,7 +30,7 @@ export function ProductFrame() {
           {/* faux site nav */}
           <div className="flex items-center justify-between px-6 pt-5">
             <span className="text-[13px] font-[800] tracking-tight text-fg">
-              Acme Salon
+              Zeva AI
             </span>
             <div className="hidden gap-4 text-[11px] font-[600] text-faint sm:flex">
               <span>Services</span>
@@ -57,7 +55,7 @@ export function ProductFrame() {
               </span>
               <div className="leading-tight">
                 <p className="m-0 text-[11.5px] font-[750] text-fg">
-                  Acme Salon Assistant
+                  Zeva AI Assistant
                 </p>
                 <p className="m-0 flex items-center gap-1 text-[9.5px] text-faint">
                   <span className="eyebrow-dot" /> online now

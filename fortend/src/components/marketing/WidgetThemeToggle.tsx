@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 import { useZevaStore } from "@/stores/zevaStore";
 
 /** Site-wide persisted theme, shared with the marketing ThemeToggle so a choice
@@ -63,33 +64,14 @@ export function WidgetThemeToggle({ className = "" }: { className?: string }) {
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       className={`tap group relative grid h-9 w-9 place-items-center overflow-hidden rounded-r1 border border-border bg-surface/60 text-fg transition-colors hover:border-accent-ring hover:text-accent ${className}`}
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <Moon
         className="h-[18px] w-[18px] transition-transform duration-500"
         style={{ transform: dark ? "rotate(0deg) scale(1)" : "rotate(90deg) scale(0)" }}
-      >
-        {/* moon */}
-        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-      </svg>
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      />
+      <Sun
         className="absolute h-[18px] w-[18px] transition-transform duration-500"
         style={{ transform: dark ? "rotate(-90deg) scale(0)" : "rotate(0deg) scale(1)" }}
-      >
-        {/* sun */}
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </svg>
+      />
     </button>
   );
 }

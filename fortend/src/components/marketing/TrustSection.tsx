@@ -29,7 +29,7 @@ export function TrustSection() {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
-                href="/studio"
+                href="/dashboard#appearance"
                 className="inline-flex items-center gap-2 rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-6 py-3.5 text-[15px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5"
               >
                 Open the Studio

@@ -22,27 +22,14 @@ function sanitizeLive(v: string): string {
 
 export function StepNameBot({ data, onNext }: StepNameBotProps) {
   const [businessName, setBusinessName] = useState(data.businessName);
-  const [botId, setBotId] = useState(data.botId);
-  const [botIdTouched, setBotIdTouched] = useState(Boolean(data.botId));
   const [errorMsg, setErrorMsg] = useState("");
   const createBot = useCreateBot();
 
   const trimmedName = businessName.trim();
-  const botIdValid = botId.length > 0 && isValidBotId(botId);
-  const canContinue = trimmedName.length > 0 && botIdValid;
+  const canContinue = trimmedName.length > 0;
 
   const handleNameChange = (value: string) => {
     setBusinessName(value);
-    if (!botIdTouched) setBotId(slugify(value));
-  };
-
-  const handleBotIdChange = (value: string) => {
-    setBotId(sanitizeLive(value));
-    setBotIdTouched(true);
-  };
-
-  const handleBotIdBlur = () => {
-    setBotId((v) => slugify(v));
   };
 
   const handleContinue = async () => {
@@ -52,25 +39,18 @@ export function StepNameBot({ data, onNext }: StepNameBotProps) {
       data.welcome ||
       `Ask in your own words — every answer comes from ${trimmedName}'s own documents.`;
     try {
-      await createBot.mutateAsync({
-        botId,
+      const res = await createBot.mutateAsync({
         name: trimmedName,
         accent: data.accent || DEFAULTS.accent,
         welcome,
         suggestions: [],
         allowedDomains: ["*"],
       });
-      onNext({ businessName: trimmedName, botId, welcome });
+      onNext({ businessName: trimmedName, botId: res.botId, welcome });
     } catch (err) {
-      if (err instanceof AdminApiError && err.status === 403) {
-        setErrorMsg(
-          `"${botId}" is already taken by another account — please pick a different bot ID.`,
-        );
-      } else {
-        setErrorMsg(
-          err instanceof Error ? err.message : "Something went wrong. Please try again.",
-        );
-      }
+      setErrorMsg(
+        err instanceof Error ? err.message : "Something went wrong. Please try again.",
+      );
     }
   };
 
@@ -78,7 +58,7 @@ export function StepNameBot({ data, onNext }: StepNameBotProps) {
     <div className="rounded-r2 border border-border bg-surface p-6 shadow-panel">
       <b className="text-base font-[750] text-fg">Name your bot</b>
       <p className="mt-1 mb-5 text-[13px] text-muted">
-        This is your business name and a unique ID your widget will use.
+        Enter your business name to automatically create your custom chatbot.
       </p>
 
       <div className="space-y-4">
@@ -89,35 +69,10 @@ export function StepNameBot({ data, onNext }: StepNameBotProps) {
           <input
             autoFocus
             className={INPUT}
-            placeholder="Acme Salon"
+            placeholder="Zeva AI"
             value={businessName}
             onChange={(e) => handleNameChange(e.target.value)}
           />
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-[12.5px] font-[650] text-fg">
-            Bot ID
-          </label>
-          <input
-            className={INPUT}
-            placeholder="acme-salon"
-            value={botId}
-            onChange={(e) => handleBotIdChange(e.target.value)}
-            onBlur={handleBotIdBlur}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-          />
-          <p className="mt-1.5 text-[11px] text-faint">
-            Lowercase letters, numbers, and hyphens only — this becomes part of
-            your embed code.
-          </p>
-          {botId.length > 0 && !botIdValid && (
-            <p className="mt-1.5 text-[11.5px] text-red-500">
-              Only lowercase letters, numbers, and single hyphens (no spaces).
-            </p>
-          )}
         </div>
 
         {errorMsg && (

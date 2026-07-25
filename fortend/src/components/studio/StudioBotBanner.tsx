@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import { useZevaStore } from "@/stores/zevaStore";
 import { useBots, useCreateBot } from "@/hooks/useAdmin";
 import { AdminApiError } from "@/lib/adminApi";
@@ -10,11 +11,11 @@ import { getBotDesign, stashBotDesign, type BotDesign } from "@/lib/pendingDesig
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 /**
- * When Studio is opened for a specific bot (`/studio?bot=<id>`), this loads that
- * bot's saved brand (name / accent / welcome / suggestions) into the Studio
- * store and lets the owner save edits back via the create-bot upsert. Rich
- * config (corners/launcher/font) still lives only in the embed snippet — the
- * banner is explicit that only the persisted fields are saved.
+ * When Studio is opened for a specific bot, this loads that bot's saved brand
+ * (name / accent / welcome / suggestions) into the Studio store and lets the
+ * owner save edits back via the create-bot upsert. `save()` persists the full
+ * look server-side (the `design` column: the whole config + website URL), not
+ * just the first-class brand fields, so it survives across browsers/devices.
  */
 export function StudioBotBanner({ botId }: { botId: string }) {
   const { data: bots } = useBots();
@@ -123,7 +124,11 @@ export function StudioBotBanner({ botId }: { botId: string }) {
       </div>
       <div className="flex items-center gap-2.5">
         {err && <span className="text-[12px] text-red-500">{err}</span>}
-        {saved && <span className="text-[12px] font-[700] text-good">✓ Saved</span>}
+        {saved && (
+          <span className="inline-flex items-center gap-1 text-[12px] font-[700] text-good">
+            <Check className="h-3.5 w-3.5" /> Saved
+          </span>
+        )}
         <a
           href="/dashboard#bots"
           className="rounded-r1 border border-border bg-surface px-3 py-1.5 text-[12.5px] font-[650] text-fg hover:border-accent"

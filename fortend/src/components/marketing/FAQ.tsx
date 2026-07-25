@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
 
@@ -73,16 +74,7 @@ export function FAQ() {
                           : "border-border text-muted"
                       }`}
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        className="h-4 w-4"
-                      >
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
+                      <Plus className="h-4 w-4" />
                     </span>
                   </button>
                   <div

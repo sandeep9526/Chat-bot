@@ -15,6 +15,8 @@ import { SecurityBand } from "@/components/marketing/SecurityBand";
 import { TrustSection } from "@/components/marketing/TrustSection";
 import { WhyZevaQuotes } from "@/components/marketing/WhyZevaQuotes";
 
+import { ZevaWidget } from "@/components/widget/ZevaWidget";
+
 export const metadata: Metadata = {
   title: "Zeva · A chatbot that only answers from your content",
   description:
@@ -48,7 +50,9 @@ export default function Home() {
         <FAQ />
         <FinalCTA />
       </main>
+      <ZevaWidget />
       <Footer />
     </>
   );
 }
+

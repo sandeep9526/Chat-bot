@@ -4,10 +4,16 @@ import { useEffect, useState } from "react";
 import { SunIcon, MoonIcon } from "./panelIcons";
 
 /**
- * Light/dark toggle for the panel chrome. globals.css keys its dark tokens off
- * `data-theme="dark"` on <html>; the layout boot script sets it pre-paint from
- * the SAME `zeva-theme` key this writes, so the choice persists consistently
- * across the whole site (marketing, studio, dashboard). When unset, follows OS.
+ * Light/dark toggle for the dashboard chrome. globals.css keys its dark tokens
+ * off `data-theme="dark"` on <html>; the layout boot script sets it pre-paint
+ * from the SAME `zeva-theme` key this writes, so the choice persists across
+ * the whole site (marketing, dashboard). When unset, follows OS.
+ *
+ * This is the dashboard's OWN preference — deliberately independent of any
+ * bot's `config.surface` (the Studio "Surface" control). Studio previews now
+ * theme their own scoped stage (see useZevaTheme's `scopeRef`), so toggling
+ * the dashboard's light/dark mode never touches, and is never overwritten by,
+ * a bot's saved widget config.
  */
 const KEY = "zeva-theme";
 type Mode = "light" | "dark";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { useZevaStore } from "@/stores/zevaStore";
 import { savePendingDesign } from "@/lib/pendingDesign";
 
@@ -42,9 +43,7 @@ export function MakeItYoursCard() {
             className="tap inline-flex items-center gap-2 rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-6 py-3 text-[14.5px] font-[700] text-white shadow-[0_10px_24px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5"
           >
             Make it yours
-            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
+            <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.2} />
           </button>
           <button
             type="button"

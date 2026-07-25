@@ -49,19 +49,25 @@ export function AppShell({
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-5 py-[18px]">
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-r1 bg-gradient-to-br from-accent to-accent-strong text-white shadow-panel">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-accent via-indigo-600 to-violet-700 text-white shadow-lg shadow-accent/25">
             <ShieldMarkIcon className="h-[18px] w-[18px]" />
           </span>
           <div className="leading-tight">
-            <div className="text-[15px] font-[750] tracking-[-.01em] text-fg">Zeva</div>
-            <div className="text-[11px] font-[600] text-faint">{brandLabel}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-[800] tracking-tight text-fg">Zeva</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-good/10 px-1.5 py-0.5 text-[9.5px] font-[750] text-good">
+                <span className="h-1.5 w-1.5 rounded-full bg-good animate-pulse" />
+                Live
+              </span>
+            </div>
+            <div className="text-[11px] font-[600] text-muted">{brandLabel}</div>
           </div>
         </div>
         <button
           type="button"
-          className="tap grid h-8 w-8 place-items-center rounded-r1 text-muted hover:text-fg md:hidden"
+          className="tap grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-fg md:hidden"
           onClick={() => setMobileOpen(false)}
           aria-label="Close menu"
         >
@@ -69,15 +75,15 @@ export function AppShell({
         </button>
       </div>
 
-      <nav className="ae-stream flex-1 overflow-y-auto px-3 pb-3">
+      <nav className="ae-stream flex-1 overflow-y-auto px-3 py-4">
         {groups.map((group, gi) => (
-          <div key={gi} className="mb-4">
+          <div key={gi} className="mb-5">
             {group.label && (
-              <div className="px-3 pb-1.5 text-[10.5px] font-[700] uppercase tracking-[.14em] text-faint">
+              <div className="px-3 pb-2 text-[10px] font-[800] uppercase tracking-[.18em] text-muted/70">
                 {group.label}
               </div>
             )}
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1">
               {group.items.map((item) => {
                 const active = item.key === activeKey;
                 return (
@@ -91,14 +97,14 @@ export function AppShell({
                     }}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-r1 px-3 py-2 text-left text-[13.5px] font-[600] transition-colors",
+                      "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-[650] transition-all duration-150 cursor-pointer",
                       active
-                        ? "bg-accent-soft text-accent"
+                        ? "bg-accent/15 text-accent shadow-sm font-[700]"
                         : "text-muted hover:bg-panel hover:text-fg",
                     )}
                   >
                     {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-accent" />
+                      <span className="absolute left-0 top-1/2 h-5 w-[3.5px] -translate-y-1/2 rounded-r-full bg-accent" />
                     )}
                     <span
                       className={cn(
@@ -112,8 +118,8 @@ export function AppShell({
                     {item.badge != null && item.badge !== 0 && (
                       <span
                         className={cn(
-                          "shrink-0 rounded-full px-1.5 py-0.5 text-[10.5px] font-[700] tabular-nums",
-                          active ? "bg-accent/15 text-accent" : "bg-panel text-faint",
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-[750] tabular-nums",
+                          active ? "bg-accent text-white" : "bg-panel text-muted border border-border/80",
                         )}
                       >
                         {item.badge}
@@ -127,49 +133,53 @@ export function AppShell({
         ))}
       </nav>
 
-      {sidebarFooter && <div className="border-t border-border p-3">{sidebarFooter}</div>}
+      {sidebarFooter && <div className="border-t border-border/60 p-3 bg-panel/30">{sidebarFooter}</div>}
     </div>
   );
 
   return (
-    <div className="flex min-h-screen bg-bg text-fg">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 border-r border-border bg-surface md:block">
+    <div className="flex min-h-screen bg-bg text-fg selection:bg-accent/20">
+      {/* Desktop sidebar (1280px+) */}
+      <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 border-r border-border/80 bg-surface/95 backdrop-blur xl:block">
         {sidebar}
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Mobile & Tablet drawer (<1280px) */}
       {mobileOpen && (
-        <div className="md:hidden">
+        <div className="xl:hidden">
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]"
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-[248px] border-r border-border bg-surface shadow-panel">
+          <aside className="fixed inset-y-0 left-0 z-50 w-[240px] border-r border-border bg-surface shadow-2xl">
             {sidebar}
           </aside>
         </div>
       )}
 
       {/* Main column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-[60px] items-center justify-between gap-3 border-b border-border bg-glass px-5 backdrop-blur max-md:px-4">
+      <div className="flex min-w-0 flex-1 flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent/5 via-bg to-bg">
+        <header className="sticky top-0 z-30 flex h-[62px] items-center justify-between gap-3 border-b border-border/80 bg-surface/80 px-6 backdrop-blur-md max-xl:px-4">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              className="tap grid h-9 w-9 shrink-0 place-items-center rounded-r1 border border-border text-fg md:hidden"
+              className="tap grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border text-fg xl:hidden hover:bg-panel"
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
             >
               <MenuIcon className="h-5 w-5" />
             </button>
-            <h1 className="truncate text-[16px] font-[750] tracking-[-.01em]">{sectionTitle}</h1>
+            <div className="flex items-center gap-2 truncate">
+              <span className="text-xs font-[600] text-muted">Workspace</span>
+              <span className="text-xs text-faint">/</span>
+              <h1 className="truncate text-[16px] font-[800] tracking-tight">{sectionTitle}</h1>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">{topbarRight}</div>
+          <div className="flex shrink-0 items-center gap-2.5">{topbarRight}</div>
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1080px] px-6 py-8 max-md:px-4 max-md:py-6">
+          <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
             {children}
           </div>
         </main>
@@ -179,6 +189,7 @@ export function AppShell({
 }
 
 /* ---------------- Shared content-area primitives ---------------- */
+
 
 export function SectionHeader({
   title,

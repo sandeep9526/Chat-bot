@@ -43,8 +43,9 @@ export default function SignInPage() {
       if (signInError) {
         setError(signInError.message || "Login failed");
       } else {
-        // Success - redirect to their dashboard
-        router.push("/dashboard");
+        // Success - redirect admin to /admin, normal user to /dashboard
+        const target = email.toLowerCase() === "admin@zeva.app" ? "/admin" : "/dashboard";
+        router.push(target);
         router.refresh();
       }
     } catch {

@@ -18,9 +18,13 @@ interface DragScratch {
  * Pointer-based drag-to-place for the launcher. Placement is single-sourced in
  * the store, so this hook is a controller: on each move it computes the nearest
  * corner + offsets and `commit`s them (the widget re-positions from the store).
- * The stage bounds are the widget root's positioning ancestor (`offsetParent`);
- * the launcher is the pointer event's target — nothing is threaded through refs.
- * A move under 5px stays a click (opens the panel).
+ * The stage bounds are the widget root's positioning ancestor (`offsetParent`)
+ * for an absolutely-positioned root (e.g. the Studio/demo preview stage) — or
+ * the viewport itself for a `position: fixed` root, since `offsetParent` is
+ * spec'd to be `null` for fixed elements and would otherwise silently fall
+ * back to `parentElement`'s (wrong, document-relative) box.
+ * The launcher is the pointer event's target — nothing else is threaded
+ * through refs. A move under 5px stays a click (opens the panel).
  */
 export function useDrag(
   commit: (anchor: Anchor, offX: number, offY: number) => void,
@@ -41,15 +45,25 @@ export function useDrag(
   });
 
   const onPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLElement>, rootEl: HTMLElement | null) => {
+    (
+      e: React.PointerEvent<HTMLElement>,
+      rootEl: HTMLElement | null,
+      viewportStage = false,
+    ) => {
       const launcher = e.currentTarget;
-      const stageEl = (rootEl?.offsetParent ??
-        rootEl?.parentElement) as HTMLElement | null;
-      if (!stageEl) return;
+      let stageRect: DOMRect;
+      if (viewportStage) {
+        stageRect = new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+      } else {
+        const stageEl = (rootEl?.offsetParent ??
+          rootEl?.parentElement) as HTMLElement | null;
+        if (!stageEl) return;
+        stageRect = stageEl.getBoundingClientRect();
+      }
 
       const lr = launcher.getBoundingClientRect();
       const s = scratch.current;
-      s.stage = stageEl.getBoundingClientRect();
+      s.stage = stageRect;
       s.sx = e.clientX;
       s.sy = e.clientY;
       s.grabX = e.clientX - lr.left;

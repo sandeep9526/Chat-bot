@@ -9,9 +9,16 @@ import {
   useSubscription,
 } from "@/hooks/useAdmin";
 import { getPendingDesign } from "@/lib/pendingDesign";
-import { ADMIN_ENABLED, type AdminBot, type AdminLead } from "@/lib/adminApi";
+import {
+  ADMIN_ENABLED,
+  type AdminBot,
+  type AdminLead,
+  type AdminStats,
+  type Handoff,
+} from "@/lib/adminApi";
 import { useSession, signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { LEAD_SCORE_STYLE } from "@/lib/leadScore";
 
 import { AppShell, SectionHeader, Card, type NavGroup } from "@/components/panel/AppShell";
 import { AccountMenu } from "@/components/panel/AccountMenu";
@@ -29,6 +36,7 @@ import {
   SettingsIcon,
   ExternalLinkIcon,
 } from "@/components/panel/panelIcons";
+import { Bot as BotsIcon, Check, ArrowRight } from "lucide-react";
 
 import { StatCard } from "./StatCard";
 import { LeadsTable } from "./LeadsTable";
@@ -38,16 +46,7 @@ import { BillingCard } from "./BillingCard";
 import { BotsSection } from "./BotsSection";
 import { DashboardTour } from "./DashboardTour";
 import { SetupChecklist } from "./SetupChecklist";
-
-/** Small robot mark for the Bots nav item. */
-function BotsIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="4" y="8" width="16" height="12" rx="2" />
-      <path d="M12 8V4M9 13h.01M15 13h.01M9 17h6" />
-    </svg>
-  );
-}
+import { Studio } from "@/components/studio/Studio";
 
 /* ============================ Section routing ============================ */
 
@@ -57,6 +56,7 @@ const SECTIONS = [
   "playground",
   "leads",
   "knowledge",
+  "appearance",
   "install",
   "billing",
   "settings",
@@ -69,6 +69,7 @@ const TITLES: Record<SectionKey, string> = {
   playground: "Playground",
   leads: "Leads",
   knowledge: "Knowledge base",
+  appearance: "Appearance & Studio",
   install: "Install",
   billing: "Billing & usage",
   settings: "Settings",
@@ -140,7 +141,7 @@ export function AdminDashboard() {
 /* ============================ Dashboard shell ============================ */
 
 function Dashboard({ email, name }: { email: string; name?: string | null }) {
-  const { data: bots, isPending: botsPending } = useBots();
+  const { data: bots, isPending: botsPending, isError: botsError, refetch: refetchBots } = useBots();
 
   const [selectedBotId, setSelectedBotId] = useState("");
   const botId = selectedBotId || bots?.[0]?.bot_id || "";
@@ -171,14 +172,22 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
     window.location.href = "/sign-in";
   };
 
-  // Studio is a full-width tool with its own layout, so it lives on its own
-  // page rather than inside the dashboard content column. The sidebar item
-  // just deep-links there, scoped to the currently selected bot.
-  const openStudio = () => {
-    window.location.href = `/studio?bot=${encodeURIComponent(botId)}`;
-  };
-
   if (botsPending) return <Splash />;
+
+  // A failed fetch must not be mistaken for a fresh, bot-less account — that
+  // sends the user into the "create your first bot" flow instead of telling
+  // them the connection is broken.
+  if (botsError) {
+    return (
+      <Centered>
+        <EmptyCard
+          title="Couldn't load your bots"
+          body="We couldn't reach the Zeva backend just now. Check your connection and try again."
+          secondary={{ label: "Retry", onClick: () => refetchBots() }}
+        />
+      </Centered>
+    );
+  }
 
   // A brand-new account (no bots yet) still gets the full dashboard shell — the
   // Bots section shows a "create your first bot" prompt and the tour runs —
@@ -250,12 +259,6 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
       groups={groups}
       activeKey={activeSection}
       onNavigate={(k) => {
-        // "Appearance" isn't a dashboard section — it deep-links to the
-        // full-width Studio page for the current bot.
-        if (k === "appearance") {
-          openStudio();
-          return;
-        }
         navigate(k as SectionKey);
       }}
       sectionTitle={TITLES[activeSection]}
@@ -274,7 +277,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
           botId={botId}
           onCreateBot={() => navigate("bots")}
           onGoto={(s) => navigate(s as SectionKey)}
-          onOpenStudio={openStudio}
+          onOpenStudio={() => navigate("appearance")}
         />
       )}
 
@@ -297,6 +300,10 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
           onSelect={(id) => {
             setSelectedBotId(id);
             navigate("overview");
+          }}
+          onOpenStudio={(id) => {
+            setSelectedBotId(id);
+            navigate("appearance");
           }}
           onOpenInstall={(id) => {
             setSelectedBotId(id);
@@ -341,6 +348,12 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
         </>
       )}
 
+      {activeSection === "appearance" && (
+        <div className="w-full">
+          <Studio botId={botId} />
+        </div>
+      )}
+
       {activeSection === "install" && (
         <>
           <SectionHeader
@@ -365,9 +378,10 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
       )}
 
       {activeSection === "settings" && (
-        <SettingsSection bot={activeBot} email={email} onLogout={logout} />
+        <SettingsSection bot={activeBot} email={email} onLogout={logout} onGoto={navigate} />
       )}
     </AppShell>
+
   );
 }
 
@@ -383,50 +397,78 @@ function OverviewSection({
 }: {
   bot?: AdminBot;
   name?: string | null;
-  stats?: { leads: number; warmLeads: number; chats: number; unanswered: number; topQuestions: { question: string; count: number }[] };
+  stats?: AdminStats;
   leads: AdminLead[];
-  handoffs: { id: number; name: string; contact: string; summary: string }[];
+  handoffs: Handoff[];
   onGoto: (s: SectionKey) => void;
 }) {
   const firstName = (name || "").split(" ")[0];
   return (
     <>
       <SectionHeader
-        title={firstName ? `Welcome back, ${firstName}` : "Welcome back"}
-        description={bot ? `Here's how ${bot.name} is doing.` : "Here's how your bot is doing."}
+        title={firstName ? `Welcome back, ${firstName}` : "Overview"}
+        description={`${bot ? bot.name : "Your bot"} — leads, documents and status at a glance.`}
+        action={
+          <>
+            <button
+              type="button"
+              onClick={() => onGoto("appearance")}
+              className="rounded-r1 border border-border bg-surface px-3.5 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent"
+            >
+              Customize appearance
+            </button>
+            <button
+              type="button"
+              onClick={() => onGoto("playground")}
+              className="rounded-r1 border border-border bg-surface px-3.5 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent"
+            >
+              Test bot
+            </button>
+            <button
+              type="button"
+              onClick={() => onGoto("install")}
+              className="rounded-r1 border border-border bg-surface px-3.5 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent"
+            >
+              Install snippet
+            </button>
+          </>
+        }
       />
 
-      <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
-        <StatCard label="Leads" value={stats?.leads ?? "—"} hint="Total captured" accent />
-        <StatCard label="Warm leads" value={stats?.warmLeads ?? "—"} hint="Hot + warm" />
-        <StatCard label="Total chats" value={stats?.chats ?? "—"} hint="Questions asked" />
-        <StatCard label="Unanswered" value={stats?.unanswered ?? "—"} hint="Missing from docs" />
+      <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2">
+        <StatCard label="Total Leads" value={stats?.leads ?? "0"} hint="Captured contacts" accent />
+        <StatCard label="Hot & Warm Leads" value={stats?.warmLeads ?? "0"} hint="High purchase intent" />
+        <StatCard label="Total Conversations" value={stats?.chats ?? "0"} hint="Processed queries" />
+        <StatCard label="Unanswered Queries" value={stats?.unanswered ?? "0"} hint="Missing doc info" />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Top questions */}
         <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <b className="text-[14px] font-[750]">Top questions</b>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <b className="text-[15px] font-[800]">Top Visitor Questions</b>
+              <p className="text-[12px] text-muted">Most asked topics across all chats</p>
+            </div>
             <button
               type="button"
               onClick={() => onGoto("knowledge")}
-              className="text-[12px] font-[600] text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-[12.5px] font-[700] text-accent hover:underline"
             >
-              Improve docs →
+              Knowledge Base <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             {(stats?.topQuestions ?? []).length === 0 && (
-              <span className="text-[13px] text-muted">No chats yet.</span>
+              <span className="py-4 text-center text-[13px] text-muted">No conversation data yet.</span>
             )}
             {(stats?.topQuestions ?? []).slice(0, 6).map((q, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between gap-2 rounded-[8px] bg-panel px-3 py-2 text-[13px]"
+                className="flex items-center justify-between gap-3 rounded-r1 bg-panel/60 px-3.5 py-2.5 text-[13px] transition-colors hover:bg-panel"
               >
-                <span className="truncate text-fg">{q.question}</span>
-                <span className="shrink-0 font-mono text-[11px] font-[700] text-faint">
+                <span className="truncate font-[550] text-fg">{q.question}</span>
+                <span className="shrink-0 font-mono text-[11px] font-[750] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                   ×{q.count}
                 </span>
               </div>
@@ -436,27 +478,30 @@ function OverviewSection({
 
         {/* Recent leads */}
         <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <b className="text-[14px] font-[750]">Recent leads</b>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <b className="text-[15px] font-[800]">Recent Captured Leads</b>
+              <p className="text-[12px] text-muted">Latest submissions from widget & demo</p>
+            </div>
             <button
               type="button"
               onClick={() => onGoto("leads")}
-              className="text-[12px] font-[600] text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-[12.5px] font-[700] text-accent hover:underline"
             >
-              View all →
+              View All Leads <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             {leads.length === 0 && (
-              <span className="text-[13px] text-muted">No leads yet.</span>
+              <span className="py-4 text-center text-[13px] text-muted">No leads captured yet.</span>
             )}
             {leads.slice(0, 5).map((l) => (
               <div
                 key={l.id}
-                className="flex items-center justify-between gap-2 rounded-[8px] bg-panel px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-r1 bg-panel/60 px-3.5 py-2.5 transition-colors hover:bg-panel"
               >
                 <div className="min-w-0">
-                  <div className="truncate text-[13px] font-[600] text-fg">{l.name}</div>
+                  <div className="truncate text-[13.5px] font-[700] text-fg">{l.name}</div>
                   <div className="truncate text-[11.5px] text-muted">{l.email}</div>
                 </div>
                 <ScoreTag score={l.score} />
@@ -478,7 +523,7 @@ function OverviewSection({
 function HandoffsCard({
   handoffs,
 }: {
-  handoffs: { id: number; name: string; contact: string; summary: string }[];
+  handoffs: Handoff[];
 }) {
   return (
     <Card>
@@ -492,7 +537,7 @@ function HandoffsCard({
           <span className="text-[13px] text-muted">No handoffs yet.</span>
         )}
         {handoffs.map((h) => (
-          <div key={h.id} className="rounded-[8px] border border-border bg-panel px-3 py-2.5">
+          <div key={h.id} className="rounded-r1 border border-border bg-panel px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <b className="text-[13px] text-fg">{h.name}</b>
               <span className="font-mono text-[11px] text-faint">{h.contact}</span>
@@ -508,7 +553,7 @@ function HandoffsCard({
 function UnansweredCard({
   stats,
 }: {
-  stats?: { unanswered: number; topQuestions: { question: string; count: number }[] };
+  stats?: AdminStats;
 }) {
   return (
     <Card>
@@ -522,7 +567,7 @@ function UnansweredCard({
         {(stats?.topQuestions ?? []).slice(0, 5).map((q, i) => (
           <div
             key={i}
-            className="flex items-center justify-between gap-2 rounded-[8px] bg-panel px-3 py-2 text-[13px]"
+            className="flex items-center justify-between gap-2 rounded-r1 bg-panel px-3 py-2 text-[13px]"
           >
             <span className="truncate text-fg">{q.question}</span>
             <span className="shrink-0 font-mono text-[11px] font-[700] text-faint">×{q.count}</span>
@@ -542,6 +587,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
   starter: ["1 bot", "2,000 messages / month", "Lead capture & CSV export", "Remove Zeva branding"],
   pro: ["5 bots", "10,000 messages / month", "Priority support", "Remove Zeva branding"],
   business: ["25 bots", "50,000 messages / month", "Priority support", "Custom domains"],
+  enterprise: ["100 bots", "250,000 messages / month", "Dedicated support", "Custom domains & caps"],
 };
 
 function PlanFeaturesCard({ plan }: { plan: string | null }) {
@@ -556,19 +602,17 @@ function PlanFeaturesCard({ plan }: { plan: string | null }) {
         {features.map((f) => (
           <li key={f} className="flex items-center gap-2.5 text-[13px] text-fg">
             <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-good/15 text-good">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-2.5 w-2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+              <Check strokeWidth={3} className="h-2.5 w-2.5" />
             </span>
             {f}
           </li>
         ))}
       </ul>
       <a
-        href="mailto:contact@prepvia.com?subject=Upgrade%20my%20Zeva%20plan"
-        className="mt-4 inline-block text-[12.5px] font-[600] text-accent hover:underline"
+        href="mailto:support@zeva.app?subject=Upgrade%20my%20Zeva%20plan"
+        className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-[600] text-accent hover:underline"
       >
-        Compare plans / upgrade →
+        Compare plans / upgrade <ArrowRight className="h-3.5 w-3.5" />
       </a>
     </Card>
   );
@@ -578,10 +622,12 @@ function SettingsSection({
   bot,
   email,
   onLogout,
+  onGoto,
 }: {
   bot?: AdminBot;
   email: string;
   onLogout: () => void;
+  onGoto?: (s: SectionKey) => void;
 }) {
   return (
     <>
@@ -601,13 +647,14 @@ function SettingsSection({
               <span className="font-mono text-[12px] text-fg">{bot?.accent ?? "—"}</span>
             </dd>
           </dl>
-          <a
-            href={bot ? `/studio?bot=${encodeURIComponent(bot.bot_id)}` : "/studio"}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-r1 border border-border bg-panel px-3 py-2 text-[12.5px] font-[650] text-fg hover:border-accent"
+          <button
+            type="button"
+            onClick={() => onGoto ? onGoto("appearance") : (window.location.hash = "appearance")}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-r1 border border-border bg-panel px-3 py-2 text-[12.5px] font-[650] text-fg hover:border-accent cursor-pointer"
           >
             Customize appearance in Studio
             <ExternalLinkIcon className="h-3.5 w-3.5 text-faint" />
-          </a>
+          </button>
         </Card>
 
         <Card>
@@ -633,7 +680,7 @@ function SettingsSection({
           <button
             type="button"
             onClick={onLogout}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-r1 border border-border bg-surface px-3 py-2 text-[12.5px] font-[650] text-red-500 hover:bg-red-500/10"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-r1 border border-border bg-surface px-3 py-2 text-[12.5px] font-[650] text-bad hover:bg-bad/10"
           >
             Log out
           </button>
@@ -645,18 +692,12 @@ function SettingsSection({
 
 /* ============================ Small shared bits ============================ */
 
-const SCORE_STYLE: Record<AdminLead["score"], string> = {
-  hot: "bg-red-500/15 text-red-500",
-  warm: "bg-amber-500/15 text-amber-600",
-  cold: "bg-panel text-faint",
-};
-
 function ScoreTag({ score }: { score: AdminLead["score"] }) {
   return (
     <span
       className={cn(
         "shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] font-[700] uppercase",
-        SCORE_STYLE[score] ?? SCORE_STYLE.cold,
+        LEAD_SCORE_STYLE[score] ?? LEAD_SCORE_STYLE.cold,
       )}
     >
       {score}

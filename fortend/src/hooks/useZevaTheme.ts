@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { RefObject } from "react";
 import type { ZevaConfig } from "@/lib/types";
 import { effectiveTheme } from "@/lib/color";
 
@@ -51,39 +52,73 @@ function removeById(id: string): void {
 }
 
 /**
- * Applies the live config to the document root so the widget themes itself on
+ * Applies the live config to a theme root so the widget themes itself on
  * whatever page it's mounted (studio preview or /demo).
  *
- * NOTE: the accent (`--accent`/`--accent-strong`) is deliberately NOT written to
- * <html> here — it lives only on the widget's own root (see ZevaWidget's inline
- * style), so picking a brand colour recolours the *widget*, never the host page
- * (the studio chrome / mock preview site keep Zeva's own brand). `data-theme`,
- * `data-corners`, `data-font` and the runtime font loading still apply page-wide
- * so the Surface / corners / font controls double as the page theme.
+ * By default the theme root is `<html>`, for the widget's normal case of being
+ * the only themed thing on the page (marketing home, /demo). Pass `scopeRef`
+ * to theme a specific element instead (its subtree, via the `[data-theme]`
+ * attribute selectors in globals.css which aren't `:root`-anchored) — this is
+ * required wherever the widget/preview is embedded inside a page that has its
+ * own independent chrome, e.g. the Studio tab inside the operator dashboard,
+ * so picking a Surface/corners/font here never reskins the surrounding app.
+ * Scoped mode also skips adopting the page-wide `zeva-theme` localStorage
+ * preference, since that's the *host chrome's* choice, not this bot's config.
+ *
+ * NOTE: the accent (`--accent`/`--accent-strong`) is deliberately NOT written
+ * here — it lives only on the widget's own root (see ZevaWidget's inline
+ * style), so picking a brand colour recolours the *widget*, never the host
+ * page/chrome.
  */
-export function useZevaTheme(config: ZevaConfig): void {
+export function useZevaTheme(
+  config: ZevaConfig,
+  scopeRef?: RefObject<HTMLElement | null>,
+): void {
   const { surface, corners, fontSrc, font, gFont, cFam, cUrl } = config;
+  const scoped = !!scopeRef;
 
-  // Surface → data-theme. "auto" follows prefers-color-scheme (with a listener).
+  // Surface → data-theme. Unscoped: respects saved zeva-theme first, then
+  // follows surface/OS. Scoped: always reflects `surface` directly.
   useEffect(() => {
-    const root = document.documentElement;
+    const root = scopeRef?.current ?? document.documentElement;
+    if (!root) return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () =>
-      root.setAttribute("data-theme", effectiveTheme(surface, mq.matches));
+    const apply = () => {
+      let themeToApply: "light" | "dark";
+      try {
+        const saved = scoped ? null : localStorage.getItem("zeva-theme");
+        if (saved === "dark" || saved === "light") {
+          themeToApply = saved;
+        } else {
+          themeToApply = effectiveTheme(surface, mq.matches);
+        }
+      } catch {
+        themeToApply = effectiveTheme(surface, mq.matches);
+      }
+      root.setAttribute("data-theme", themeToApply);
+    };
     apply();
-    if (surface !== "auto") return;
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, [surface]);
+    if (surface === "auto") mq.addEventListener("change", apply);
+    return () => {
+      if (surface === "auto") mq.removeEventListener("change", apply);
+      if (scoped) root.removeAttribute("data-theme");
+    };
+  }, [surface, scoped, scopeRef]);
 
-  // Corners radius scale.
+  // Corners radius scale. Scoped mode resets on unmount so switching away from
+  // the preview (e.g. a dashboard tab change) can't leave the host stuck.
   useEffect(() => {
-    document.documentElement.setAttribute("data-corners", corners);
-  }, [corners]);
+    const root = scopeRef?.current ?? document.documentElement;
+    if (!root) return;
+    root.setAttribute("data-corners", corners);
+    if (!scoped) return;
+    return () => root.removeAttribute("data-corners");
+  }, [corners, scoped, scopeRef]);
 
   // Fonts: preset (CSS-driven) / google / custom @font-face / inherit.
   useEffect(() => {
-    const root = document.documentElement;
+    const root = scopeRef?.current ?? document.documentElement;
+    if (!root) return;
 
     if (fontSrc === "preset") {
       // Let :root[data-font="…"] drive --font-family from globals.css.
@@ -98,8 +133,14 @@ export function useZevaTheme(config: ZevaConfig): void {
     root.setAttribute("data-font", "custom");
 
     if (fontSrc === "google") {
-      loadGoogleFont(gFont);
-      root.style.setProperty("--font-family", `"${gFont}", var(--ui-stack)`);
+      if (gFont.trim()) {
+        loadGoogleFont(gFont);
+        root.style.setProperty("--font-family", `"${gFont}", var(--ui-stack)`);
+      } else {
+        // Field cleared mid-edit — hold the UI stack rather than requesting a
+        // Google Fonts URL with an empty family name.
+        root.style.setProperty("--font-family", "var(--ui-stack)");
+      }
       removeById(CF_STYLE_ID);
     } else if (fontSrc === "custom") {
       if (cFam && cUrl) {
@@ -118,5 +159,11 @@ export function useZevaTheme(config: ZevaConfig): void {
       removeById(GF_LINK_ID);
       removeById(CF_STYLE_ID);
     }
-  }, [fontSrc, font, gFont, cFam, cUrl]);
+
+    if (!scoped) return;
+    return () => {
+      root.removeAttribute("data-font");
+      root.style.removeProperty("--font-family");
+    };
+  }, [fontSrc, font, gFont, cFam, cUrl, scoped, scopeRef]);
 }

@@ -88,7 +88,7 @@ export function FontField({
             className={TEXT_INPUT}
             placeholder="Google font name — e.g. Poppins"
             value={gFont}
-            onChange={(e) => onGoogleFontChange(e.target.value.trim() || "Poppins")}
+            onChange={(e) => onGoogleFontChange(e.target.value)}
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {GOOGLE_FONT_SUGGESTIONS.map((f) => (

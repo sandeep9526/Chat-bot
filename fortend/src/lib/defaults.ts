@@ -1,14 +1,14 @@
 import type { ZevaConfig } from "./types";
 
 /** Demo tenant id sent with every /chat and /lead call. */
-export const BOT_ID = "acme-salon";
+export const BOT_ID = "zeva-ai";
 
 export const DEFAULTS: ZevaConfig = {
-  name: "Acme Salon",
-  label: "Ask Acme Salon",
+  name: "Zeva AI",
+  label: "Ask Zeva AI",
   welcome:
-    "Ask in your own words \u2014 every answer comes from Acme Salon\u2019s own documents.",
-  subtitle: "answer engine \u00b7 grounded",
+    "Ask in your own words \u2014 every answer comes from Zeva AI\u2019s official documents.",
+  subtitle: "24/7 AI Assistant \u00b7 Grounded",
   logo: "",
   accent: "#4f46e5",
   surface: "auto",
@@ -27,11 +27,12 @@ export const DEFAULTS: ZevaConfig = {
   cFam: "",
   cUrl: "",
   suggestions: [
-    "What are your hours?",
-    "How much is a haircut?",
-    "Do you take walk-ins?",
+    "What is Zeva AI?",
+    "How do I install the widget?",
+    "What are Zeva pricing plans?",
   ],
 };
+
 
 /** Preset accent swatches with their strong variant. */
 export const ACCENT_SWATCHES: { hex: string; strong: string }[] = [

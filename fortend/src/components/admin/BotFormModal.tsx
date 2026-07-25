@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { useCreateBot } from "@/hooks/useAdmin";
-import { AdminApiError, type AdminBot } from "@/lib/adminApi";
+import { AdminApiError, applyIndustryTemplate, type AdminBot } from "@/lib/adminApi";
 import { DEFAULTS } from "@/lib/defaults";
 import { isValidBotId, slugify } from "@/components/onboarding/utils";
 
@@ -34,24 +35,27 @@ interface BotFormModalProps {
   onSaved: (botId: string) => void;
 }
 
+import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
+
 export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormModalProps) {
   const isEdit = mode === "edit";
   const seed = isEdit ? undefined : initial;
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [name, setName] = useState(bot?.name ?? seed?.name ?? "");
-  const [botId, setBotId] = useState(
-    bot?.bot_id ?? (seed?.name ? slugify(seed.name) : ""),
-  );
-  const [botIdTouched, setBotIdTouched] = useState(isEdit);
   const [accent, setAccent] = useState(bot?.accent ?? seed?.accent ?? DEFAULTS.accent);
   const [welcome, setWelcome] = useState(bot?.welcome ?? seed?.welcome ?? "");
   const [suggestions, setSuggestions] = useState(
     (bot?.suggestions ?? seed?.suggestions ?? []).join("\n"),
   );
   const [error, setError] = useState("");
+  // Set only if the bot itself saved fine but its template's starter
+  // knowledge failed to ingest — the user can retry or move on, but either
+  // way they need to know (the old code swallowed this failure silently).
+  const [templateWarning, setTemplateWarning] = useState("");
+  const [createdBotId, setCreatedBotId] = useState("");
 
   const createBot = useCreateBot();
 
-  // Close on Escape.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -59,20 +63,28 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
   }, [onClose]);
 
   const trimmedName = name.trim();
-  const botIdValid = botId.length > 0 && isValidBotId(botId);
-  const canSave = trimmedName.length > 0 && botIdValid && !createBot.isPending;
+  const canSave = trimmedName.length > 0 && !createBot.isPending;
 
   const onNameChange = (v: string) => {
     setName(v);
-    if (!isEdit && !botIdTouched) setBotId(slugify(v));
   };
+
+  const applyTemplate = (tmpl: IndustryTemplate) => {
+    setSelectedTemplate(tmpl.id);
+    setName(tmpl.botName);
+    setAccent(tmpl.accent);
+    setWelcome(tmpl.welcome);
+    setSuggestions(tmpl.suggestions.join("\n"));
+  };
+
 
   const save = async () => {
     setError("");
+    setTemplateWarning("");
     if (!canSave) return;
     try {
-      await createBot.mutateAsync({
-        botId,
+      const res = await createBot.mutateAsync({
+        botId: isEdit ? bot?.bot_id : undefined,
         name: trimmedName,
         accent,
         welcome:
@@ -81,11 +93,36 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
         suggestions: suggestions.split("\n").map((s) => s.trim()).filter(Boolean),
         allowedDomains: bot?.allowed_domains ?? ["*"],
       });
-      onSaved(botId);
+
+      const targetBotId = res.botId;
+
+      // If a template was picked, ingest its knowledge base automatically.
+      const tmpl = INDUSTRY_TEMPLATES.find((t) => t.id === selectedTemplate);
+      if (tmpl) {
+        try {
+          await applyIndustryTemplate({
+            botId: targetBotId,
+            templateId: tmpl.id,
+            knowledgeText: tmpl.knowledgeText,
+            name: trimmedName,
+            accent,
+            welcome,
+            suggestions: suggestions.split("\n").map((s) => s.trim()).filter(Boolean),
+          });
+        } catch (err) {
+          setCreatedBotId(targetBotId);
+          setTemplateWarning(
+            `Bot created, but couldn't load the "${tmpl.name}" starter content${
+              err instanceof AdminApiError ? ` (${err.message})` : ""
+            }. You can add docs manually in Knowledge base.`,
+          );
+          return;
+        }
+      }
+
+      onSaved(targetBotId);
     } catch (err) {
-      if (err instanceof AdminApiError && err.status === 403) {
-        setError(`"${botId}" is already taken — pick a different bot ID.`);
-      } else if (err instanceof AdminApiError && err.status === 402) {
+      if (err instanceof AdminApiError && err.status === 402) {
         setError(err.message);
       } else {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -101,10 +138,10 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-r3 border border-border bg-surface p-6 shadow-panel"
+        className="max-h-[90vh] w-full max-w-[500px] overflow-y-auto rounded-r3 border border-border bg-surface p-6 shadow-panel"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[18px] font-[750] tracking-[-.01em] text-fg">
             {isEdit ? "Edit bot" : "Create a bot"}
           </h2>
@@ -114,50 +151,46 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
             aria-label="Close"
             className="tap grid h-8 w-8 place-items-center rounded-r1 text-faint hover:bg-panel hover:text-fg"
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M6 6l12 12M18 6 6 18" />
-            </svg>
+            <X className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
 
+        {!isEdit && (
+          <div className="mb-5 border-b border-border pb-4">
+            <label className="mb-2 block text-[12px] font-[700] uppercase tracking-wider text-muted">
+              Choose Industry Template
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {INDUSTRY_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => applyTemplate(tmpl)}
+                  className={`flex items-center gap-2 p-2 rounded-r1 border text-left text-xs font-[650] cursor-pointer transition-all ${
+                    selectedTemplate === tmpl.id
+                      ? "border-accent bg-accent/15 text-accent font-[750]"
+                      : "border-border bg-panel text-muted hover:text-fg"
+                  }`}
+                >
+                  <span>{tmpl.icon}</span>
+                  <span className="truncate">{tmpl.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Business name</label>
+            <label className={LABEL} htmlFor="bot-name">Business name</label>
             <input
+              id="bot-name"
               autoFocus
               className={INPUT}
-              placeholder="Acme Salon"
+              placeholder="Zeva AI"
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
             />
-          </div>
-
-          <div>
-            <label className={LABEL}>Bot ID</label>
-            <input
-              className={`${INPUT} font-mono ${isEdit ? "cursor-not-allowed opacity-60" : ""}`}
-              placeholder="acme-salon"
-              value={botId}
-              disabled={isEdit}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoCorrect="off"
-              onChange={(e) => {
-                setBotId(sanitizeLive(e.target.value));
-                setBotIdTouched(true);
-              }}
-              onBlur={() => setBotId((v) => slugify(v))}
-            />
-            <p className="mt-1.5 text-[11px] text-faint">
-              {isEdit
-                ? "The bot ID is baked into your embed code and can't change."
-                : "Lowercase letters, numbers, hyphens — becomes part of your embed code."}
-            </p>
-            {botId.length > 0 && !botIdValid && !isEdit && (
-              <p className="mt-1 text-[11.5px] text-red-500">
-                Only lowercase letters, numbers, and single hyphens.
-              </p>
-            )}
           </div>
 
           <div>
@@ -188,8 +221,9 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
           </div>
 
           <div>
-            <label className={LABEL}>Welcome line <span className="font-normal text-faint">(optional)</span></label>
+            <label className={LABEL} htmlFor="bot-welcome">Welcome line <span className="font-normal text-faint">(optional)</span></label>
             <input
+              id="bot-welcome"
               className={INPUT}
               placeholder="Ask us anything about our services…"
               value={welcome}
@@ -198,8 +232,9 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
           </div>
 
           <div>
-            <label className={LABEL}>Suggested questions <span className="font-normal text-faint">(one per line)</span></label>
+            <label className={LABEL} htmlFor="bot-suggestions">Suggested questions <span className="font-normal text-faint">(one per line)</span></label>
             <textarea
+              id="bot-suggestions"
               rows={3}
               className={`${INPUT} resize-none leading-[1.5]`}
               placeholder={"What are your hours?\nHow much is a haircut?"}
@@ -209,27 +244,45 @@ export function BotFormModal({ mode, bot, initial, onClose, onSaved }: BotFormMo
           </div>
 
           {error && (
-            <div className="rounded-r1 bg-red-500/10 px-4 py-3 text-[13px] text-red-500">
+            <div className="rounded-r1 bg-bad/10 px-4 py-3 text-[13px] text-bad">
               {error}
             </div>
           )}
 
+          {templateWarning && (
+            <div className="rounded-r1 bg-warn/10 px-4 py-3 text-[13px] text-warn">
+              {templateWarning}
+            </div>
+          )}
+
           <div className="flex items-center justify-end gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-r1 border border-border bg-surface px-4 py-2.5 text-[13.5px] font-[650] text-fg hover:bg-panel"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={!canSave}
-              className="rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-5 py-2.5 text-[13.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {createBot.isPending ? "Saving…" : isEdit ? "Save changes" : "Create bot"}
-            </button>
+            {templateWarning ? (
+              <button
+                type="button"
+                onClick={() => onSaved(createdBotId)}
+                className="rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-5 py-2.5 text-[13.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5"
+              >
+                Continue
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-r1 border border-border bg-surface px-4 py-2.5 text-[13.5px] font-[650] text-fg hover:bg-panel"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={!canSave}
+                  className="rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-5 py-2.5 text-[13.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {createBot.isPending ? "Saving…" : isEdit ? "Save changes" : "Create bot"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

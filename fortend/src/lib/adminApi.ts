@@ -78,6 +78,8 @@ function base(): string {
   return API_URL;
 }
 
+
+
 /**
  * Error thrown by admin API calls that carries the HTTP status code, so
  * callers can branch on it (e.g. 403 "botId already taken" during onboarding)
@@ -101,8 +103,24 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 async function getJson<T>(path: string): Promise<T> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${base()}${path}`, { headers });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  let res: Response;
+  try {
+    res = await fetch(`${base()}${path}`, { headers });
+  } catch {
+    throw new Error(
+      "Backend server unreachable — make sure it is running on " + base()
+    );
+  }
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const errBody = (await res.json()) as { detail?: string };
+      if (errBody?.detail) detail = errBody.detail;
+    } catch {
+      /* non-JSON */
+    }
+    throw new AdminApiError(res.status, detail);
+  }
   return (await res.json()) as T;
 }
 
@@ -147,10 +165,94 @@ export async function fetchSubscription(): Promise<Subscription> {
   return getJson<Subscription>("/subscription");
 }
 
+/** Self-serve plans a paying owner can pick in the upgrade flow. */
+export type BillingPlan = "starter" | "pro" | "business" | "enterprise";
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const authHeaders = await getAuthHeaders();
+  let res: Response;
+  try {
+    res = await fetch(`${base()}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const errBody = (await res.json()) as { detail?: string };
+      if (errBody?.detail) detail = errBody.detail;
+    } catch {
+      /* non-JSON */
+    }
+    throw new AdminApiError(res.status, detail);
+  }
+  return (await res.json()) as T;
+}
+
+/** Ingests an industry template's starter knowledge base into a freshly
+ *  created bot. Hits the signed-in "/admin/apply-template" route (auth +
+ *  per-user rate limit) via postJson, not the public "/demo/apply-template"
+ *  path the create-bot modal was previously calling with a bare fetch. */
+export async function applyIndustryTemplate(payload: {
+  botId: string;
+  templateId: string;
+  knowledgeText: string;
+  name: string;
+  accent: string;
+  welcome: string;
+  suggestions: string[];
+}): Promise<void> {
+  await postJson<{ ok: boolean }>("/admin/apply-template", payload);
+}
+
+/**
+ * Global (non-India) checkout — creates a Stripe Checkout Session and
+ * returns its hosted-page URL; the caller redirects the browser there.
+ * Throws AdminApiError(400) if the plan has no Stripe price configured yet
+ * (e.g. "enterprise" before a self-serve price exists — callers should fall
+ * back to a "contact sales" link in that case).
+ */
+export async function createStripeCheckoutSession(
+  plan: BillingPlan,
+  successUrl: string,
+  cancelUrl: string,
+): Promise<string> {
+  const { url } = await postJson<{ url: string }>("/billing/stripe/create-checkout-session", {
+    plan,
+    successUrl,
+    cancelUrl,
+  });
+  return url;
+}
+
+/**
+ * India checkout — creates a Razorpay Subscription; the caller opens
+ * Razorpay Checkout.js against the returned subscriptionId/keyId (see
+ * BillingCard.tsx). Throws AdminApiError(400) if the plan has no Razorpay
+ * plan configured yet.
+ */
+export async function createRazorpaySubscription(
+  plan: BillingPlan,
+): Promise<{ subscriptionId: string; keyId: string }> {
+  return postJson<{ subscriptionId: string; keyId: string }>(
+    "/billing/razorpay/create-subscription",
+    { plan },
+  );
+}
+
 /** GDPR-style delete-on-request. Backend 404s if the lead doesn't exist or isn't yours. */
 export async function deleteLead(leadId: number): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${base()}/leads/${leadId}`, { method: "DELETE", headers: authHeaders });
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/leads/${leadId}`, { method: "DELETE", headers: authHeaders });
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
   if (!res.ok) {
     let detail = `Delete failed (${res.status})`;
     try {
@@ -164,7 +266,7 @@ export async function deleteLead(leadId: number): Promise<void> {
 }
 
 export interface CreateBotPayload {
-  botId: string;
+  botId?: string;
   name: string;
   accent?: string;
   welcome?: string;
@@ -184,11 +286,20 @@ export async function createBot(
   payload: CreateBotPayload,
 ): Promise<{ ok: boolean; botId: string }> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${base()}/admin/create-bot`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders },
-    body: JSON.stringify(payload),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/admin/create-bot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error("[adminApi] createBot fetch failed:", err);
+    throw new Error(
+      "Backend server unreachable — make sure it is running on " + base() +
+      (err instanceof TypeError ? " (" + err.message + ")" : "")
+    );
+  }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
     try {
@@ -205,11 +316,16 @@ export async function createBot(
 /** Owner pause/resume — the bot's widget goes dark without deleting anything. */
 export async function setBotPaused(botId: string, paused: boolean): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${base()}/admin/pause-bot`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders },
-    body: JSON.stringify({ botId, paused }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/admin/pause-bot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ botId, paused }),
+    });
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
     try {
@@ -225,10 +341,15 @@ export async function setBotPaused(botId: string, paused: boolean): Promise<void
 /** Permanently delete an owned bot + all its leads/chats/docs. Irreversible. */
 export async function deleteBot(botId: string): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${base()}/admin/bots/${encodeURIComponent(botId)}`, {
-    method: "DELETE",
-    headers: authHeaders,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/admin/bots/${encodeURIComponent(botId)}`, {
+      method: "DELETE",
+      headers: authHeaders,
+    });
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
   if (!res.ok) {
     let detail = `Delete failed (${res.status})`;
     try {
@@ -247,11 +368,16 @@ export async function ingestDoc(
   text: string,
 ): Promise<{ chunks: number; files: number }> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${base()}/ingest`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders },
-    body: JSON.stringify({ botId, filename, text }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/ingest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ botId, filename, text }),
+    });
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
   if (!res.ok) throw new Error(`Ingest failed (${res.status})`);
   return (await res.json()) as { chunks: number; files: number };
 }
@@ -278,11 +404,16 @@ export async function uploadKnowledgeFile(
   const form = new FormData();
   form.append("botId", botId);
   form.append("file", file);
-  const res = await fetch(`${base()}/ingest-file`, {
-    method: "POST",
-    headers: authHeaders,
-    body: form,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base()}/ingest-file`, {
+      method: "POST",
+      headers: authHeaders,
+      body: form,
+    });
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
   if (!res.ok) {
     let detail = `Upload failed (${res.status})`;
     try {
@@ -294,4 +425,32 @@ export async function uploadKnowledgeFile(
     throw new AdminApiError(res.status, detail);
   }
   return (await res.json()) as IngestFileResult;
+}
+
+export interface AdminDoc {
+  filename: string;
+  size: number;
+  chars: number;
+  updatedAt: number;
+}
+
+export async function fetchDocs(botId: string): Promise<AdminDoc[]> {
+  return (await getJson<{ docs?: AdminDoc[] }>(`/admin/docs?botId=${encodeURIComponent(botId)}`)).docs ?? [];
+}
+
+export async function deleteDocFile(botId: string, filename: string): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  let res: Response;
+  try {
+    res = await fetch(
+      `${base()}/admin/docs?botId=${encodeURIComponent(botId)}&filename=${encodeURIComponent(filename)}`,
+      {
+        method: "DELETE",
+        headers: authHeaders,
+      },
+    );
+  } catch {
+    throw new Error("Backend server unreachable — make sure it is running on " + base());
+  }
+  if (!res.ok) throw new Error(`Failed to delete document (${res.status})`);
 }

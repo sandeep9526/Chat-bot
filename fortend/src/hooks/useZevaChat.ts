@@ -20,18 +20,24 @@ export function useZevaChat() {
   const messages = useZevaStore((s) => s.messages);
   const pushMessage = useZevaStore((s) => s.pushMessage);
   const updateMessage = useZevaStore((s) => s.updateMessage);
+  const setIsQuestionProcessing = useZevaStore((s) => s.setIsQuestionProcessing);
+  const isQuestionProcessingStore = useZevaStore((s) => s.isQuestionProcessing);
   const name = useZevaStore((s) => s.config.name);
+  const botId = useZevaStore((s) => s.botId) || BOT_ID;
   const send = useSendMessage();
 
   const ask = useCallback(
     (raw: string) => {
       const text = raw.trim();
       if (!text || send.isPending) return;
+      setIsQuestionProcessing(true);
       pushMessage({ id: nextId(), role: "user", text });
       send.mutate(
-        { message: text, botId: BOT_ID, name },
+        { message: text, botId, name },
+
         {
-          onSuccess: (res) =>
+          onSuccess: (res) => {
+            setIsQuestionProcessing(false);
             pushMessage({
               id: nextId(),
               role: "assistant",
@@ -39,27 +45,28 @@ export function useZevaChat() {
               sources: res.sources,
               isGuardrail: res.isGuardrail,
               ticketState: res.isGuardrail ? "idle" : undefined,
-            }),
-          // Backend down / errored → show a friendly message, don't hang silently.
-          onError: () =>
+            });
+          },
+          onError: () => {
+            setIsQuestionProcessing(false);
             pushMessage({
               id: nextId(),
               role: "assistant",
-              text: "Sorry — I couldn’t reach the server just now. Please try again in a moment.",
+              text: "Couldn't reach the server. Try again in a moment.",
               sources: [],
-            }),
+            });
+          },
         },
       );
     },
-    [name, pushMessage, send],
+    [name, botId, pushMessage, send, setIsQuestionProcessing],
   );
 
   return {
     messages,
     ask,
     updateMessage,
-    // Loading/error come from React Query, not a Zustand boolean.
-    isScanning: send.isPending,
+    isScanning: send.isPending || isQuestionProcessingStore,
     error: send.error,
   };
 }

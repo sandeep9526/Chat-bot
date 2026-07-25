@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { Copy as CopyIcon, Check as CheckIcon } from "lucide-react";
 import { buildEmbedText, buildEmbedHtml } from "@/lib/embed";
 import type { ZevaConfig } from "@/lib/types";
 
@@ -46,30 +47,13 @@ export function OnboardingEmbedCode({ botId, config }: OnboardingEmbedCodeProps)
           className="inline-flex cursor-pointer items-center gap-1.5 rounded-[8px] border border-code-btn-border bg-code-btn px-3 py-1.5 font-ui text-[12px] font-[600] text-code-btn-fg transition-colors hover:bg-code-btn-hover focus-visible:outline-2 focus-visible:outline-accent"
           onClick={handleCopy}
         >
-          <CopyIcon className="h-[13px] w-[13px]" />
-          {copied ? "Copied ✓" : "Copy"}
+          {copied ? <CheckIcon className="h-[13px] w-[13px]" /> : <CopyIcon className="h-[13px] w-[13px]" />}
+          {copied ? "Copied" : "Copy"}
         </button>
       </div>
       <pre className="m-0 overflow-x-auto px-[15px] py-[15px] font-mono text-[12px] leading-[1.7] text-code-fg">
         <code dangerouslySetInnerHTML={{ __html: embedHtml }} />
       </pre>
     </div>
-  );
-}
-
-function CopyIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-    </svg>
   );
 }

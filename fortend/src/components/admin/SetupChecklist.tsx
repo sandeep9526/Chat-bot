@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PartyPopper, X, Check } from "lucide-react";
 import {
   SETUP_EVENT,
   type SetupStep,
@@ -114,8 +115,8 @@ export function SetupChecklist({
     <div className="mb-6 overflow-hidden rounded-r2 border border-border bg-surface shadow-panel">
       <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
         <div className="min-w-0">
-          <b className="text-[14.5px] font-[780] text-fg">
-            {allDone ? "You’re all set 🎉" : "Get your bot live"}
+          <b className="inline-flex items-center gap-1.5 text-[14.5px] font-[780] text-fg">
+            {allDone ? (<><span>You’re all set</span> <PartyPopper className="h-4 w-4" /></>) : "Get your bot live"}
           </b>
           <p className="mt-0.5 text-[12.5px] text-muted">
             {allDone
@@ -133,9 +134,7 @@ export function SetupChecklist({
             aria-label="Dismiss setup checklist"
             className="tap grid h-7 w-7 place-items-center rounded-r1 text-faint transition-colors hover:bg-panel hover:text-fg"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            <X className="h-4 w-4" strokeWidth={2.2} />
           </button>
         </div>
       </div>
@@ -171,9 +170,7 @@ export function SetupChecklist({
                 }
               >
                 {done ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-3.5 w-3.5">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <Check strokeWidth={3} className="h-3.5 w-3.5" />
                 ) : (
                   i + 1
                 )}

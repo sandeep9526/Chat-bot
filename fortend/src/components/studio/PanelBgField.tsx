@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus as PlusIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /** Preset background colors for the open panel. */
@@ -62,27 +63,12 @@ export function PanelBgField({ value, onChange }: PanelBgFieldProps) {
         <PlusIcon className="h-[13px] w-[13px]" />
         <input
           type="color"
+          aria-label="Custom panel color"
           className="absolute inset-[-6px] h-[200%] w-[200%] cursor-pointer border-none p-0 opacity-0"
           value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#ffffff"}
           onChange={(e) => onChange(e.target.value)}
         />
       </label>
     </div>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
   );
 }

@@ -31,11 +31,21 @@ export function isLightColor(hex: string): boolean | null {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
 }
 
-/** Compute effective theme from surface mode + system preference. */
+/** Compute effective theme from surface mode + saved zeva-theme / system preference. */
 export function effectiveTheme(
   surface: "auto" | "light" | "dark",
   prefersDark: boolean,
 ): "light" | "dark" {
-  if (surface === "auto") return prefersDark ? "dark" : "light";
+  if (surface === "auto") {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("zeva-theme");
+        if (saved === "dark" || saved === "light") return saved;
+      } catch {
+        /* private mode */
+      }
+    }
+    return prefersDark ? "dark" : "light";
+  }
   return surface;
 }

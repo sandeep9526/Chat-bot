@@ -26,7 +26,7 @@ function Row({ items, reverse }: { items: string[]; reverse?: boolean }) {
   // Duplicate the list so the -50% translate loops seamlessly.
   const loop = [...items, ...items];
   return (
-    <div className="marquee-mask overflow-hidden py-2">
+    <div className="marquee-mask overflow-hidden py-2" aria-hidden="true">
       <div className={`marquee-track ${reverse ? "rev" : ""}`}>
         {loop.map((label, i) => (
           <span

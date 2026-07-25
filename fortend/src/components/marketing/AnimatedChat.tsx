@@ -74,7 +74,7 @@ export function AnimatedChat() {
             <SourceCheckIcon className="h-4 w-4" />
           </span>
           <div className="leading-tight">
-            <p className="m-0 text-[12.5px] font-[750] text-fg">Acme Salon</p>
+            <p className="m-0 text-[12.5px] font-[750] text-fg">Zeva AI</p>
             <p className="m-0 flex items-center gap-1 text-[10.5px] text-faint">
               <span className="eyebrow-dot" /> Answers from your documents
             </p>

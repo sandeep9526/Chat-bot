@@ -16,8 +16,13 @@ export function useRedirectIfAuthed(to = "/dashboard") {
   const { data: session, isPending } = useSession();
 
   useEffect(() => {
-    if (!isPending && session) router.replace(to);
+    if (!isPending && session) {
+      const email = session.user?.email?.toLowerCase();
+      const target = email === "admin@zeva.app" ? "/admin" : to;
+      router.replace(target);
+    }
   }, [isPending, session, router, to]);
 
   return { redirecting: !isPending && Boolean(session) };
 }
+

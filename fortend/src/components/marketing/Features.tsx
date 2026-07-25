@@ -55,7 +55,7 @@ const FEATURES: Feature[] = [
     title: "Live Studio",
     body: "Tune colour, corners, font, launcher and glass — and copy your embed code instantly. Changes preview live.",
     span: "lg:col-span-2",
-    href: "/studio",
+    href: "/dashboard#appearance",
   },
   {
     icon: LayoutIcon,

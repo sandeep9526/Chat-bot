@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X as XIcon, Check as CheckSmallIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Composer } from "./Composer";
 import { MessageStream } from "./MessageStream";
@@ -82,12 +83,18 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-border px-[14px] py-[13px]">
         {logo ? (
-          // eslint-disable-next-line @next/next/no-img-element -- runtime data URL / arbitrary logo
-          <img
-            src={logo}
-            alt=""
-            className="h-[26px] w-[26px] shrink-0 rounded-full object-cover shadow-[0_0_0_4px_var(--accent-soft)]"
-          />
+          logo.startsWith("http") || logo.startsWith("data:") ? (
+            // eslint-disable-next-line @next/next/no-img-element -- runtime data URL / arbitrary logo
+            <img
+              src={logo}
+              alt=""
+              className="h-[26px] w-[26px] shrink-0 rounded-full object-contain p-[2px] bg-surface border border-border shadow-[0_0_0_4px_var(--accent-soft)]"
+            />
+          ) : (
+            <div className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full bg-accent/20 text-[15px] leading-none shadow-[0_0_0_4px_var(--accent-soft)]">
+              <span>{logo}</span>
+            </div>
+          )
         ) : (
           <div className="h-[26px] w-[26px] shrink-0 rounded-full bg-gradient-to-br from-accent to-accent-strong shadow-[0_0_0_4px_var(--accent-soft)]" />
         )}
@@ -99,7 +106,7 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
         </div>
         <button
           type="button"
-          className="grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+          className="tap grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
           onClick={onClose}
           aria-label="Close"
         >
@@ -111,6 +118,7 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
         name={name}
         value={input}
         isOpen={isOpen}
+        isScanning={isScanning}
         onChange={setInput}
         onSubmit={handleSubmit}
       />
@@ -136,36 +144,5 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
         )}
       </div>
     </div>
-  );
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      className={className}
-    >
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
-function CheckSmallIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

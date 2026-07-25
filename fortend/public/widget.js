@@ -5,9 +5,9 @@
  *
  *   <script
  *     src="https://cdn.zeva.app/widget.js"
- *     data-bot-id="acme-salon"
+ *     data-bot-id="zeva-ai"
  *     data-api-url="https://api.your-zeva-deployment.com"
- *     data-name="Acme Salon"
+ *     data-name="Zeva AI"
  *     data-accent="#4f46e5"
  *     data-surface="auto"
  *     data-corners="soft"
@@ -83,7 +83,7 @@
   var HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
   // ---- data-* attribute contract (see WIDGET.md) ---------------------------
-  var BOT_ID = getAttr("data-bot-id", "acme-salon");
+  var BOT_ID = getAttr("data-bot-id", "zeva-ai");
   var DEFAULT_API_URL = "https://api.zeva.app"; // documented placeholder — see comment block above
   var API_URL = getAttr("data-api-url", DEFAULT_API_URL).replace(/\/+$/, "");
 

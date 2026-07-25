@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check as CheckIcon, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useSubmitLead } from "@/hooks/useZevaApi";
 import { BOT_ID } from "@/lib/defaults";
@@ -79,7 +80,7 @@ export function LeadTicket({ botName, onDone }: LeadTicketProps) {
     <div
       className={cn(
         "relative rounded-r1 border border-paper-rule bg-paper px-4 py-4",
-        "shadow-[0_10px_26px_-12px_rgba(30,41,90,.35)]",
+        "shadow-card",
         "transition-all duration-[450ms] ease-out",
         phase === "sent" && "-translate-y-2 -rotate-1",
         phase === "gone" && "translate-y-[30px] scale-90 opacity-0",
@@ -104,6 +105,7 @@ export function LeadTicket({ botName, onDone }: LeadTicketProps) {
           ref={nameRef}
           className={TICKET_INPUT}
           placeholder="Your name"
+          aria-label="Your name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -111,6 +113,7 @@ export function LeadTicket({ botName, onDone }: LeadTicketProps) {
           className={TICKET_INPUT}
           type="email"
           placeholder="Email"
+          aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -118,6 +121,7 @@ export function LeadTicket({ botName, onDone }: LeadTicketProps) {
           className={TICKET_INPUT}
           type="tel"
           placeholder="Phone (optional)"
+          aria-label="Phone (optional)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
@@ -126,7 +130,7 @@ export function LeadTicket({ botName, onDone }: LeadTicketProps) {
       <button
         type="button"
         className={cn(
-          "mt-3 w-full rounded-r1 border-none py-[11px] font-ui text-[13.5px] font-[700] text-white",
+          "mt-3 w-full rounded-r1 border-none py-[11px] font-ui text-[13.5px] font-[700] text-[var(--on-accent)]",
           "cursor-pointer bg-accent transition-opacity",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
           !canSubmit && "cursor-not-allowed opacity-40",
@@ -134,7 +138,11 @@ export function LeadTicket({ botName, onDone }: LeadTicketProps) {
         disabled={!canSubmit || phase !== "idle"}
         onClick={handleSubmit}
       >
-        {phase === "sent" ? "Sent ✓" : "Hand me to the team →"}
+        {phase === "sent" ? (
+          <span className="inline-flex items-center gap-1">Sent <CheckIcon className="h-3.5 w-3.5" /></span>
+        ) : (
+          <span className="inline-flex items-center gap-1">Hand me to the team <ArrowRight className="h-3.5 w-3.5" /></span>
+        )}
       </button>
     </div>
   );
@@ -157,21 +165,5 @@ export function LeadStub({ name }: LeadStubProps) {
         </small>
       </div>
     </div>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 
 const SNIPPET = `<script
   src="https://cdn.zeva.app/widget.js"
-  data-bot-id="acme-salon"
+  data-bot-id="zeva-ai"
   data-accent="#4f46e5"
   data-corners="soft"
   data-launcher="pill"
@@ -85,9 +86,9 @@ export function CopyEmbed() {
         <button
           type="button"
           onClick={copy}
-          className="rounded-r1 border border-code-btn-border bg-code-btn px-3 py-1.5 font-mono text-[11.5px] font-[650] text-code-btn-fg transition-colors hover:bg-code-btn-hover"
+          className="inline-flex items-center gap-1 rounded-r1 border border-code-btn-border bg-code-btn px-3 py-1.5 font-mono text-[11.5px] font-[650] text-code-btn-fg transition-colors hover:bg-code-btn-hover"
         >
-          {copied ? "✓ Copied" : "Copy"}
+          {copied ? (<><Check className="h-3 w-3" /> Copied</>) : "Copy"}
         </button>
       </div>
       <pre className="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-[1.7] text-code-fg">
