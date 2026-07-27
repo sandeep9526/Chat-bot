@@ -107,6 +107,7 @@
     whitelabel: getAttr("data-whitelabel", "off") === "on",
     draggable: getAttr("data-draggable", "off") === "on",
     logo: getAttr("data-logo", ""),
+    consent: getAttr("data-consent", "off") === "on",
   };
 
   var HAS_FETCH = typeof fetch === "function";
@@ -166,11 +167,45 @@
     accentStrong: shade(RAW.accent),
     welcome: "Ask in your own words — every answer comes from our documents.",
     suggestions: GENERIC_SUGGESTIONS.slice(),
+    formSchema: [],
     configStatus: "loading", // loading | ready | error
     configErrorMessage: "",
     isOpen: false,
     isScanning: false,
   };
+
+  var SESSION_ID = (function () {
+    try {
+      var k = "zeva_sess_" + BOT_ID;
+      var s = localStorage.getItem(k);
+      if (!s) {
+        s = "sess_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
+        localStorage.setItem(k, s);
+      }
+      return s;
+    } catch (e) {
+      return "sess_" + Math.random().toString(36).substring(2, 11);
+    }
+  })();
+
+  var liveWs = null;
+  function connectLiveChat() {
+    try {
+      var wsUrl = API_URL.replace(/^http/, "ws") + "/ws/live-chat/" + encodeURIComponent(SESSION_ID) + "?botId=" + encodeURIComponent(BOT_ID);
+      liveWs = new WebSocket(wsUrl);
+      liveWs.onmessage = function (event) {
+        try {
+          var msg = JSON.parse(event.data);
+          if (msg.sender === "agent" || msg.sender === "system") {
+            addAssistantMessage({ text: msg.text, sources: [], isGuardrail: false });
+          }
+        } catch (err) {}
+      };
+      liveWs.onclose = function () {
+        setTimeout(connectLiveChat, 5000);
+      };
+    } catch (err) {}
+  }
 
   // DOM refs (populated in mount())
   var hostEl, shadow, anchorEl, panelEl, launcherWrapEl, streamEl;
@@ -572,7 +607,8 @@
     // driven by the bot owner's plan) and this gets hidden in onConfigLoaded()
     // only if the server actually allows it. Prevents a free-tier embed from
     // simply setting data-whitelabel="on" itself to remove branding for free.
-    var brandRow = '<span class="zeva-footer-brand" id="zeva-footer-brand">Powered by <b>Zeva</b></span>';
+    var refParam = RAW.botId ? "?ref=" + RAW.botId + "&utm_source=widget_watermark" : "";
+    var brandRow = '<span class="zeva-footer-brand" id="zeva-footer-brand">Powered by <b><a href="https://zeva.app' + refParam + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">Zeva</a></b></span>';
     var headerAvatar = RAW.logo
       ? '<div class="zeva-header-avatar"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></div>'
       : '<div class="zeva-header-avatar"></div>';
@@ -668,6 +704,18 @@
         if (sendBtn) sendBtn.disabled = true;
         ask(text);
       });
+    }
+
+    // Consent notice — when data-consent="on", show a disclaimer before chat
+    if (RAW.consent) {
+      var consentBar = document.createElement("div");
+      consentBar.id = "zeva-consent-bar";
+      consentBar.style.cssText = "padding:10px 14px;font-size:12px;color:#666;text-align:center;border-top:1px solid #eee;background:#fafafa;";
+      consentBar.innerHTML = 'This automated assistant uses AI processing. By continuing, you consent to our data terms and analytics storage.';
+      var composerWrap = shadow.querySelector(".zeva-composer-wrap") || shadow.getElementById("zeva-composer-form");
+      if (composerWrap && composerWrap.parentNode) {
+        composerWrap.parentNode.insertBefore(consentBar, composerWrap);
+      }
     }
 
     refreshBranding();
@@ -903,6 +951,7 @@
     }
     if (cfg.welcome) state.welcome = cfg.welcome;
     if (Array.isArray(cfg.suggestions) && cfg.suggestions.length) state.suggestions = cfg.suggestions;
+    if (Array.isArray(cfg.formSchema) && cfg.formSchema.length > 0) state.formSchema = cfg.formSchema;
 
     // Apply design settings from /config (Studio-saved look)
     var design = cfg.design && cfg.design.config ? cfg.design.config : null;
@@ -1097,39 +1146,87 @@
       '<span class="zeva-ticket-stamp">WARM LEAD</span>' +
       '<h4 class="zeva-ticket-title">' + escapeHtml(state.name) + " · handoff</h4>" +
       '<div class="zeva-ticket-sub">Leave your details and the team will reach out.</div>' +
-      '<div class="zeva-ticket-fields">' +
-      '<input class="zeva-ticket-input" type="text" placeholder="Your name" aria-label="Your name" id="zt-name" />' +
-      '<input class="zeva-ticket-input" type="email" placeholder="Email" aria-label="Email" id="zt-email" />' +
-      '<input class="zeva-ticket-input" type="tel" placeholder="Phone (optional)" aria-label="Phone (optional)" id="zt-phone" />' +
-      '<input class="zeva-ticket-input" type="text" placeholder="What do you need? (optional)" aria-label="Message (optional)" id="zt-message" />' +
-      "</div>" +
+      '<div class="zeva-ticket-fields" id="zt-fields"></div>' +
       '<button type="button" class="zeva-ticket-submit" id="zt-submit" disabled>Hand me to the team →</button>' +
       "</div>";
 
     var card = el.querySelector("#zt-card");
-    var nameI = el.querySelector("#zt-name");
-    var emailI = el.querySelector("#zt-email");
-    var phoneI = el.querySelector("#zt-phone");
-    var msgI = el.querySelector("#zt-message");
+    var fieldsWrap = el.querySelector("#zt-fields");
     var submitBtn = el.querySelector("#zt-submit");
     var phase = "idle";
+    var inputEls = {};
+
+    var schema = state.formSchema && state.formSchema.length > 0 ? state.formSchema : [
+      { id: "name", label: "Your name", type: "text", required: true },
+      { id: "email", label: "Email", type: "email", required: true },
+      { id: "phone", label: "Phone (optional)", type: "tel", required: false },
+      { id: "message", label: "What do you need? (optional)", type: "text", required: false }
+    ];
 
     function refresh() {
-      var can = nameI.value.trim().length > 0 && emailI.value.trim().length > 0;
+      var can = true;
+      for (var i = 0; i < schema.length; i++) {
+        var f = schema[i];
+        if (f.required && inputEls[f.id]) {
+          var val = inputEls[f.id].value || "";
+          if (val.trim().length === 0) can = false;
+        }
+      }
       submitBtn.disabled = !can || phase !== "idle";
     }
-    nameI.addEventListener("input", refresh);
-    emailI.addEventListener("input", refresh);
+
+    for (var i = 0; i < schema.length; i++) {
+      var f = schema[i];
+      var inputEl;
+      if (f.type === "dropdown" && Array.isArray(f.options) && f.options.length > 0) {
+        inputEl = document.createElement("select");
+        inputEl.className = "zeva-ticket-input";
+        var defaultOpt = document.createElement("option");
+        defaultOpt.value = "";
+        defaultOpt.textContent = "-- Select " + f.label + " --";
+        inputEl.appendChild(defaultOpt);
+        for (var j = 0; j < f.options.length; j++) {
+          var opt = document.createElement("option");
+          opt.value = f.options[j];
+          opt.textContent = f.options[j];
+          inputEl.appendChild(opt);
+        }
+      } else if (f.type === "textarea") {
+        inputEl = document.createElement("textarea");
+        inputEl.className = "zeva-ticket-input";
+        inputEl.rows = 2;
+        inputEl.placeholder = f.label + (f.required ? "" : " (optional)");
+      } else {
+        inputEl = document.createElement("input");
+        inputEl.className = "zeva-ticket-input";
+        inputEl.type = f.type || "text";
+        inputEl.placeholder = f.label + (f.required ? "" : " (optional)");
+      }
+      inputEl.id = "zt-" + f.id;
+      inputEl.setAttribute("aria-label", f.label);
+      inputEl.addEventListener("input", refresh);
+      inputEl.addEventListener("change", refresh);
+      fieldsWrap.appendChild(inputEl);
+      inputEls[f.id] = inputEl;
+    }
 
     submitBtn.addEventListener("click", function () {
-      var can = nameI.value.trim().length > 0 && emailI.value.trim().length > 0;
-      if (!can || phase !== "idle") return;
-      var leadName = nameI.value.trim();
+      if (submitBtn.disabled || phase !== "idle") return;
+      var leadName = (inputEls["name"] && inputEls["name"].value.trim()) || "Visitor";
+      var emailVal = (inputEls["email"] && inputEls["email"].value.trim()) || "";
+      var phoneVal = (inputEls["phone"] && inputEls["phone"].value.trim()) || "";
+      var msgVal = (inputEls["message"] && inputEls["message"].value.trim()) || "";
+      var customData = {};
+
+      for (var k = 0; k < schema.length; k++) {
+        var sid = schema[k].id;
+        if (["name", "email", "phone", "message"].indexOf(sid) === -1 && inputEls[sid]) {
+          customData[schema[k].label || sid] = inputEls[sid].value.trim();
+        }
+      }
 
       if (HAS_FETCH) {
-        var payload = { name: leadName, email: emailI.value.trim(), botId: BOT_ID };
-        var phoneVal = phoneI.value.trim();
-        var msgVal = msgI.value.trim();
+        var payload = { name: leadName, email: emailVal, botId: BOT_ID, custom_data: customData };
         if (phoneVal) payload.phone = phoneVal;
         if (msgVal) payload.message = msgVal;
         fetch(API_URL + "/lead", {
@@ -1153,7 +1250,7 @@
       }, reduce ? 0 : 640);
     });
 
-    setTimeout(function () { nameI.focus(); }, 60);
+    setTimeout(function () { if (inputEls["name"]) inputEls["name"].focus(); }, 60);
 
     return el;
   }
@@ -1224,6 +1321,48 @@
       slot.appendChild(leadBtn);
     }
 
+    // Feedback buttons (thumbs up/down) for hallucination diagnostics
+    var feedbackWrap = document.createElement("div");
+    feedbackWrap.className = "zeva-feedback-wrap";
+    feedbackWrap.style.cssText = "display:flex;gap:6px;margin-top:6px;padding-left:25px;";
+
+    var thumbUp = document.createElement("button");
+    thumbUp.type = "button";
+    thumbUp.title = "Helpful";
+    thumbUp.style.cssText = "background:none;border:1px solid #ddd;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;color:#888;transition:all .15s;";
+    thumbUp.innerHTML = "&#128077;";
+    thumbUp.addEventListener("click", function () {
+      thumbUp.style.background = "#dcfce7"; thumbUp.style.borderColor = "#22c55e"; thumbUp.style.color = "#16a34a";
+      thumbDown.style.opacity = "0.4";
+      sendFeedback(1, payload.text);
+    });
+
+    var thumbDown = document.createElement("button");
+    thumbDown.type = "button";
+    thumbDown.title = "Not helpful";
+    thumbDown.style.cssText = "background:none;border:1px solid #ddd;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;color:#888;transition:all .15s;";
+    thumbDown.innerHTML = "&#128078;";
+    thumbDown.addEventListener("click", function () {
+      thumbDown.style.background = "#fee2e2"; thumbDown.style.borderColor = "#ef4444"; thumbDown.style.color = "#dc2626";
+      thumbUp.style.opacity = "0.4";
+      sendFeedback(-1, payload.text);
+    });
+
+    feedbackWrap.appendChild(thumbUp);
+    feedbackWrap.appendChild(thumbDown);
+    wrap.appendChild(feedbackWrap);
+
+    function sendFeedback(score, answerText) {
+      try {
+        var apiUrl = RAW.apiUrl || "";
+        fetch(apiUrl + "/chat/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ botId: BOT_ID, score: score, answer: answerText }),
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
     streamEl.appendChild(wrap);
     scrollToBottom();
 
@@ -1260,7 +1399,7 @@
     fetch(API_URL + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, botId: BOT_ID }),
+      body: JSON.stringify({ message: text, botId: BOT_ID, sessionId: SESSION_ID }),
       signal: controller ? controller.signal : undefined,
     })
       .then(function (res) {
@@ -1293,4 +1432,5 @@
   // assigned before mount() can possibly run, including the synchronous path
   // (whenBodyReady calls back immediately when document.body already exists).
   boot();
+  if (typeof WebSocket !== "undefined") connectLiveChat();
 })();

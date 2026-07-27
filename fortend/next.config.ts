@@ -4,6 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
+  output: "standalone",
 };
 
 // Safe with no Sentry project configured — this only adds build-time

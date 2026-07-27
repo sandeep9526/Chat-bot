@@ -32,6 +32,10 @@ ALTER TABLE bots ADD COLUMN IF NOT EXISTS notification_email TEXT;
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS webhook_url TEXT;
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS google_sheets_url TEXT;
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS template_category TEXT DEFAULT 'general';
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS model_override TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS form_schema JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS retention_days INT DEFAULT 90;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS custom_prompt_style TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_whatsapp_phone ON bots(whatsapp_phone_number_id) WHERE whatsapp_phone_number_id IS NOT NULL;
 
@@ -47,14 +51,26 @@ CREATE TABLE IF NOT EXISTS leads (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS custom_data JSONB DEFAULT '{}'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_leads_custom_data ON leads USING gin (custom_data);
+
 CREATE TABLE IF NOT EXISTS chats (
   id           BIGSERIAL PRIMARY KEY,
   bot_id       TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
   question     TEXT,
   answer       TEXT,
   is_guardrail BOOLEAN DEFAULT false,
+  prompt_tokens INT DEFAULT 0,
+  completion_tokens INT DEFAULT 0,
+  feedback_score INT DEFAULT 0,
+  feedback_text TEXT,
   created_at   TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS prompt_tokens INT DEFAULT 0;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS completion_tokens INT DEFAULT 0;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT;
+CREATE INDEX IF NOT EXISTS idx_chats_feedback ON chats(bot_id, feedback_score);
 
 CREATE TABLE IF NOT EXISTS handoffs (
   id         BIGSERIAL PRIMARY KEY,

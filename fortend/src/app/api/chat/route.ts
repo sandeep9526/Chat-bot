@@ -1,26 +1,26 @@
 import { NextResponse } from "next/server";
-import type { ChatResponse } from "@/lib/types";
 
-// POST /api/chat — always dynamic, per-request, streamed.
+// Architectural Clean-up:
+// All client-side RAG conversation requests directly communicate with the FastAPI
+// engine via `sendChat` in `src/lib/api.ts`. This stub remains only as an explicit
+// HTTP redirect/forwarder for legacy webhook monitors or CLI testing tools.
 export const dynamic = "force-dynamic";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { message, botId } = body as { message: string; botId?: string };
-
-  if (!message || typeof message !== "string") {
+  try {
+    const body = await request.json();
+    const res = await fetch(`${BACKEND_URL}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
     return NextResponse.json(
-      { error: "message is required" },
-      { status: 400 },
+      { error: "FastAPI RAG backend connection failed", details: String(err) },
+      { status: 502 },
     );
   }
-
-  // TODO: wire to real RAG backend, keyed by botId (the tenant).
-  const response: ChatResponse = {
-    answer: `Placeholder response for "${message}" (bot: ${botId ?? "demo"}). Wire me to your real /chat endpoint.`,
-    sources: [],
-    isGuardrail: true,
-  };
-
-  return NextResponse.json(response);
 }

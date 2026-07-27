@@ -12,6 +12,7 @@ interface Msg {
   text: string;
   sources?: ChatSource[];
   isGuardrail?: boolean;
+  limitReached?: boolean;
 }
 
 let seq = 0;
@@ -53,6 +54,7 @@ export function TestChatBox({ botId }: { botId: string }) {
               text: res.answer,
               sources: res.sources,
               isGuardrail: res.isGuardrail,
+              limitReached: res.limitReached,
             },
           ]);
           qc.invalidateQueries({ queryKey: ["admin"] });
@@ -185,11 +187,15 @@ export function TestChatBox({ botId }: { botId: string }) {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] font-[800] uppercase tracking-wider text-accent">Zeva AI</span>
-                      {m.isGuardrail && (
+                      {m.limitReached ? (
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9.5px] font-[750] text-amber-500">
+                          Quota Exceeded
+                        </span>
+                      ) : m.isGuardrail ? (
                         <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[9.5px] font-[750] text-warn">
                           Handed off
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <p className="text-[13px] leading-relaxed text-fg">{m.text}</p>
                     {m.sources && m.sources.length > 0 && (

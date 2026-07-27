@@ -40,6 +40,7 @@ export interface ChatMessage {
   text: string;
   sources?: ChatSource[];
   isGuardrail?: boolean;
+  limitReached?: boolean;
   /** Set once the lead ticket for this message has been handed off. */
   ticketState?: TicketState;
   /** Name the visitor entered on the lead ticket (shown in the handoff stub). */
@@ -75,6 +76,7 @@ export interface ChatResponse {
   answer: string;
   sources: ChatSource[];
   isGuardrail: boolean;
+  limitReached?: boolean;
 }
 
 export interface LeadPayload {

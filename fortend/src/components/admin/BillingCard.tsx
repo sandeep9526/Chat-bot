@@ -249,6 +249,13 @@ export function BillingCard() {
           </p>
         )}
         {error && <p className="mt-3 text-[12px] text-bad">{error}</p>}
+
+        <p className="mt-4 border-t border-border pt-3 text-[11.5px] text-faint leading-normal">
+          By activating a subscription plan or recurring billing mandate, you acknowledge and agree to Zeva&apos;s{" "}
+          <a href="/terms" target="_blank" className="text-accent hover:underline font-[500]">Terms of Service</a>,{" "}
+          <a href="/privacy" target="_blank" className="text-accent hover:underline font-[500]">Privacy Policy</a>, and{" "}
+          <a href="/refund-policy" target="_blank" className="text-accent hover:underline font-[500]">Refund Policy</a> (including RBI 24-hr pre-debit notifications for INR subscriptions).
+        </p>
       </div>
     </div>
   );

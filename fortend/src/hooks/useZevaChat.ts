@@ -44,7 +44,8 @@ export function useZevaChat() {
               text: res.answer,
               sources: res.sources,
               isGuardrail: res.isGuardrail,
-              ticketState: res.isGuardrail ? "idle" : undefined,
+              limitReached: res.limitReached,
+              ticketState: (res.isGuardrail && !res.limitReached) ? "idle" : undefined,
             });
           },
           onError: () => {

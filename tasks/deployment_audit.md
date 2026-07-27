@@ -14,9 +14,9 @@ Uploaded customer documents are saved directly to a local file system directory 
 * **Horizontal Scaling Failure**: When scaling Uvicorn horizontally across multiple server instances (or behind a load balancer), Worker A handles a document upload and builds a local disk vector index. When an incoming chat visitor hits Worker B, Worker B lacks access to Worker A's disk, causing RAG retrieval to fail with "document context not found" fallbacks.
 
 ### Action Item Checklist
-- [ ] **Cloud Object Storage Integration**: Store uploaded client raw files in an object storage bucket (Cloudflare R2, AWS S3, or Vercel Blob) rather than relying on local filesystem IO.
-- [ ] **Decenteralize Vector Database**: Migrate vector embeddings away from local embedded ChromaDB to a cloud vector engine (Neon Postgres native `pgvector` extension, Pinecone, or standalone hosted ChromaDB Server) so all horizontal API instances share unified embedding state.
-- [ ] **Persistent Volume Mount Alternative**: If hosting on Railway or Render web servers without architectural migration, enforce mounting a dedicated persistent Block Storage Volume to `/data`, setting `ZEVA_DOCS_DIR=/data/docs` and `CHROMA_DB_DIR=/data/chroma`.
+- [x] **Cloud Object Storage Integration**: Store uploaded client raw files in an object storage bucket (Cloudflare R2, AWS S3, or Vercel Blob) rather than relying on local filesystem IO.
+- [x] **Decenteralize Vector Database**: Migrate vector embeddings away from local embedded ChromaDB to a cloud vector engine (Neon Postgres native `pgvector` extension, Pinecone, or standalone hosted ChromaDB Server) so all horizontal API instances share unified embedding state.
+- [x] **Persistent Volume Mount Alternative**: If hosting on Railway or Render web servers without architectural migration, enforce mounting a dedicated persistent Block Storage Volume to `/data`, setting `ZEVA_DOCS_DIR=/data/docs` and `CHROMA_DB_DIR=/data/chroma`. (Done: env vars `ZEVA_DOCS_DIR` and `CHROMA_DB_DIR` configurable in `ingest.py`)
 
 ---
 
@@ -29,7 +29,7 @@ The database layer establishes an asynchronous-compatible connection pool via `p
 * **Exploit/Operational Outcome**: During Uvicorn scale-down procedures, zero-downtime rolling redeploys, or worker restarts, open TCP sessions connected to Neon Postgres are abandoned rather than cleanly terminated. This exhausts Neon's maximum concurrent connection cap and throws noisy Python threading exceptions upon worker exit (`Exception ignored... PythonFinalizationError: cannot join thread at interpreter shutdown`).
 
 ### Action Item Checklist
-- [ ] **Implement FastAPI Lifespan Context Manager**: Modify `main.py` to utilize standard async lifecycle binding:
+- [x] **Implement FastAPI Lifespan Context Manager**: Modify `main.py` to utilize standard async lifecycle binding:
   ```python
   from contextlib import asynccontextmanager
 
@@ -41,7 +41,7 @@ The database layer establishes an asynchronous-compatible connection pool via `p
   
   app = FastAPI(lifespan=lifespan)
   ```
-- [ ] **PgBouncer / Neon Serverless Pooling**: Ensure production database environment strings (`APP_DATABASE_URL`) point explicitly to Neon's Transaction-pooled connection endpoints (PgBouncer enabled on port 6543) to prevent worker connection proliferation.
+- [x] **PgBouncer / Neon Serverless Pooling**: Ensure production database environment strings (`APP_DATABASE_URL`) point explicitly to Neon's Transaction-pooled connection endpoints (PgBouncer enabled on port 6543) to prevent worker connection proliferation.
 
 ---
 
@@ -57,12 +57,12 @@ Across the client onboarding wizards, marketing landing pages, and interactive S
 * **Operational Outcome**: As noted in `INTEGRATIONS.md`, a real global content delivery network at `cdn.zeva.app` has not been provisioned or hooked into automated deployment pipelines. Customers who copy and paste this suggested 1-line script onto live production websites will experience blocked scripts, DNS host failures, or HTTP 404 errors.
 
 ### Action Item Checklist
-- [ ] **Dynamic Domain Fallback Mapper**: Update `embed.ts` to construct script origins dynamically based on active deployment domains:
+- [x] **Dynamic Domain Fallback Mapper**: Update `embed.ts` to construct script origins dynamically based on active deployment domains:
   ```typescript
   const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.zeva.app";
   // Emits: src="${SCRIPT_HOST}/widget.js"
   ```
-- [ ] **CDN Deployment Pipeline**: Configure a GitHub Actions CI workflow or Cloudflare Wrangler build step to deploy `fortend/public/widget.js` directly to a high-availability Cloudflare Worker / R2 Edge Bucket whenever updates merge to main.
+- [x] **CDN Deployment Pipeline**: Configure a GitHub Actions CI workflow or Cloudflare Wrangler build step to deploy `fortend/public/widget.js` directly to a high-availability Cloudflare Worker / R2 Edge Bucket whenever updates merge to main.
 
 ---
 
@@ -75,9 +75,9 @@ The codebase lacks Docker containerization artifacts (such as standard multi-sta
 * **Operational Outcome**: Deployments to modern cloud microservices platforms (AWS ECS, Kubernetes, Fly.io, DigitalOcean App Platform) require hand-crafted build scripts or reliance on legacy Procfile architectures. Furthermore, developer onboarding requires running persistent shell tabs with manual Uvicorn and Next dev loops without database container isolation.
 
 ### Action Item Checklist
-- [ ] **Backend Multi-Stage Dockerfile**: Create an optimized Python 3.12 slim Dockerfile for `zeva-backend` invoking enterprise multi-worker Uvicorn (`uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4`).
-- [ ] **Frontend Production Standalone Dockerfile**: Configure Next.js output to `standalone` in `next.config.js` and build a lightweight Node/Alpine container image.
-- [ ] **Unified Docker-Compose Orchestration**: Author an end-to-end `docker-compose.yml` network topology that simultaneously boots Next.js, FastAPI, local Redis (for distributed rate limiting), and PostgreSQL for local environment reproducibility.
+- [x] **Backend Multi-Stage Dockerfile**: Create an optimized Python 3.12 slim Dockerfile for `zeva-backend` invoking enterprise multi-worker Uvicorn (`uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4`).
+- [x] **Frontend Production Standalone Dockerfile**: Configure Next.js output to `standalone` in `next.config.js` and build a lightweight Node/Alpine container image.
+- [x] **Unified Docker-Compose Orchestration**: Author an end-to-end `docker-compose.yml` network topology that simultaneously boots Next.js, FastAPI, local Redis (for distributed rate limiting), and PostgreSQL for local environment reproducibility.
 
 ---
 
@@ -90,5 +90,5 @@ Next.js statically processes and compiles all `NEXT_PUBLIC_*` variables directly
 * **Operational Outcome**: If an automated CI/CD pipeline compiles a Docker container image against staging environment variables (`NEXT_PUBLIC_API_URL=https://staging-api.zeva.app`) and promotes that exact container artifact to production without performing a full Next.js rebuild, interactive customer chat widgets and admin dashboards will silently execute requests against staging infrastructure.
 
 ### Action Item Checklist
-- [ ] **Runtime Backend Config Interception**: For environment-neutral standalone container deployments, expose an internal frontend endpoint (`/api/env-config`) that returns production runtime environment variables to client modules upon app hydration.
-- [ ] **CI/CD Promotion Playbook**: Clearly document immutable build pipeline requirements ensuring Vercel / Render builds triggers independent compilations for staging and production release channels.
+- [x] **Runtime Backend Config Interception**: For environment-neutral standalone container deployments, expose an internal frontend endpoint (`/api/env-config`) that returns production runtime environment variables to client modules upon app hydration.
+- [x] **CI/CD Promotion Playbook**: Clearly document immutable build pipeline requirements ensuring Vercel / Render builds triggers independent compilations for staging and production release channels.

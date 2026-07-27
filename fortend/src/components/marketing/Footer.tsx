@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { submitLead } from "@/lib/api";
 import { Container } from "./Container";
 import { ThemeToggle } from "./ThemeToggle";
 import { ArrowRightIcon, CheckIcon, ShieldMarkIcon } from "./icons";
@@ -18,16 +19,22 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Explore",
     links: [
-      { label: "Live demo", href: "/demo" },
-      { label: "Studio", href: "/dashboard#appearance" },
+      { label: "Live interactive studio", href: "/studio" },
+      { label: "Simulated salon site", href: "/demo" },
+      { label: "Client reviews", href: "#proof" },
       { label: "FAQ", href: "#faq" },
     ],
   },
   {
-    title: "Account",
+    title: "Legal",
     links: [
-      { label: "Sign in", href: "/sign-in" },
-      { label: "Sign up", href: "/sign-up" },
+      { label: "Privacy policy", href: "/privacy" },
+      { label: "Terms of service", href: "/terms" },
+      { label: "Refund & cancellation policy", href: "/refund-policy" },
+      { label: "Cookie & AI disclosure", href: "/cookies" },
+      { label: "Acceptable use (AUP)", href: "/terms#aup" },
+      { label: "Subprocessors & residency", href: "/privacy#subprocessors" },
+      { label: "Security & PII architecture", href: "/privacy#security" },
     ],
   },
 ];
@@ -39,21 +46,17 @@ export function Footer() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
 
-  // Captures the email as a lead via the existing /api/lead endpoint (which
-  // requires a name), tagged so it can be told apart from widget leads.
+  // Captures the email as a lead via the direct FastAPI backend layer,
+  // tagged so it can be told apart from widget leads.
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email || status === "loading") return;
     setStatus("loading");
     try {
-      const res = await fetch("/api/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: email.split("@")[0] || "Subscriber",
-          email,
-          botId: "marketing-updates",
-        }),
+      const res = await submitLead({
+        name: email.split("@")[0] || "Subscriber",
+        email,
+        botId: "marketing-updates",
       });
       setStatus(res.ok ? "sent" : "error");
     } catch {

@@ -221,12 +221,14 @@ export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
         answer?: string;
         sources?: ChatSource[];
         isGuardrail?: boolean;
+        limitReached?: boolean;
       };
       if (data && (data.answer || data.reply)) {
         return {
           answer: data.answer ?? data.reply ?? "",
           sources: data.sources ?? [],
           isGuardrail: data.isGuardrail ?? false,
+          limitReached: data.limitReached ?? false,
         };
       }
     } catch (err) {

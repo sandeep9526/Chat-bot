@@ -46,10 +46,18 @@ export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
       </div>
 
       {/* Guardrail: no matching source. */}
-      {message.isGuardrail && (
+      {message.isGuardrail && !message.limitReached && (
         <div className="mt-3 flex items-center gap-2.5 rounded-r2 border border-dashed border-border px-3 py-2.5 text-[12.5px] text-muted">
           <WarningIcon className="h-4 w-4 shrink-0 text-amber-500" />
           No matching source — routing you to a human.
+        </div>
+      )}
+
+      {/* Quota limit or inactive subscription warning */}
+      {message.limitReached && (
+        <div className="mt-3.5 flex items-center gap-2.5 rounded-r2 border border-amber-500/40 bg-amber-500/10 px-3.5 py-3 text-[12.5px] font-[600] text-amber-600 dark:text-amber-400">
+          <WarningIcon className="h-4 w-4 shrink-0 text-amber-500" />
+          <span>⚠️ AI interaction limit reached. Automated chatbot responses are temporarily paused.</span>
         </div>
       )}
 

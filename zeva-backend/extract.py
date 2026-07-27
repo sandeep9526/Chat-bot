@@ -42,10 +42,25 @@ def _extract_pdf(data: bytes) -> str:
 
     reader = PdfReader(io.BytesIO(data))
     parts = []
-    for page in reader.pages:
-        t = page.extract_text() or ""
+    for idx, page in enumerate(reader.pages):
+        # Attempt standard layout-aware structured text extraction (preserves multi-column & table spacing)
+        try:
+            t = page.extract_text(extraction_mode="layout") or page.extract_text() or ""
+        except Exception:
+            t = page.extract_text() or ""
         if t.strip():
-            parts.append(t)
+            parts.append(f"--- Page {idx+1} ---\n{t.strip()}")
+        else:
+            # Scanned page OCR fallback (Tesseract / pytesseract OCR processing for catalog images)
+            try:
+                import pytesseract
+                from PIL import Image
+                for img_obj in page.images:
+                    img_text = pytesseract.image_to_string(Image.open(io.BytesIO(img_obj.data)))
+                    if img_text.strip():
+                        parts.append(f"--- Page {idx+1} (OCR Extracted) ---\n{img_text.strip()}")
+            except Exception:
+                pass
     return "\n\n".join(parts)
 
 
@@ -54,12 +69,17 @@ def _extract_docx(data: bytes) -> str:
 
     doc = Document(io.BytesIO(data))
     parts = [p.text for p in doc.paragraphs if p.text.strip()]
-    # Pull table cells too — pricing/hours are often laid out in tables.
+    # Structured table-preserving markdown extraction
     for table in doc.tables:
-        for row in table.rows:
-            cells = [c.text.strip() for c in row.cells if c.text.strip()]
-            if cells:
-                parts.append(" | ".join(cells))
+        table_md = []
+        for r_idx, row in enumerate(table.rows):
+            cells = [c.text.strip() for c in row.cells]
+            if any(cells):
+                table_md.append("| " + " | ".join(cells) + " |")
+                if r_idx == 0:
+                    table_md.append("| " + " | ".join(["---"] * len(cells)) + " |")
+        if table_md:
+            parts.append("\n" + "\n".join(table_md) + "\n")
     return "\n".join(parts)
 
 

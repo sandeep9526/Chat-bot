@@ -16,7 +16,7 @@ print(f"[chat] bot={req.botId} msg='{req.message[:50]}' → {len(hits)} raw hits
 * **Regulatory Hazard**: When visitors type sensitive PII (credit card digits, social security numbers, banking details, passwords, or personal health descriptions), unmasked sensitive data is permanently committed to standard stdout logs, Cloudwatch, Sentry, and logging aggregation pipelines. This violates strict PCI-DSS, HIPAA, and GDPR logging containment controls.
 
 ### Codebase Remediation Checklist
-- [ ] **Create Dedicated PII Scrubbing Logger (`logger.py`)**: Replace raw `print()` statements with a centralized application logging helper that automatically intercepts and applies Regex pattern redactors for credit cards, SSNs, and phone numbers:
+- [x] **Create Dedicated PII Scrubbing Logger (`logger.py`)**: Replace raw `print()` statements with a centralized application logging helper that automatically intercepts and applies Regex pattern redactors for credit cards, SSNs, and phone numbers:
   ```python
   import re, logging
 
@@ -25,7 +25,7 @@ print(f"[chat] bot={req.botId} msg='{req.message[:50]}' → {len(hits)} raw hits
       text = re.sub(r"\b\d{3}[ -]?\d{2}[ -]?\d{4}\b", "[REDACTED_SSN]", text)
       return text
   ```
-- [ ] **Sanitize Visitor Strings in Console Out**: Wrap all printed `req.message` and `user_message` occurrences inside `scrub_pii(req.message)`.
+- [x] **Sanitize Visitor Strings in Console Out**: Wrap all printed `req.message` and `user_message` occurrences inside `scrub_pii(req.message)`.
 
 ---
 
@@ -38,13 +38,13 @@ Customer contact details (`name`, `email`, `phone`, `notes` in `leads`) and comp
 * **Regulatory Hazard**: In specialized vertical deployments (such as medical spas, real estate finance, or healthcare clinics), capturing patient symptom notes or financial preferences in plaintext columns violates SOC 2, HIPAA, and DPDPA storage mandates. If a database read-replica or SQL backup snapshot is inappropriately accessed, customer identities are fully exposed.
 
 ### Codebase Remediation Checklist
-- [ ] **Application-Layer Field Encryption**: Integrate Python `cryptography.fernet` symmetric field encryption utilizing a protected environment variable (`PII_ENCRYPTION_KEY`) when inserting or updating sensitive database attributes (`email`, `phone`, `notes`):
+- [x] **Application-Layer Field Encryption**: Integrate Python `cryptography.fernet` symmetric field encryption utilizing a protected environment variable (`PII_ENCRYPTION_KEY`) when inserting or updating sensitive database attributes (`email`, `phone`, `notes`):
   ```python
   from cryptography.fernet import Fernet
   cipher = Fernet(os.getenv("PII_ENCRYPTION_KEY"))
   encrypted_phone = cipher.encrypt(lead_phone.encode()).decode()
   ```
-- [ ] **Role-Based Data Masking for Support**: Ensure platform superadmin debug views automatically apply pseudonymized masking (e.g., `s*******@gmail.com` and `+1-555-****-0199`) unless explicit tenant decrytion authorization is verified.
+- [x] **Role-Based Data Masking for Support**: Ensure platform superadmin debug views automatically apply pseudonymized masking (e.g., `s*******@gmail.com` and `+1-555-****-0199`) unless explicit tenant decrytion authorization is verified.
 
 ---
 
@@ -57,7 +57,7 @@ Every incoming user conversation prompt and document fragment is transmitted ove
 * **Regulatory Hazard**: Streaming unfiltered customer inquiries containing credit cards, bank account numbers, or patient records directly to third-party LLM cloud infrastructure breaches zero-retention Enterprise Data Sovereignty boundaries.
 
 ### Codebase Remediation Checklist
-- [ ] **Pre-Inference Redaction Pipeline**: Implement an automated pre-processing filter (utilizing Microsoft Presidio or lightweight token redactors) that strips sensitive numeric sequences and financial tokens prior to constructing outbound OpenRouter HTTP payloads.
+- [x] **Pre-Inference Redaction Pipeline**: Implement an automated pre-processing filter (utilizing Microsoft Presidio or lightweight token redactors) that strips sensitive numeric sequences and financial tokens prior to constructing outbound OpenRouter HTTP payloads.
 
 ---
 
@@ -70,8 +70,8 @@ Captured conversation logs (`chats`) and contact submissions (`leads`, `handoffs
 * **Regulatory Hazard**: Under GDPR Article 5(1)(e) (Storage Limitation) and CCPA privacy standards, enterprises cannot store visitor logs indefinitely without explicit business justification and systematic expiration pruning.
 
 ### Codebase Remediation Checklist
-- [ ] **Tenant Retention Configuration**: Expand the `bots` table in `schema.sql` by appending an adjustable `retention_days INT DEFAULT 90` setting controllable via the Studio dashboard.
-- [ ] **Automated Cron Pruning Engine**: Implement a background scheduled cleanup worker (or `pg_cron` automated database function) that executes daily pruning routines across historical tables:
+- [x] **Tenant Retention Configuration**: Expand the `bots` table in `schema.sql` by appending an adjustable `retention_days INT DEFAULT 90` setting controllable via the Studio dashboard.
+- [x] **Automated Cron Pruning Engine**: Implement a background scheduled cleanup worker (or `pg_cron` automated database function) that executes daily pruning routines across historical tables:
   ```sql
   DELETE FROM chats WHERE bot_id = %s AND created_at < NOW() - INTERVAL '1 day' * %s;
   DELETE FROM handoffs WHERE bot_id = %s AND created_at < NOW() - INTERVAL '1 day' * %s;
@@ -88,14 +88,14 @@ While operators can manually delete a single lead row by ID, there is no unified
 * **Regulatory Hazard**: When a consumer exercises their legal "Right to be Forgotten" (GDPR Article 17), administrators lack an interface to purge all occurrences of a specific individual's email address or phone number simultaneously across every database table, log file, and embedded document archive.
 
 ### Codebase Remediation Checklist
-- [ ] **Unified Subject Erasure Endpoint**: Create `@app.post("/api/privacy/erasure-request")` requiring tenant authentication and target identifiers (email/phone), triggering universal cascading deletes across `leads`, `chats`, and `handoffs`:
+- [x] **Unified Subject Erasure Endpoint**: Create `@app.post("/api/privacy/erasure-request")` requiring tenant authentication and target identifiers (email/phone), triggering universal cascading deletes across `leads`, `chats`, and `handoffs`:
   ```python
   @app.post("/api/privacy/erasure-request")
   def execute_subject_erasure(req: ErasureRequest, user: CurrentUser):
       db.purge_subject_across_tables(req.target_email, user["id"])
       return {"ok": True, "status": "All subject records purged cleanly."}
   ```
-- [ ] **1-Click Tenant Data Portability Export**: Provide a dedicated **"Export Account & Customer Data"** JSON bundle download button inside User Account Security settings.
+- [x] **1-Click Tenant Data Portability Export**: Provide a dedicated **"Export Account & Customer Data"** JSON bundle download button inside User Account Security settings.
 
 ---
 
@@ -108,5 +108,5 @@ The embeddable JavaScript chat widget launches immediately upon user visitor ent
 * **Regulatory Hazard**: Gathering analytical usage profiles, executing AI processing, and harvesting lead metrics in regulated jurisdictions (EU/California) without prior notice or affirmative opt-in confirmation exposes deployments to regulatory penalties.
 
 ### Codebase Remediation Checklist
-- [ ] **Studio Consent Switch**: Integrate a `data-consent-notice="on"` switch in `widget.js` and Studio customizations.
-- [ ] **Interactive Disclaimer UI**: When active, render a discreet agreement screen within the widget interface (*"This automated assistant utilizes Zeva AI processing. By continuing, you consent to our data terms and analytics storage."*) before unfreezing chat input controls.
+- [x] **Studio Consent Switch**: Integrate a `data-consent-notice="on"` switch in `widget.js` and Studio customizations.
+- [x] **Interactive Disclaimer UI**: When active, render a discreet agreement screen within the widget interface (*"This automated assistant utilizes Zeva AI processing. By continuing, you consent to our data terms and analytics storage."*) before unfreezing chat input controls.

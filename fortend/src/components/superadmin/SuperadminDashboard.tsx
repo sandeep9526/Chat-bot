@@ -25,6 +25,7 @@ import {
   AlertIcon, ActivityIcon, RefreshIcon,
 } from "@/components/panel/panelIcons";
 import { StatCard } from "@/components/admin/StatCard";
+import { TestChatBox } from "@/components/admin/TestChatBox";
 
 type SectionKey = "overview" | "users" | "bots" | "leads" | "chats" | "revenue" | "analytics";
 
@@ -59,6 +60,7 @@ export function SuperadminDashboard() {
 function Dashboard({ email, name }: { email: string; name?: string | null }) {
   const [section, setSection] = useState<SectionKey>("overview");
   const [query, setQuery] = useState("");
+  const [inspectingBot, setInspectingBot] = useState<PlatformBot | null>(null);
 
   const { data: stats, isPending: statsPending, error: statsError } = usePlatformStats();
   const { data: bots, isPending: botsPending, error: botsError } = useAllBots();
@@ -249,7 +251,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
               <tbody>
                 {botsPending && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">Loading…</td></tr>}
                 {!botsPending && (bots ?? []).filter(b => !q || b.name.toLowerCase().includes(q) || b.bot_id.toLowerCase().includes(q) || (b.owner_email ?? "").toLowerCase().includes(q)).map(b => (
-                  <BotRow key={b.bot_id} bot={b} />
+                  <BotRow key={b.bot_id} bot={b} onInspect={(b) => setInspectingBot(b)} />
                 ))}
                 {!botsPending && (bots ?? []).length === 0 && (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">No bots on the platform yet.</td></tr>
@@ -257,6 +259,67 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
               </tbody>
             </table>
           </div>
+
+          {inspectingBot && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="flex h-[720px] w-full max-w-4xl flex-col overflow-hidden rounded-r2 border border-border bg-surface shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border bg-panel px-6 py-4">
+                  <div>
+                    <h3 className="flex items-center gap-2.5 text-base font-[750] text-fg">
+                      <span>🔬 Tenant Studio &amp; AI Engine Inspector</span>
+                      <span className="rounded-full bg-accent/15 px-2.5 py-0.5 font-mono text-[11px] font-[700] text-accent">
+                        Read-Only Debug Mode
+                      </span>
+                      {inspectingBot.suspended && (
+                        <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 font-mono text-[11px] font-[700] text-red-500">
+                          SUSPENDED BY ADMIN
+                        </span>
+                      )}
+                    </h3>
+                    <p className="mt-1 text-xs text-muted">
+                      Direct interaction with tenant chatbot <b>{inspectingBot.name}</b> (<code>{inspectingBot.bot_id}</code>) &bull; Owner: {inspectingBot.owner_email || "unowned"} &bull; Plan: {inspectingBot.plan || "trial"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setInspectingBot(null)}
+                    className="rounded-[8px] border border-border bg-surface px-3 py-1.5 text-xs font-[600] text-muted hover:bg-panel hover:text-fg transition cursor-pointer"
+                  >
+                    Close Inspector ✕
+                  </button>
+                </div>
+                <div className="flex flex-1 overflow-hidden p-6 gap-6 bg-surface/50">
+                  <div className="w-1/3 flex flex-col gap-4 text-xs border-r border-border/80 pr-6">
+                    <div>
+                      <span className="font-[700] uppercase tracking-wider text-[10.5px] text-muted block mb-1">Bot Metadata</span>
+                      <div className="rounded-[8px] border border-border bg-panel p-3.5 space-y-2 font-mono text-[11.5px]">
+                        <div><span className="text-muted">Bot ID:</span> <span className="text-fg">{inspectingBot.bot_id}</span></div>
+                        <div><span className="text-muted">Owner User ID:</span> <span className="text-fg">{inspectingBot.owner_user_id || "None"}</span></div>
+                        <div><span className="text-muted">Created:</span> <span className="text-fg">{inspectingBot.created_at?.slice(0, 10)}</span></div>
+                        <div><span className="text-muted">Active License:</span> <span className={inspectingBot.is_active ? "text-good" : "text-bad"}>{String(inspectingBot.is_active)}</span></div>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end">
+                      <div className="rounded-[8px] border border-accent/20 bg-accent/5 p-3.5 text-muted leading-relaxed">
+                        💡 <b>Diagnostic Sandbox:</b> Responses generated here hit the live RAG vector similarity database and models configured for this tenant.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-2/3 flex flex-col h-full">
+                    <TestChatBox
+                      bot={{
+                        bot_id: inspectingBot.bot_id,
+                        name: inspectingBot.name,
+                        accent: inspectingBot.accent || "#4f46e5",
+                        is_active: inspectingBot.is_active,
+                        suspended: inspectingBot.suspended,
+                      } as any}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -609,7 +672,7 @@ function UserRow({ user: u }: { user: PlatformUser }) {
   );
 }
 
-function BotRow({ bot: b }: { bot: PlatformBot }) {
+function BotRow({ bot: b, onInspect }: { bot: PlatformBot; onInspect?: (bot: PlatformBot) => void }) {
   const suspend = useSuspendBot();
   const setPlan = useSetOwnerPlan();
   const [plan, setPlanValue] = useState(b.plan ?? "trial");
@@ -665,12 +728,21 @@ function BotRow({ bot: b }: { bot: PlatformBot }) {
       </td>
       <td className="px-4 py-2.5 font-mono text-[11.5px] text-faint">{b.created_at?.slice(0, 10)}</td>
       <td className="px-4 py-2.5">
-        <button onClick={onToggleSuspend} disabled={suspend.isPending}
-          className={cn("cursor-pointer rounded-[6px] px-2 py-1 text-[11.5px] font-[600] disabled:opacity-40",
-            b.suspended ? "text-good hover:bg-good/10" : "text-red-500 hover:bg-red-500/10"
-          )}>
-          {b.suspended ? "Reactivate" : "Suspend"}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onInspect?.(b)}
+            className="cursor-pointer rounded-[6px] border border-border bg-panel px-2 py-1 text-[11px] font-[600] text-fg transition hover:border-accent hover:text-accent flex items-center gap-1"
+          >
+            <span>🔬</span> Open in Studio Inspector
+          </button>
+          <button onClick={onToggleSuspend} disabled={suspend.isPending}
+            className={cn("cursor-pointer rounded-[6px] px-2 py-1 text-[11.5px] font-[600] disabled:opacity-40",
+              b.suspended ? "text-good hover:bg-good/10" : "text-red-500 hover:bg-red-500/10"
+            )}>
+            {b.suspended ? "Reactivate" : "Suspend"}
+          </button>
+        </div>
       </td>
     </tr>
   );

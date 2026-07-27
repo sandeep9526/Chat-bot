@@ -70,6 +70,18 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true, // automatically sign in after registration
+    sendResetPassword: async ({ user, url, token }) => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        await fetch(`${apiUrl}/internal/send-password-reset`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, url, token }),
+        });
+      } catch (err) {
+        console.error("Failed sending password reset email via backend:", err);
+      }
+    },
   },
 
   // JWT plugin - enables JWT tokens for FastAPI backend

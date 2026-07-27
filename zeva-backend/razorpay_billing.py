@@ -49,10 +49,9 @@ RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
 # Our plan name -> Razorpay Plan id (created in the Razorpay dashboard, one
 # per billing tier, INR/monthly). Fill these in once real plans exist.
 PLAN_TO_RAZORPAY_PLAN_ID: dict[str, str] = {
-    # "starter": "plan_xxxxxxxxxxxxxx",
-    # "pro": "plan_xxxxxxxxxxxxxx",
-    # "business": "plan_xxxxxxxxxxxxxx",
-    # "enterprise": "plan_xxxxxxxxxxxxxx",
+    "starter": "plan_THfIQrwOGe2pNX",
+    "pro": "plan_THfKz6LAULvcFX",
+    "enterprise": "plan_THfMUsMzqGtz85",
 }
 
 _client: razorpay.Client | None = None

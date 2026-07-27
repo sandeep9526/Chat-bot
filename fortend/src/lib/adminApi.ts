@@ -29,6 +29,12 @@ export interface AdminBot {
   welcome?: string;
   suggestions?: string[];
   allowed_domains?: string[];
+  notification_email?: string | null;
+  webhook_url?: string | null;
+  google_sheets_url?: string | null;
+  whatsapp_phone_number_id?: string | null;
+  model_override?: string | null;
+  custom_prompt_style?: string | null;
   /** Platform-admin moderation flag (owner can't change this). */
   suspended?: boolean;
   /** Owner's own pause switch. */
@@ -48,16 +54,50 @@ export interface AdminLead {
   phone: string | null;
   message: string | null;
   score: "hot" | "warm" | "cold";
+  custom_data?: Record<string, any>;
   created_at: string;
 }
 
 export interface Handoff {
   id: number;
   bot_id: string;
-  name: string;
-  contact: string;
-  summary: string;
+  bot_name: string | null;
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_phone: string | null;
+  message: string | null;
+  score: "hot" | "warm" | "cold" | null;
+  summary: string | null;
+  status: "pending" | "actioned" | "ignored" | null;
   created_at: string;
+}
+
+export interface SystemStatus {
+  app_dir_ok: boolean;
+  database: "sqlite" | "postgres_neon";
+  neon_url_set: boolean;
+  openai_key_set: boolean;
+  chromedriver_found: boolean;
+  data: {
+    bots: number;
+    leads: number;
+    chats: number;
+  };
+}
+
+export interface DocumentMeta {
+  source_file: string;
+  chunks: number;
+  created_at?: string | null;
+}
+
+export interface AdminBotFull extends AdminBot {
+  documents: DocumentMeta[];
+  stats: {
+    total_leads: number;
+    total_chats: number;
+    hot_leads: number;
+  };
 }
 
 export interface TopQuestion {
@@ -272,6 +312,12 @@ export interface CreateBotPayload {
   welcome?: string;
   suggestions?: string[];
   allowedDomains?: string[];
+  notificationEmail?: string;
+  webhookUrl?: string;
+  googleSheetsUrl?: string;
+  whatsappPhoneNumberId?: string;
+  modelOverride?: string;
+  customPromptStyle?: string;
   /** Full Studio look to persist server-side. Omit to leave the stored design
       untouched (a brand-only edit shouldn't wipe the saved look). */
   design?: BotDesign;
@@ -454,3 +500,53 @@ export async function deleteDocFile(botId: string, filename: string): Promise<vo
   }
   if (!res.ok) throw new Error(`Failed to delete document (${res.status})`);
 }
+
+export async function executeSubjectErasure(targetIdentifier: string): Promise<{ ok: boolean; status: string; purged: { leads: number; chats: number } }> {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${base()}/api/privacy/erasure-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify({ target_identifier: targetIdentifier }),
+  });
+  if (!res.ok) throw new Error("Failed to process subject erasure request");
+  return res.json();
+}
+
+export async function exportTenantData(): Promise<any> {
+  return (await getJson<{ export: any }>("/api/privacy/export-data")).export;
+}
+
+export interface LiveSessionMessage {
+  sender: "visitor" | "agent" | "system";
+  text: string;
+  timestamp: number;
+  sessionId?: string;
+}
+
+export interface LiveChatSession {
+  sessionId: string;
+  botId: string;
+  isAiOverridden: boolean;
+  messages: LiveSessionMessage[];
+  lastActive: number;
+  status: "live-takeover" | "ai-automated";
+}
+
+export async function fetchLiveSessions(botId: string): Promise<LiveChatSession[]> {
+  const data = await getJson<{ ok: boolean; sessions: LiveChatSession[] }>(
+    `/api/live-chat/sessions?botId=${encodeURIComponent(botId)}`
+  );
+  return data.sessions || [];
+}
+
+export async function toggleLiveTakeover(sessionId: string, enable: boolean): Promise<{ ok: boolean; isAiOverridden: boolean }> {
+  return postJson<{ ok: boolean; isAiOverridden: boolean }>(
+    `/api/live-chat/${encodeURIComponent(sessionId)}/takeover`,
+    { enable }
+  );
+}
+
+export async function sendLiveChatMessage(sessionId: string, text: string, sender: "agent" | "system" = "agent"): Promise<void> {
+  await postJson(`/api/live-chat/${encodeURIComponent(sessionId)}/message`, { text, sender });
+}
+

@@ -44,10 +44,9 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 # until a self-serve price is set up) simply can't self-serve checkout —
 # create_checkout_session raises and the frontend falls back to "contact us".
 PLAN_TO_STRIPE_PRICE_ID: dict[str, str] = {
-    # "starter": "price_xxxxxxxxxxxxxx",
-    # "pro": "price_xxxxxxxxxxxxxx",
-    # "business": "price_xxxxxxxxxxxxxx",
-    # "enterprise": "price_xxxxxxxxxxxxxx",
+    "starter": "price_1Twz6jBDUfmAcUQEKs1x7iVC",
+    "pro": "price_1Twz8XBDUfmAcUQE03jR6x6A",
+    "enterprise": "price_1Twz95BDUfmAcUQEWnodECQF",
 }
 
 

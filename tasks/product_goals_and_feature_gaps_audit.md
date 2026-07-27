@@ -13,9 +13,9 @@ A prominent value proposition of customized AI bots is adapting conversational s
   `"You are the friendly, helpful AI assistant for {bot['name']}. Answer strictly using the CONTEXT below..."`
 
 ### Action Item Checklist
-- [ ] **Connect Template Personas**: Modify `POST /admin/create-bot` and the `bots` PostgreSQL table to accept and store an explicit `custom_prompt_style` field, hydrating it directly from selected Industry Templates upon instantiation.
-- [ ] **Studio AI Instruction Editor**: Expose a multi-line text textarea in the Studio & Bot Settings UI titled *"Custom System Instructions & Behavioral Rules"* where clients can insert firm constraints (e.g., *"Never mention competitor pricing"*, *"Always ask if they prefer an in-person walkthrough"*).
-- [ ] **Dynamic Prompt Builder**: Inject the bot's custom instructions into `call_llm()` system messages dynamically prior to appending retrieved RAG document context.
+- [x] **Connect Template Personas**: Modify `POST /admin/create-bot` and the `bots` PostgreSQL table to accept and store an explicit `custom_prompt_style` field, hydrating it directly from selected Industry Templates upon instantiation.
+- [x] **Studio AI Instruction Editor**: Expose a multi-line text textarea in the Studio & Bot Settings UI titled *"Custom System Instructions & Behavioral Rules"* where clients can insert firm constraints (e.g., *"Never mention competitor pricing"*, *"Always ask if they prefer an in-person walkthrough"*).
+- [x] **Dynamic Prompt Builder**: Inject the bot's custom instructions into `call_llm()` system messages dynamically prior to appending retrieved RAG document context.
 
 ---
 
@@ -27,9 +27,9 @@ When visitors experience high-intent purchase scenarios or unresolved technical 
 - **Missing Live Chat UI**: There is no live messaging operational helpdesk console. An account owner logging into the dashboard can only view historical handoff requests rather than communicating directly with website visitors in real time.
 
 ### Action Item Checklist
-- [ ] **Bi-Directional WebSockets / SSE Transport**: Implement FastAPI WebSockets or Server-Sent Events (SSE) connections inside `widget.js` and `main.py` (`/ws/live-chat/{session_id}`).
-- [ ] **Live Agent Console**: Upgrade the dashboard **Handoffs / Live Chats** section into a responsive, real-time Helpdesk interface featuring desktop push notification triggers when new high-intent conversations request intervention.
-- [ ] **AI Override Switch**: Enable support reps to click an inline `"Take Over Conversation"` toggle in the dashboard, instantly disabling RAG automated inference for that specific customer session until the human agent concludes the ticket.
+- [x] **Bi-Directional WebSockets / SSE Transport**: Implement FastAPI WebSockets or Server-Sent Events (SSE) connections inside `widget.js` and `main.py` (`/ws/live-chat/{session_id}`).
+- [x] **Live Agent Console**: Upgrade the dashboard **Handoffs / Live Chats** section into a responsive, real-time Helpdesk interface featuring desktop push notification triggers when new high-intent conversations request intervention.
+- [x] **AI Override Switch**: Enable support reps to click an inline `"Take Over Conversation"` toggle in the dashboard, instantly disabling RAG automated inference for that specific customer session until the human agent concludes the ticket.
 
 ---
 
@@ -41,9 +41,9 @@ Reducing onboarding friction requires rapid, hands-off ingestion of enterprise c
 - **Manual Labor Overhead**: To onboard a commercial website with dozens of information pages (`/about`, `/pricing`, `/faq`, `/services`, `/blog`), an admin must manually type and invoke every separate URL link independently.
 
 ### Action Item Checklist
-- [ ] **Sitemap.xml Auto-Discovery**: Build a recursive background ingestion tool that parses standard domain `/sitemap.xml` indices, extracts up to 50 active internal page URLs, and queues automated asynchronous scraping.
-- [ ] **Visual URL Scraping Progress Console**: Provide an interactive crawler checklist in the onboarding Studio showing real-time text extraction metrics and character counts across discovered sub-pages.
-- [ ] **Markdown Table & OCR Enhancement**: Integrate structured table-preserving markdown extraction and Deepgram/Tesseract OCR processing for multi-column PDF brochures and catalog images.
+- [x] **Sitemap.xml Auto-Discovery**: Build a recursive background ingestion tool that parses standard domain `/sitemap.xml` indices, extracts up to 50 active internal page URLs, and queues automated asynchronous scraping.
+- [x] **Visual URL Scraping Progress Console**: Provide an interactive crawler checklist in the onboarding Studio showing real-time text extraction metrics and character counts across discovered sub-pages.
+- [x] **Markdown Table & OCR Enhancement**: Integrate structured table-preserving markdown extraction and Deepgram/Tesseract OCR processing for multi-column PDF brochures and catalog images.
 
 ---
 
@@ -55,9 +55,9 @@ Lead capturing needs to scale across diverse business verticals by allowing flex
 - **Inflexible Customization**: A real estate broker cannot prompt visitors for *"Desired Budget"* or *"Property Location"*; an auto service center cannot solicit *"Vehicle Year & Make"*; a health clinic cannot collect *"Insurance Provider ID"*.
 
 ### Action Item Checklist
-- [ ] **JSONB Custom Fields Column**: Expand the `leads` table in `schema.sql` by adding an indexed `custom_data JSONB DEFAULT '{}'::jsonb` column.
-- [ ] **Lead Form Builder UI**: Embed an interactive visual form builder inside Bot Settings allowing owners to toggle mandatory fields, establish custom dropdown option lists, and insert specialized text labels.
-- [ ] **Dynamic Widget Renderer**: Update `widget.js` to render form input DOM nodes dynamically based on the configuration array returned by `GET /config`.
+- [x] **JSONB Custom Fields Column**: Expand the `leads` table in `schema.sql` by adding an indexed `custom_data JSONB DEFAULT '{}'::jsonb` column.
+- [x] **Lead Form Builder UI**: Embed an interactive visual form builder inside Bot Settings allowing owners to toggle mandatory fields, establish custom dropdown option lists, and insert specialized text labels.
+- [x] **Dynamic Widget Renderer**: Update `widget.js` to render form input DOM nodes dynamically based on the configuration array returned by `GET /config`.
 
 ---
 
@@ -69,9 +69,9 @@ Maintaining continuous accuracy across generative RAG answers requires direct us
 - **Blind Diagnostics**: Dashboard analytics record chat volumes and unanswered queries, but cannot highlight misleading AI outputs for administrative corrections.
 
 ### Action Item Checklist
-- [ ] **Widget Evaluation Buttons**: Render discreet helpfulness verification icons (👍 Thumbs Up / 👎 Thumbs Down) beneath generated chat messages in the widget interface.
-- [ ] **Quality Feedback API Endpoint**: Create `@app.post("/chat/feedback")` to record customer confidence score integers (`+1`, `-1`) and optional user text explanations directly into the `chats` table.
-- [ ] **Hallucination Review Dashboard**: Construct an exception-handling dashboard card under admin Analytics displaying low-rated messages side-by-side with retrieved document chunks, allowing owners to rapidly correct underlying textual training omissions.
+- [x] **Widget Evaluation Buttons**: Render discreet helpfulness verification icons (👍 Thumbs Up / 👎 Thumbs Down) beneath generated chat messages in the widget interface.
+- [x] **Quality Feedback API Endpoint**: Create `@app.post("/chat/feedback")` to record customer confidence score integers (`+1`, `-1`) and optional user text explanations directly into the `chats` table.
+- [x] **Hallucination Review Dashboard**: Construct an exception-handling dashboard card under admin Analytics displaying low-rated messages side-by-side with retrieved document chunks, allowing owners to rapidly correct underlying textual training omissions.
 
 ---
 
@@ -79,6 +79,6 @@ Maintaining continuous accuracy across generative RAG answers requires direct us
 While Zeva offers a robust website Javascript snippet and foundational Meta WhatsApp integration, enterprise platforms must meet customers across diverse ecosystem messaging clients.
 
 ### Action Item Checklist
-- [ ] **Unified Message Abstraction Layer**: Refactor inbound webhook processing into a standardized abstract `IncomingMessage` schema (`sender_id`, `tenant_id`, `text`, `media_payload`, `channel_type`) targeting unified RAG answering functions.
-- [ ] **Telegram Bot API Linkage**: Add webhook registration support for automated Telegram TelegramBot tokens (`/telegram/webhook`).
-- [ ] **Slack Workspace & Discord Embed Modules**: Build conversational webhook listeners supporting Slack Events API and Discord Interaction endpoints for enterprise software docs assistance.
+- [x] **Unified Message Abstraction Layer**: Refactor inbound webhook processing into a standardized abstract `IncomingMessage` schema (`sender_id`, `tenant_id`, `text`, `media_payload`, `channel_type`) targeting unified RAG answering functions.
+- [x] **Telegram Bot API Linkage**: Add webhook registration support for automated Telegram TelegramBot tokens (`/telegram/webhook`).
+- [x] **Slack Workspace & Discord Embed Modules**: Build conversational webhook listeners supporting Slack Events API and Discord Interaction endpoints for enterprise software docs assistance.

@@ -131,6 +131,13 @@ export default function SignUpPage() {
         >
           {loading ? "Creating account…" : "Create account"}
         </button>
+
+        <p className="mt-3 text-center text-[12px] text-muted leading-tight">
+          By creating an account, you acknowledge and agree to Zeva&apos;s{" "}
+          <a href="/terms" target="_blank" className="text-accent hover:underline font-[600]">Terms of Service</a>,{" "}
+          <a href="/privacy" target="_blank" className="text-accent hover:underline font-[600]">Privacy Policy</a>, and{" "}
+          <a href="/refund-policy" target="_blank" className="text-accent hover:underline font-[600]">Refund Policy</a>.
+        </p>
       </form>
 
       <p className="mt-6 text-center text-[14px] text-muted">

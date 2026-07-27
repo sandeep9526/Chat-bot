@@ -6,6 +6,7 @@ import { useIngestDoc, useIngestFile, useDocs, useDeleteDoc } from "@/hooks/useA
 import { AdminApiError } from "@/lib/adminApi";
 import { markSetupDone } from "@/lib/setupProgress";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { SitemapCrawlerConsole } from "./SitemapCrawlerConsole";
 
 // What the file picker accepts. The backend extracts text from each: documents
 // via parsers (pypdf / python-docx), images via a vision model.
@@ -278,6 +279,9 @@ export function DocsUpload({ botId }: { botId: string }) {
           </div>
         )}
       </div>
+
+      {/* Autonomous Sitemap Crawler Console */}
+      <SitemapCrawlerConsole botId={botId} onCrawlComplete={() => refetchDocs()} />
 
       {confirmDeleteName && (
         <ConfirmDialog

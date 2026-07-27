@@ -4,6 +4,9 @@ import { BOT_ID } from "./defaults";
 /** Backend API URL for the widget */
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+/** CDN host for widget.js — falls back to app URL if CDN not provisioned */
+const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.zeva.app";
+
 function api_url(): string {
   if (typeof window === "undefined") return RAW_API_URL;
   if (window.location.protocol === "https:" && RAW_API_URL.startsWith("http://")) {
@@ -52,7 +55,7 @@ export function buildEmbedRows(cfg: ZevaConfig, botId: string = BOT_ID): [string
 export function buildEmbedText(cfg: ZevaConfig, botId: string = BOT_ID): string {
   const rows = buildEmbedRows(cfg, botId);
   return (
-    '<script\n  src="https://cdn.zeva.app/widget.js"\n  ' +
+    '<script\n  src="' + SCRIPT_HOST + '/widget.js"\n  ' +
     rows.map(([k, v]) => `data-${k}="${v}"`).join("\n  ") +
     "\n  async><\/script>"
   );
@@ -70,7 +73,7 @@ export function buildEmbedHtml(cfg: ZevaConfig, botId: string = BOT_ID): string 
   const rows = buildEmbedRows(cfg, botId);
   let html =
     '<span class="text-sky-300">&lt;script</span>\n' +
-    '  <span class="text-indigo-300">src</span>=<span class="text-green-300">"https://cdn.zeva.app/widget.js"</span>';
+    '  <span class="text-indigo-300">src</span>=<span class="text-green-300">"' + SCRIPT_HOST + '/widget.js"</span>';
   rows.forEach(([k, v]) => {
     const displayVal = truncateVal(v);
     html +=

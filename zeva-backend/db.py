@@ -65,6 +65,18 @@ def init_db() -> None:
         print(f"[db] Warning: Could not connect to Postgres database ({e}). Operating in degraded/offline fallback mode.")
 
 
+def close_pool() -> None:
+    """Gracefully close the connection pool on shutdown to avoid PythonFinalizationError."""
+    global _pool
+    if _pool is not None:
+        try:
+            _pool.close()
+            print("[db] Connection pool closed cleanly.")
+        except Exception as e:
+            print(f"[db] Warning: error closing pool: {e}")
+        _pool = None
+
+
 def _set_owner(cur, owner_user_id: str) -> None:
     """Scope this transaction to an authenticated owner (admin-path reads/writes)."""
     cur.execute("SELECT set_config('app.user_id', %s, true)", (owner_user_id,))
@@ -197,17 +209,27 @@ def _sqlite_upsert_bot(
     webhook_url: str | None = None,
     google_sheets_url: str | None = None,
     template_category: str | None = None,
+    model_override: str | None = None,
+    custom_prompt_style: str | None = None,
 ) -> None:
     try:
         with _get_sqlite_conn() as conn:
             cur = conn.cursor()
+            try:
+                cur.execute("ALTER TABLE bots ADD COLUMN model_override TEXT")
+            except Exception:
+                pass
+            try:
+                cur.execute("ALTER TABLE bots ADD COLUMN custom_prompt_style TEXT")
+            except Exception:
+                pass
             cur.execute(
                 """
                 INSERT INTO bots (
                     bot_id, owner_user_id, name, accent, welcome, suggestions,
                     allowed_domains, design, whatsapp_phone_number_id,
-                    notification_email, webhook_url, google_sheets_url, template_category
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    notification_email, webhook_url, google_sheets_url, template_category, model_override, custom_prompt_style
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(bot_id) DO UPDATE SET
                     name = excluded.name,
                     accent = excluded.accent,
@@ -219,13 +241,15 @@ def _sqlite_upsert_bot(
                     notification_email = COALESCE(excluded.notification_email, bots.notification_email),
                     webhook_url = COALESCE(excluded.webhook_url, bots.webhook_url),
                     google_sheets_url = COALESCE(excluded.google_sheets_url, bots.google_sheets_url),
-                    template_category = COALESCE(excluded.template_category, bots.template_category)
+                    template_category = COALESCE(excluded.template_category, bots.template_category),
+                    model_override = COALESCE(excluded.model_override, bots.model_override),
+                    custom_prompt_style = COALESCE(excluded.custom_prompt_style, bots.custom_prompt_style)
                 """,
                 (
                     bot_id, owner_user_id, name, accent, welcome,
                     json.dumps(suggestions or []), json.dumps(allowed_domains or ["*"]),
                     json.dumps(design) if design is not None else None,
-                    whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category,
+                    whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category, model_override, custom_prompt_style,
                 ),
             )
             conn.commit()
@@ -563,6 +587,8 @@ def upsert_bot(
     webhook_url: str | None = None,
     google_sheets_url: str | None = None,
     template_category: str | None = None,
+    model_override: str | None = None,
+    custom_prompt_style: str | None = None,
 ) -> None:
     """Create a bot (or update one you already own). RLS blocks re-registering
     someone else's bot_id (raises psycopg.errors.InsufficientPrivilege).
@@ -576,6 +602,11 @@ def upsert_bot(
 
     try:
         with _get_pool().connection() as conn, conn.cursor() as cur:
+            try:
+                cur.execute("ALTER TABLE bots ADD COLUMN IF NOT EXISTS custom_prompt_style TEXT")
+            except Exception:
+                conn.rollback()
+
             _set_owner(cur, owner_user_id)
 
             cur.execute("SELECT 1 FROM bots WHERE bot_id = %s", (bot_id,))
@@ -586,36 +617,73 @@ def upsert_bot(
                 if cur.fetchone()[0] >= max_bots:
                     raise BotLimitExceeded(max_bots)
 
-            cur.execute(
-                """
-                INSERT INTO bots (
-                    bot_id, owner_user_id, name, accent, welcome, suggestions,
-                    allowed_domains, design, whatsapp_phone_number_id,
-                    notification_email, webhook_url, google_sheets_url, template_category
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO bots (
+                        bot_id, owner_user_id, name, accent, welcome, suggestions,
+                        allowed_domains, design, whatsapp_phone_number_id,
+                        notification_email, webhook_url, google_sheets_url, template_category, model_override, custom_prompt_style
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb,
+                        COALESCE(%s::jsonb, '{}'::jsonb), %s, %s, %s, %s, COALESCE(%s, 'general'), %s, %s
+                    )
+                    ON CONFLICT (bot_id) DO UPDATE SET
+                      name = excluded.name, accent = excluded.accent,
+                      welcome = excluded.welcome, suggestions = excluded.suggestions,
+                      allowed_domains = excluded.allowed_domains,
+                      design = COALESCE(%s::jsonb, bots.design),
+                      whatsapp_phone_number_id = COALESCE(excluded.whatsapp_phone_number_id, bots.whatsapp_phone_number_id),
+                      notification_email = COALESCE(excluded.notification_email, bots.notification_email),
+                      webhook_url = COALESCE(excluded.webhook_url, bots.webhook_url),
+                      google_sheets_url = COALESCE(excluded.google_sheets_url, bots.google_sheets_url),
+                      template_category = COALESCE(excluded.template_category, bots.template_category),
+                      model_override = COALESCE(excluded.model_override, bots.model_override),
+                      custom_prompt_style = COALESCE(excluded.custom_prompt_style, bots.custom_prompt_style)
+                    """,
+                    (
+                        bot_id, owner_user_id, name, accent, welcome,
+                        json.dumps(suggestions or []), json.dumps(allowed_domains or ["*"]),
+                        json.dumps(design) if design is not None else None,
+                        whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category, model_override, custom_prompt_style,
+                        json.dumps(design) if design is not None else None,
+                    ),
                 )
-                VALUES (
-                    %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb,
-                    COALESCE(%s::jsonb, '{}'::jsonb), %s, %s, %s, %s, COALESCE(%s, 'general')
+            except Exception:
+                conn.rollback()
+                _set_owner(cur, owner_user_id)
+                # Fallback if DB column doesn't exist yet
+                cur.execute(
+                    """
+                    INSERT INTO bots (
+                        bot_id, owner_user_id, name, accent, welcome, suggestions,
+                        allowed_domains, design, whatsapp_phone_number_id,
+                        notification_email, webhook_url, google_sheets_url, template_category
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb,
+                        COALESCE(%s::jsonb, '{}'::jsonb), %s, %s, %s, %s, COALESCE(%s, 'general')
+                    )
+                    ON CONFLICT (bot_id) DO UPDATE SET
+                      name = excluded.name, accent = excluded.accent,
+                      welcome = excluded.welcome, suggestions = excluded.suggestions,
+                      allowed_domains = excluded.allowed_domains,
+                      design = COALESCE(%s::jsonb, bots.design),
+                      whatsapp_phone_number_id = COALESCE(excluded.whatsapp_phone_number_id, bots.whatsapp_phone_number_id),
+                      notification_email = COALESCE(excluded.notification_email, bots.notification_email),
+                      webhook_url = COALESCE(excluded.webhook_url, bots.webhook_url),
+                      google_sheets_url = COALESCE(excluded.google_sheets_url, bots.google_sheets_url),
+                      template_category = COALESCE(excluded.template_category, bots.template_category)
+                    """,
+                    (
+                        bot_id, owner_user_id, name, accent, welcome,
+                        json.dumps(suggestions or []), json.dumps(allowed_domains or ["*"]),
+                        json.dumps(design) if design is not None else None,
+                        whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category,
+                        json.dumps(design) if design is not None else None,
+                    ),
                 )
-                ON CONFLICT (bot_id) DO UPDATE SET
-                  name = excluded.name, accent = excluded.accent,
-                  welcome = excluded.welcome, suggestions = excluded.suggestions,
-                  allowed_domains = excluded.allowed_domains,
-                  design = COALESCE(%s::jsonb, bots.design),
-                  whatsapp_phone_number_id = COALESCE(excluded.whatsapp_phone_number_id, bots.whatsapp_phone_number_id),
-                  notification_email = COALESCE(excluded.notification_email, bots.notification_email),
-                  webhook_url = COALESCE(excluded.webhook_url, bots.webhook_url),
-                  google_sheets_url = COALESCE(excluded.google_sheets_url, bots.google_sheets_url),
-                  template_category = COALESCE(excluded.template_category, bots.template_category)
-                """,
-                (
-                    bot_id, owner_user_id, name, accent, welcome,
-                    json.dumps(suggestions or []), json.dumps(allowed_domains or ["*"]),
-                    json.dumps(design) if design is not None else None,
-                    whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category,
-                    json.dumps(design) if design is not None else None,
-                ),
-            )
     except psycopg.errors.InsufficientPrivilege:
         raise
     except BotLimitExceeded:
@@ -624,7 +692,7 @@ def upsert_bot(
         print(f"[db] Postgres upsert_bot failed ({e}), using SQLite fallback")
         _sqlite_upsert_bot(
             bot_id, owner_user_id, name, accent, welcome, suggestions, allowed_domains,
-            design, whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category
+            design, whatsapp_phone_number_id, notification_email, webhook_url, google_sheets_url, template_category, model_override, custom_prompt_style
         )
 
 
@@ -648,23 +716,51 @@ def _ensure_demo_bot_exists(cur, bot_id: str) -> None:
 
 def save_lead(
     bot_id: str, name: str, email: str, phone: str | None, message: str | None,
-    score: str = "cold",
+    score: str = "cold", custom_data: dict | None = None,
 ) -> int:
     """Public — any website visitor submitting the widget's lead form."""
+    import json
+    from pii_encryption import encrypt_field
     try:
         with _get_pool().connection() as conn, conn.cursor() as cur:
+            try:
+                cur.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS custom_data JSONB DEFAULT '{}'::jsonb")
+            except Exception:
+                conn.rollback()
             _set_platform_admin(cur)
             _ensure_demo_bot_exists(cur, bot_id)
+            enc_email = encrypt_field(email)
+            enc_phone = encrypt_field(phone)
+            enc_name = encrypt_field(name)
             cur.execute(
-                "INSERT INTO leads (bot_id, name, email, phone, message, score) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (bot_id, name, email, phone, message, score),
+                "INSERT INTO leads (bot_id, name, email, phone, message, score, custom_data) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
+                (bot_id, enc_name, enc_email, enc_phone, message, score, json.dumps(custom_data or {})),
             )
             cur.execute("SELECT lastval()")
             return cur.fetchone()[0]
     except Exception as e:
         print(f"[DB] Failed to save lead for bot {bot_id}: {e}")
         return 999
+
+
+def update_bot_form_schema(bot_id: str, form_schema: list[dict]) -> bool:
+    import json
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            try:
+                cur.execute("ALTER TABLE bots ADD COLUMN IF NOT EXISTS form_schema JSONB DEFAULT '[]'::jsonb")
+            except Exception:
+                conn.rollback()
+            _set_platform_admin(cur)
+            cur.execute(
+                "UPDATE bots SET form_schema = %s::jsonb WHERE bot_id = %s",
+                (json.dumps(form_schema), bot_id),
+            )
+            return cur.rowcount > 0
+    except Exception as e:
+        print(f"[DB] Failed to update form_schema for bot {bot_id}: {e}")
+        return False
 
 
 def save_handoff(bot_id: str, name: str, contact: str, summary: str) -> int:
@@ -742,18 +838,107 @@ def delete_lead(lead_id: int, owner_user_id: str) -> bool:
         return cur.rowcount > 0
 
 
-def save_chat(bot_id: str, question: str, answer: str, is_guardrail: bool) -> None:
-    """Public — every /chat turn, including guardrail refusals."""
+def save_chat(
+    bot_id: str,
+    question: str,
+    answer: str,
+    is_guardrail: bool,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+) -> int | None:
+    """Public — every /chat turn, including guardrail refusals and LLM token billing."""
     try:
         with _get_pool().connection() as conn, conn.cursor() as cur:
+            try:
+                cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0")
+                cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT")
+            except Exception:
+                conn.rollback()
             _set_platform_admin(cur)
             _ensure_demo_bot_exists(cur, bot_id)
-            cur.execute(
-                "INSERT INTO chats (bot_id, question, answer, is_guardrail) VALUES (%s, %s, %s, %s)",
-                (bot_id, question, answer, is_guardrail),
-            )
+            try:
+                cur.execute(
+                    "INSERT INTO chats (bot_id, question, answer, is_guardrail, prompt_tokens, completion_tokens) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (bot_id, question, answer, is_guardrail, prompt_tokens, completion_tokens),
+                )
+                cur.execute("SELECT lastval()")
+                return cur.fetchone()[0]
+            except Exception:
+                conn.rollback()
+                _set_platform_admin(cur)
+                # Fallback if DB migration hasn't been applied yet
+                cur.execute(
+                    "INSERT INTO chats (bot_id, question, answer, is_guardrail) VALUES (%s, %s, %s, %s)",
+                    (bot_id, question, answer, is_guardrail),
+                )
+                cur.execute("SELECT lastval()")
+                return cur.fetchone()[0]
     except Exception as e:
         print(f"[DB] Failed to save chat turn for bot {bot_id}: {e}")
+        return None
+
+
+def save_chat_feedback(chat_id: int | None, bot_id: str, score: int, text: str | None = None, question: str | None = None, answer: str | None = None) -> bool:
+    """Record customer confidence score integers (+1, -1) and optional text explanation into chats table."""
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            try:
+                cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0")
+                cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT")
+            except Exception:
+                conn.rollback()
+            _set_platform_admin(cur)
+            if chat_id:
+                cur.execute(
+                    "UPDATE chats SET feedback_score = %s, feedback_text = %s WHERE id = %s AND bot_id = %s",
+                    (score, text, chat_id, bot_id),
+                )
+            elif question and answer:
+                cur.execute(
+                    "UPDATE chats SET feedback_score = %s, feedback_text = %s WHERE bot_id = %s AND question = %s AND answer = %s",
+                    (score, text, bot_id, question, answer),
+                )
+            else:
+                return False
+            return cur.rowcount > 0
+    except Exception as e:
+        print(f"[DB] Failed to save chat feedback for bot {bot_id}: {e}")
+        return False
+
+
+def get_bot_hallucinations(bot_id: str, owner_user_id: str) -> list[dict]:
+    """Retrieve low-rated / flagged chats for Hallucination Review Dashboard."""
+    try:
+        from psycopg.rows import dict_row
+        with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            try:
+                cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0")
+                cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT")
+            except Exception:
+                conn.rollback()
+            _set_owner(cur, owner_user_id)
+            cur.execute(
+                "SELECT id, bot_id, question, answer, feedback_score, feedback_text, created_at "
+                "FROM chats WHERE bot_id = %s AND feedback_score < 0 "
+                "ORDER BY id DESC LIMIT 50",
+                (bot_id,),
+            )
+            rows = cur.fetchall()
+            return [
+                {
+                    "id": r["id"],
+                    "bot_id": r["bot_id"],
+                    "question": r["question"],
+                    "answer": r["answer"],
+                    "feedback_score": r["feedback_score"],
+                    "feedback_text": r["feedback_text"],
+                    "created_at": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+                }
+                for r in rows
+            ]
+    except Exception as e:
+        print(f"[DB] Failed to fetch hallucinations for bot {bot_id}: {e}")
+        return []
 
 
 
@@ -1191,4 +1376,102 @@ def platform_analytics() -> dict:
             "platform_health": {"total_bots": 0, "active_bots": 0, "suspended_bots": 0, "unanswered_messages": 0, "unanswered_rate": 0},
         }
 
+
+def purge_subject_across_tables(target_identifier: str, owner_user_id: str) -> dict:
+    """
+    Executes a GDPR Subject Erasure (Right to be Forgotten) request across all bots owned
+    by the calling user, deleting matching leads, chat histories containing the identifier, and associated records.
+    """
+    purged = {"leads": 0, "chats": 0}
+    if not target_identifier or not target_identifier.strip():
+        return purged
+    identifier = target_identifier.strip()
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            _set_owner(cur, owner_user_id)
+            cur.execute("SELECT bot_id FROM bots WHERE owner_user_id = %s", (owner_user_id,))
+            bot_ids = [row[0] for row in cur.fetchall()]
+            if not bot_ids:
+                return purged
+            placeholders = ",".join(["%s"] * len(bot_ids))
+            
+            # 1. Purge matching leads (email, phone, or name)
+            cur.execute(
+                f"DELETE FROM leads WHERE bot_id IN ({placeholders}) AND (email ILIKE %s OR phone ILIKE %s OR name ILIKE %s)",
+                (*bot_ids, f"%{identifier}%", f"%{identifier}%", f"%{identifier}%")
+            )
+            purged["leads"] = cur.rowcount
+            
+            # 2. Purge chats where user message or bot answer mentions identifier
+            cur.execute(
+                f"DELETE FROM chats WHERE bot_id IN ({placeholders}) AND (user_message ILIKE %s OR answer ILIKE %s)",
+                (*bot_ids, f"%{identifier}%", f"%{identifier}%")
+            )
+            purged["chats"] = cur.rowcount
+            conn.commit()
+    except Exception as e:
+        print("[db] purge_subject Postgres error, attempting SQLite:", e)
+        try:
+            with _get_sqlite_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT bot_id FROM bots WHERE owner_user_id = ?", (owner_user_id,))
+                bot_ids = [row[0] for row in cur.fetchall()]
+                if not bot_ids:
+                    return purged
+                placeholders = ",".join(["?"] * len(bot_ids))
+                cur.execute(
+                    f"DELETE FROM leads WHERE bot_id IN ({placeholders}) AND (email LIKE ? OR phone LIKE ? OR name LIKE ?)",
+                    (*bot_ids, f"%{identifier}%", f"%{identifier}%", f"%{identifier}%")
+                )
+                purged["leads"] = cur.rowcount
+                cur.execute(
+                    f"DELETE FROM chats WHERE bot_id IN ({placeholders}) AND (user_message LIKE ? OR answer LIKE ?)",
+                    (*bot_ids, f"%{identifier}%", f"%{identifier}%")
+                )
+                purged["chats"] = cur.rowcount
+                conn.commit()
+        except Exception as sq_e:
+            print("[db] purge_subject SQLite fallback failed:", sq_e)
+    return purged
+
+
+def export_tenant_data(owner_user_id: str) -> dict:
+    """
+    Generates a GDPR Data Portability JSON bundle containing all account configurations,
+    owned bots, customer interactions, lead records, and billing metadata.
+    """
+    export_bundle = {"owner_user_id": owner_user_id, "bots": [], "leads": [], "chats": []}
+    try:
+        with _get_pool().connection() as conn, conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            _set_owner(cur, owner_user_id)
+            cur.execute("SELECT * FROM bots WHERE owner_user_id = %s", (owner_user_id,))
+            bots = cur.fetchall()
+            export_bundle["bots"] = [dict(b) for b in bots]
+            
+            bot_ids = [b["bot_id"] for b in bots]
+            if bot_ids:
+                placeholders = ",".join(["%s"] * len(bot_ids))
+                cur.execute(f"SELECT * FROM leads WHERE bot_id IN ({placeholders}) ORDER BY created_at DESC LIMIT 1000", tuple(bot_ids))
+                export_bundle["leads"] = [dict(row) for row in cur.fetchall()]
+                
+                cur.execute(f"SELECT * FROM chats WHERE bot_id IN ({placeholders}) ORDER BY id DESC LIMIT 1000", tuple(bot_ids))
+                export_bundle["chats"] = [dict(row) for row in cur.fetchall()]
+    except Exception as e:
+        print("[db] export_tenant_data Postgres error, using SQLite:", e)
+        try:
+            with _get_sqlite_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM bots WHERE owner_user_id = ?", (owner_user_id,))
+                bots = [dict(r) for r in cur.fetchall()]
+                export_bundle["bots"] = bots
+                bot_ids = [b["bot_id"] for b in bots]
+                if bot_ids:
+                    placeholders = ",".join(["?"] * len(bot_ids))
+                    cur.execute(f"SELECT * FROM leads WHERE bot_id IN ({placeholders}) LIMIT 1000", tuple(bot_ids))
+                    export_bundle["leads"] = [dict(r) for r in cur.fetchall()]
+                    cur.execute(f"SELECT * FROM chats WHERE bot_id IN ({placeholders}) LIMIT 1000", tuple(bot_ids))
+                    export_bundle["chats"] = [dict(r) for r in cur.fetchall()]
+        except Exception as sq_e:
+            print("[db] export_tenant_data SQLite fallback failed:", sq_e)
+    return export_bundle
 
