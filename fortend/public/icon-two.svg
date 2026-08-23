@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <!-- Dark Background Container -->
+  <rect width="100%" height="100%" rx="20" fill="#0F172A" />
+  
+  <g transform="translate(35, 30)">
+    <!-- Left Yellow Fold -->
+    <path d="M45 0 L0 25 L0 75 L45 100 L45 72 L22 58 L22 42 L45 28 Z" fill="#F5A623"/>
+    <!-- Right Light Fold -->
+    <path d="M45 0 L90 25 L90 75 L45 100 L45 72 L68 58 L68 42 L45 28 Z" fill="#FDE68A"/>
+  </g>
+</svg>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ShieldCheck as ShieldCheckIcon, ChevronDown as ChevronDownIcon, Zap, Check } from "lucide-react";
+import { ShieldCheck as ShieldCheckIcon, ChevronDown as ChevronDownIcon, Zap, Check, Paintbrush, Sparkles, RotateCcw, Globe, Palette, Type, MousePointerClick, MessageSquare, Lock, Contact } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { useZevaStore } from "@/stores/zevaStore";
 import { useZevaChat } from "@/hooks/useZevaChat";
 import { Segmented } from "./Segmented";
@@ -16,12 +17,14 @@ import { MakeItYoursCard } from "./MakeItYoursCard";
 import { DemoSite } from "./DemoSite";
 import { StudioBotBanner } from "./StudioBotBanner";
 import { ZevaWidget } from "@/components/widget/ZevaWidget";
+import { LeadFormBuilder } from "@/components/admin/LeadFormBuilder";
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
 
-export function Studio({ botId = "" }: { botId?: string }) {
+export function Studio({ botId = "", hideBanner = false }: { botId?: string, hideBanner?: boolean }) {
 
   const store = useZevaStore();
   const cfg = store.config;
+  const reopenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chat = useZevaChat();
   const isScanning = store.isQuestionProcessing || chat.isScanning;
   const [ingesting, setIngesting] = useState(false);
@@ -105,32 +108,39 @@ export function Studio({ botId = "" }: { botId?: string }) {
   };
 
   return (
-    <div className="w-full max-w-[1240px] mx-auto py-6 px-4 sm:px-6 lg:py-8 lg:px-8 pb-20">
-      {botId && <StudioBotBanner botId={botId} />}
+    <div className={`w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 ${hideBanner ? "pt-2 pb-10 lg:pt-4" : "py-6 lg:py-8 pb-20"}`}>
+      {!hideBanner && botId && <StudioBotBanner botId={botId} />}
 
       {/* Masthead */}
-      <header className="flex items-center gap-[13px] mb-[22px] sm:mb-[26px]">
-        <div className="w-[42px] h-[42px] rounded-[13px] grid place-items-center text-white shadow-panel bg-gradient-to-br from-accent to-accent-strong shrink-0">
-          <ShieldCheckIcon className="w-[22px] h-[22px]" />
-        </div>
-        <div>
-          <p className="text-[11.5px] tracking-[.16em] uppercase text-muted font-[700] m-0 mb-0.5">
-            ochreshift Studio
-          </p>
-          <h1 className="text-[clamp(20px,3vw,28px)] tracking-[-.02em] m-0 font-[750]">
-            Make it yours
-          </h1>
-        </div>
-      </header>
+      {!hideBanner && (
+        <header className="flex items-center gap-[15px] mb-[26px]">
+          <div className="relative w-[44px] h-[44px] rounded-[14px] grid place-items-center text-white shadow-[0_4px_20px_-2px_rgba(var(--color-accent),0.4)] bg-gradient-to-br from-accent to-accent-strong shrink-0">
+            <div className="absolute inset-0 bg-white/20 rounded-[14px] animate-pulse pointer-events-none" style={{ animationDuration: '3s' }} />
+            <Paintbrush className="w-[22px] h-[22px] relative z-10 drop-shadow-md" />
+          </div>
+          <div>
+            <p className="text-[11.5px] tracking-[.18em] uppercase text-accent font-[750] m-0 mb-0.5">
+              ochreshift Studio
+            </p>
+            <h1 className="text-[clamp(20px,3vw,26px)] tracking-tight m-0 font-[800] text-fg">
+              Make it yours
+            </h1>
+          </div>
+        </header>
+      )}
 
       {/* Studio grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[366px_1fr] gap-6 items-start">
+      <div className={cn("grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[366px_1fr] gap-6", hideBanner ? "items-stretch" : "items-start")}>
         {/* Controls sidebar */}
-        <aside className="w-full bg-surface border border-border rounded-[20px] shadow-panel overflow-hidden lg:sticky lg:top-[74px] lg:max-h-[calc(100vh-96px)] lg:overflow-y-auto">
-          <div className="sticky top-0 z-10 flex items-center justify-between py-4 px-[18px] border-b border-border bg-surface">
-            <b className="text-sm font-[750]">Customize widget</b>
+        <aside className={cn(
+          "w-full bg-surface border border-border rounded-[20px] shadow-panel overflow-hidden overflow-y-auto",
+          hideBanner ? "h-[480px] sm:h-[580px] lg:h-[620px] flex flex-col" : "lg:sticky lg:top-[74px] lg:max-h-[calc(100vh-96px)]"
+        )}>
+          <div className="sticky top-0 z-10 flex items-center justify-between py-4 px-5 border-b border-border bg-surface/95 backdrop-blur-sm">
+            <b className="text-[14.5px] font-[750] tracking-tight">Customize widget</b>
             <button
-              className="border border-border bg-panel text-muted font-ui text-xs font-[600] rounded-[8px] py-[5px] px-2.5 cursor-pointer hover:text-fg transition-colors focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Reset all settings"
+              className="group flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => {
                 if (window.confirm("Reset all customization back to defaults? This can't be undone.")) {
                   store.resetConfig();
@@ -138,121 +148,54 @@ export function Studio({ botId = "" }: { botId?: string }) {
               }}
               disabled={isProcessing}
             >
-              Reset
+              <RotateCcw className="h-4 w-4 transition-transform duration-300 group-hover:-rotate-90" />
             </button>
           </div>
 
+
           <div className="py-1 px-[18px] pb-[18px]">
-            {/* Industry Templates group */}
-            <ControlGroup title="Industry Templates" defaultOpen>
-              <div>
-                <FieldLabel label="Select Ready Template & Knowledge Base" />
-
-                {/* Dropdown Selector */}
-                <div className="mb-2.5">
-                  <select
-                    value={INDUSTRY_TEMPLATES.find((t) => store.config.name === t.botName)?.id || ""}
-                    onChange={(e) => {
-                      const tmpl = INDUSTRY_TEMPLATES.find((t) => t.id === e.target.value);
-                      if (tmpl) handleApplyTemplate(tmpl);
-                    }}
-                    disabled={isProcessing}
-                    className="w-full border border-border bg-panel text-fg rounded-[9px] py-2 px-3 text-[12.5px] font-[650] outline-none focus:border-accent disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <option value="" disabled>-- Select Industry Template --</option>
-                    {INDUSTRY_TEMPLATES.map((tmpl) => (
-                      <option key={tmpl.id} value={tmpl.id}>
-                        {tmpl.icon} {tmpl.name} ({tmpl.botName})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Grid of Template Cards */}
-                <div className="grid grid-cols-2 gap-2">
-                  {INDUSTRY_TEMPLATES.map((tmpl) => {
-                    const isSelected = store.config.name === tmpl.botName || store.websiteUrl === tmpl.websiteUrl;
-                    return (
-                      <button
-                        key={tmpl.id}
-                        type="button"
-                        onClick={() => handleApplyTemplate(tmpl)}
-                        disabled={isProcessing}
-                        title={isProcessing ? "Template selection disabled while question is processing" : tmpl.name}
-                        className={`flex flex-col gap-1 p-2.5 border rounded-[10px] text-left transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none group ${
-                          isSelected
-                            ? "border-accent bg-accent/10 shadow-sm ring-1 ring-accent"
-                            : "border-border bg-panel hover:bg-surface hover:border-accent"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{tmpl.icon}</span>
-                          <span className={`text-[12px] font-[750] truncate ${isSelected ? "text-accent" : "text-fg group-hover:text-accent"}`}>
-                            {tmpl.name}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-faint line-clamp-1">
-                          {tmpl.description}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* In-flight question processing alert */}
-                {isScanning && (
-                  <div className="mt-2.5 rounded-[8px] bg-warn/10 border border-warn/30 px-3 py-2 text-[11.5px] font-[650] text-warn flex items-center gap-2 animate-fade-in">
-                    <span className="w-2 h-2 rounded-full bg-warn animate-pulse shrink-0" />
-                    <span>Question is processing... Template selection locked until AI finishes answering.</span>
-                  </div>
-                )}
-
-                {templateStatus && (
-                  <div className="mt-2.5 flex items-center gap-1.5 rounded-[8px] bg-good/10 border border-good/30 px-3 py-2 text-[11.5px] font-[650] text-good animate-fade-in">
-                    <Check className="h-3.5 w-3.5 shrink-0" />
-                    {templateStatus}
-                  </div>
-                )}
-                <p className="mt-2 text-[11px] text-faint leading-relaxed">
-                  Selecting a template auto-configures logo, website URL, brand color, greeting, sample questions AND indexes full knowledge base into AI memory!
-                </p>
-              </div>
-            </ControlGroup>
-
 
             {/* Website URL group */}
-            <ControlGroup title="Your website">
-              <div>
-                <FieldLabel label="Website URL" />
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 border border-border bg-surface text-fg rounded-[9px] py-[9px] px-[11px] font-[inherit] text-[13px] outline-none focus:border-accent focus:ring-3 focus:ring-accent-ring"
-                    placeholder="https://example.com"
-                    value={store.websiteUrl}
-                    onChange={(e) => store.setWebsiteUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleIngestUrl();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleIngestUrl()}
-                    disabled={ingesting || !store.websiteUrl.trim()}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-[9px] bg-accent px-3 py-[9px] text-[12.5px] font-[650] text-white hover:bg-accent-strong disabled:opacity-50 cursor-pointer"
-                  >
-                    {ingesting ? "Scraping..." : (<><Zap className="h-3.5 w-3.5" /> Connect</>)}
-                  </button>
+            {!hideBanner && (
+              <ControlGroup title="Your website" icon={<Globe className="h-[13px] w-[13px]" />}>
+                <div>
+                  <FieldLabel label="Website URL" />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                        <input
+                          className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 pl-9 pr-3 font-mono text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
+                          placeholder="https://example.com"
+                          value={store.websiteUrl}
+                          onChange={(e) => store.setWebsiteUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleIngestUrl();
+                            }
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleIngestUrl()}
+                        disabled={ingesting || !store.websiteUrl.trim()}
+                        className="group relative shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-[700] text-white hover:bg-accent-strong transition-all disabled:opacity-50 overflow-hidden shadow-sm"
+                      >
+                        <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+                        {ingesting ? "Scraping..." : (<><Sparkles className="h-4 w-4" /> Connect</>)}
+                      </button>
+                    </div>
+                    <p className="ml-1 text-[11.5px] text-muted">Paste your URL to automatically teach the AI about your business.</p>
+                  </div>
                 </div>
-                <p className="mt-1.5 text-[11px] text-faint">Paste your URL and click <b className="inline-flex items-center gap-0.5 align-middle"><Zap className="h-3 w-3" /> Connect</b> to scrape your site &amp; connect your agent&apos;s knowledge.</p>
-              </div>
-            </ControlGroup>
+              </ControlGroup>
+            )}
 
 
             {/* Brand group */}
-            <ControlGroup title="Brand">
+            <ControlGroup title="Brand" icon={<Palette className="h-[13px] w-[13px]" />} defaultOpen={hideBanner}>
               <div>
                 <FieldLabel
                   label="Accent color"
@@ -287,7 +230,7 @@ export function Studio({ botId = "" }: { botId?: string }) {
 
 
             {/* Shape & type group */}
-            <ControlGroup title="Shape & type">
+            <ControlGroup title="Shape & type" icon={<Type className="h-[13px] w-[13px]" />}>
               <div>
                 <FieldLabel label="Corners" />
                 <Segmented
@@ -324,7 +267,7 @@ export function Studio({ botId = "" }: { botId?: string }) {
             </ControlGroup>
 
             {/* Launcher & position group */}
-            <ControlGroup title="Launcher & position">
+            <ControlGroup title="Launcher & position" icon={<MousePointerClick className="h-[13px] w-[13px]" />}>
               <div>
                 <FieldLabel label="Launcher style" />
                 <Segmented
@@ -334,7 +277,12 @@ export function Studio({ botId = "" }: { botId?: string }) {
                     { label: "Bubble", value: "bubble" },
                     { label: "Bar", value: "bar" },
                   ]}
-                  onChange={store.setLauncher}
+                  onChange={(v) => {
+                    store.setLauncher(v as any);
+                    store.setOpen(false);
+                    if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current);
+                    reopenTimerRef.current = setTimeout(() => store.setOpen(true), 2000);
+                  }}
                 />
               </div>
               <div className="mt-4">
@@ -342,7 +290,12 @@ export function Studio({ botId = "" }: { botId?: string }) {
                   anchor={cfg.anchor}
                   offX={cfg.offX}
                   offY={cfg.offY}
-                  onChange={(anchor) => store.setAnchor(anchor)}
+                  onChange={(anchor) => {
+                    store.setAnchor(anchor);
+                    store.setOpen(false);
+                    if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current);
+                    reopenTimerRef.current = setTimeout(() => store.setOpen(true), 2000);
+                  }}
                 />
                 <p className="mt-2 text-[11.5px] text-faint leading-[1.45]">
                   <b className="text-muted">Or drag it:</b> grab the launcher
@@ -353,11 +306,11 @@ export function Studio({ botId = "" }: { botId?: string }) {
             </ControlGroup>
 
             {/* Content group */}
-            <ControlGroup title="Content">
+            <ControlGroup title="Content" icon={<MessageSquare className="h-[13px] w-[13px]" />}>
               <div>
                 <FieldLabel label="Assistant name" />
                 <input
-                  className="w-full border border-border bg-surface text-fg rounded-[9px] py-[9px] px-[11px] font-[inherit] text-[13px] outline-none focus:border-accent focus:ring-3 focus:ring-accent-ring"
+                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
                   value={cfg.name}
                   onChange={(e) => store.setName(e.target.value)}
                 />
@@ -365,7 +318,7 @@ export function Studio({ botId = "" }: { botId?: string }) {
               <div className="mt-4">
                 <FieldLabel label="Header subtitle" />
                 <input
-                  className="w-full border border-border bg-surface text-fg rounded-[9px] py-[9px] px-[11px] font-[inherit] text-[13px] outline-none focus:border-accent focus:ring-3 focus:ring-accent-ring"
+                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
                   value={cfg.subtitle}
                   onChange={(e) => store.setSubtitle(e.target.value)}
                 />
@@ -373,7 +326,7 @@ export function Studio({ botId = "" }: { botId?: string }) {
               <div className="mt-4">
                 <FieldLabel label="Launcher label" />
                 <input
-                  className="w-full border border-border bg-surface text-fg rounded-[9px] py-[9px] px-[11px] font-[inherit] text-[13px] outline-none focus:border-accent focus:ring-3 focus:ring-accent-ring"
+                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
                   value={cfg.label}
                   onChange={(e) => store.setLabel(e.target.value)}
                 />
@@ -381,7 +334,7 @@ export function Studio({ botId = "" }: { botId?: string }) {
               <div className="mt-4">
                 <FieldLabel label="Welcome line" />
                 <input
-                  className="w-full border border-border bg-surface text-fg rounded-[9px] py-[9px] px-[11px] font-[inherit] text-[13px] outline-none focus:border-accent focus:ring-3 focus:ring-accent-ring"
+                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
                   value={cfg.welcome}
                   onChange={(e) => store.setWelcome(e.target.value)}
                 />
@@ -392,17 +345,17 @@ export function Studio({ botId = "" }: { botId?: string }) {
                   value={`${cfg.suggestions.filter((q) => q.trim()).length} chips`}
                 />
                 <textarea
-                  className="w-full resize-none border border-border bg-surface text-fg rounded-[9px] py-[9px] px-[11px] font-[inherit] text-[13px] leading-[1.5] outline-none focus:border-accent focus:ring-3 focus:ring-accent-ring"
+                  className="w-full resize-y border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] leading-[1.6] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted min-h-[100px]"
                   rows={4}
                   value={cfg.suggestions.join("\n")}
                   onChange={(e) => store.setSuggestions(e.target.value.split("\n"))}
                 />
-                <p className="mt-1.5 text-[11px] text-faint">One question per line.</p>
+                <p className="mt-1.5 text-[11.5px] text-muted">One question per line.</p>
               </div>
             </ControlGroup>
 
             {/* Trust & white-label group */}
-            <ControlGroup title="Trust & white-label">
+            <ControlGroup title="Trust & white-label" icon={<ShieldCheckIcon className="h-[13px] w-[13px]" />}>
               <Switch
                 checked={cfg.sources}
                 onCheckedChange={store.toggleSources}
@@ -419,6 +372,11 @@ export function Studio({ botId = "" }: { botId?: string }) {
               </div>
             </ControlGroup>
 
+            {/* Lead capture group */}
+            <ControlGroup title="Lead capture form" icon={<Contact className="h-[13px] w-[13px]" />}>
+              <LeadFormBuilder botId={botId} />
+            </ControlGroup>
+
           </div>
         </aside>
 
@@ -429,16 +387,27 @@ export function Studio({ botId = "" }: { botId?: string }) {
               direct child of `.stage` in the prototype. */}
           <div
             ref={stageRef}
-            className="relative rounded-[22px] overflow-hidden border border-border bg-surface shadow-panel min-h-[480px] sm:min-h-[580px] lg:min-h-[620px]"
+            className={cn(
+              "relative rounded-[22px] overflow-hidden border border-border bg-surface shadow-panel",
+              hideBanner ? "h-[480px] sm:h-[580px] lg:h-[620px]" : "min-h-[480px] sm:min-h-[580px] lg:min-h-[620px]"
+            )}
           >
             {/* Browser bar */}
-            <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-panel">
-              <span className="w-[11px] h-[11px] rounded-full bg-red-400" />
-              <span className="w-[11px] h-[11px] rounded-full bg-amber-400" />
-              <span className="w-[11px] h-[11px] rounded-full bg-emerald-400" />
-              <span className="ml-2.5 text-xs text-faint bg-surface border border-border rounded-[8px] py-1 px-3 font-mono truncate max-w-[300px]">
-                {store.websiteUrl ? (() => { try { return new URL(store.websiteUrl).hostname } catch { return store.websiteUrl } })() : "ochreshift.ai"}
-              </span>
+            <div className="flex items-center justify-between py-3 px-4 border-b border-border bg-panel">
+              <div className="flex items-center gap-2">
+                <span className="w-[11px] h-[11px] rounded-full bg-[#FF5F56]" />
+                <span className="w-[11px] h-[11px] rounded-full bg-[#FFBD2E]" />
+                <span className="w-[11px] h-[11px] rounded-full bg-[#27C93F]" />
+              </div>
+              <div className="flex items-center justify-center absolute left-1/2 -translate-x-1/2 w-[240px] max-w-[50%]">
+                <div className="flex w-full items-center justify-center gap-1.5 bg-surface/80 border border-border/80 shadow-sm rounded-md py-1 px-3">
+                  <Lock className="h-3 w-3 text-muted shrink-0" />
+                  <span className="text-[11px] font-medium text-fg truncate">
+                    {store.websiteUrl ? (() => { try { return new URL(store.websiteUrl).hostname } catch { return store.websiteUrl } })() : "ochreshift.ai"}
+                  </span>
+                </div>
+              </div>
+              <div className="w-[45px]" /> {/* Spacer for flex balance */}
             </div>
 
             <DemoSite websiteUrl={store.websiteUrl} />
@@ -449,7 +418,7 @@ export function Studio({ botId = "" }: { botId?: string }) {
           {/* Signed-in editing a real bot → show the embed snippet. Public
               visitor → the "Make it yours" funnel instead (an embed snippet is
               useless with no account/bot yet). */}
-          {botId ? <EmbedCode config={cfg} /> : <MakeItYoursCard />}
+          {!hideBanner && (botId ? <EmbedCode config={cfg} /> : <MakeItYoursCard />)}
         </div>
       </div>
     </div>
@@ -460,10 +429,12 @@ export function Studio({ botId = "" }: { botId?: string }) {
 
 function ControlGroup({
   title,
+  icon,
   defaultOpen = false,
   children,
 }: {
   title: string;
+  icon?: React.ReactNode;
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
@@ -474,15 +445,21 @@ function ControlGroup({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center justify-between gap-2 py-3.5 text-left focus-visible:outline-2 focus-visible:outline-accent"
+        className="group flex w-full cursor-pointer items-center justify-between gap-2 py-4 text-left focus-visible:outline-2 focus-visible:outline-accent"
       >
-        <span className="text-[10.5px] tracking-[.13em] uppercase text-faint font-[700]">
-          {title}
-        </span>
+        <div className="flex items-center gap-2.5">
+          {icon && (
+            <div className={`grid h-[26px] w-[26px] place-items-center rounded-md border transition-colors ${open ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-panel border-border text-muted group-hover:text-fg group-hover:bg-surface group-hover:border-border/80'}`}>
+              {icon}
+            </div>
+          )}
+          <span className={`text-[11px] tracking-[.15em] uppercase font-[750] transition-colors ${open ? 'text-fg' : 'text-muted group-hover:text-fg'}`}>
+            {title}
+          </span>
+        </div>
         <ChevronDownIcon
-          className={`h-4 w-4 shrink-0 text-faint transition-transform duration-300 ${
-            open ? "rotate-180" : ""
-          }`}
+          className={`h-4 w-4 shrink-0 text-faint transition-transform duration-300 ${open ? "rotate-180" : ""
+            }`}
         />
       </button>
       <div

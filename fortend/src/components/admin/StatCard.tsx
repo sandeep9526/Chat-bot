@@ -1,3 +1,5 @@
+import { cn } from "@/lib/cn";
+
 interface StatCardProps {
   label: string;
   value: number | string;
@@ -10,7 +12,8 @@ export function StatCard({ label, value, hint, trend }: StatCardProps) {
   const activeTrend = trend || { value: "12%", isPositive: true };
   
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-r2 border border-border bg-surface p-5 shadow-card transition-all duration-200 hover:border-accent/40">
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-r2 border border-border bg-surface p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:shadow-accent/5 hover:-translate-y-1 hover:border-accent/30">
+      <div className="absolute -inset-px rounded-[inherit] bg-gradient-to-b from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       <div className="flex items-center justify-between">
         <span className="text-[12.5px] font-[600] text-muted">
           {label}

@@ -15,7 +15,7 @@ export function StepAddDocs({ botId, onBack, onNext }: StepAddDocsProps) {
         <b className="text-base font-[750] text-fg">Add your documents</b>
         <p className="mt-1 mb-5 text-[13px] text-muted">
           Paste your pricing, FAQ, hours, or policies below — the clearer the
-          docs, the better your agent&apos;s answers. Add as many as you like;
+          documents, the better your agent&apos;s answers. Add as many as you like;
           you can always add more later from your dashboard.
         </p>
         <DocsUpload botId={botId} />
@@ -38,7 +38,7 @@ export function StepAddDocs({ botId, onBack, onNext }: StepAddDocsProps) {
         </button>
       </div>
       <p className="text-center text-[11.5px] text-faint">
-        Docs are optional here — you can skip this and add them later.
+        Documents are optional here — you can skip this and add them later.
       </p>
     </div>
   );

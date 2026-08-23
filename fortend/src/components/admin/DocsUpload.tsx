@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, Check, FileText, Trash2 } from "lucide-react";
+import { Upload, Check, FileText, Trash2, CloudUpload, FileCode, CheckCircle2 } from "lucide-react";
 import { useIngestDoc, useIngestFile, useDocs, useDeleteDoc } from "@/hooks/useAdmin";
 import { AdminApiError } from "@/lib/adminApi";
 import { markSetupDone } from "@/lib/setupProgress";
@@ -61,11 +61,16 @@ export function DocsUpload({ botId }: { botId: string }) {
           ok: true,
           text: `Added ${r.filename} — ${r.chars.toLocaleString()} characters, ${r.chunks} chunk${r.chunks === 1 ? "" : "s"} indexed`,
         });
-      } catch (e) {
-        setFileMsg({
-          ok: false,
-          text: e instanceof AdminApiError ? e.message : `Couldn't read "${file.name}".`,
-        });
+      } catch (err: any) {
+        if (err?.status === 404 || (err?.message && err.message.includes("not found"))) {
+           localStorage.removeItem("zeva-onboarding-draft");
+           setFileError("Bot not found on server (it may have been created during a connection error). The draft has been cleared. Please refresh the page to start over.");
+        } else {
+           setFileMsg({
+             ok: false,
+             text: err instanceof AdminApiError ? err.message : `Couldn't read "${file.name}".`,
+           });
+        }
       }
     }
     if (fileRef.current) fileRef.current.value = "";
@@ -103,7 +108,7 @@ export function DocsUpload({ botId }: { botId: string }) {
 
   return (
     <div className="rounded-r2 border border-border bg-surface p-4 shadow-card">
-      <b className="text-sm font-[750]">Add knowledge (docs)</b>
+      <b className="text-sm font-[750]">Add knowledge</b>
       <p className="mt-0.5 mb-3 text-[12px] text-muted">
         Upload a file or paste text. Your agent answers only from what you add here.
       </p>
@@ -129,16 +134,19 @@ export function DocsUpload({ botId }: { botId: string }) {
           setDragging(false);
           uploadFiles(e.dataTransfer.files);
         }}
-        className={`tap flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-r1 border-2 border-dashed px-4 py-6 text-center transition-colors ${
+        className={`tap relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-200 overflow-hidden ${
           dragging
-            ? "border-accent bg-accent/[0.05]"
-            : "border-border bg-panel/40 hover:border-accent-ring"
+            ? "border-accent bg-accent/[0.08] shadow-[0_0_20px_rgba(var(--color-accent),0.1)] scale-[1.01]"
+            : "border-border/60 bg-surface hover:border-accent/50 hover:bg-surface"
         }`}
       >
-        <Upload className="h-6 w-6 text-faint" strokeWidth={1.8} />
-        <b className="text-[13px] font-[680] text-fg">Click to upload or drag a file here</b>
-        <span className="text-[11.5px] text-faint">
-          PDF, Word, text, Markdown, PNG or JPG · up to {MAX_MB}MB
+        <div className={`absolute inset-0 bg-gradient-to-b from-accent/5 to-transparent opacity-0 transition-opacity duration-300 ${dragging ? 'opacity-100' : 'group-hover:opacity-100'}`} />
+        <div className={`grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent transition-transform duration-300 ${dragging ? 'scale-110' : ''}`}>
+          <CloudUpload className="h-6 w-6" strokeWidth={1.5} />
+        </div>
+        <b className="mt-1 text-[13.5px] font-[650] text-fg z-10">Click to upload or drag a file here</b>
+        <span className="text-[12px] text-muted z-10 max-w-[280px]">
+          Accepts PDF, Word, TXT, Markdown, PNG, or JPG (up to {MAX_MB}MB)
         </span>
       </div>
       <input
@@ -175,54 +183,66 @@ export function DocsUpload({ botId }: { botId: string }) {
       )}
 
       {/* Manual text paste fallback */}
-      <div className="mt-4 border-t border-border pt-4">
-        <span className="text-[12.5px] font-[650] text-fg block mb-1">
-          Or paste text directly
-        </span>
-        <input
-          type="text"
-          placeholder="Filename (e.g. info.txt)"
-          aria-label="Filename"
-          value={filename}
-          onChange={(e) => setFilename(e.target.value)}
-          className="mb-2 w-full rounded-r1 border border-border bg-panel px-3 py-1.5 text-[12.5px] text-fg outline-none focus:border-accent"
-        />
-        <textarea
-          rows={3}
-          className="w-full rounded-r1 border border-border bg-panel p-3 text-[12.5px] text-fg outline-none focus:border-accent font-mono"
-          placeholder="Business info, pricing, FAQ, timings… the clearer the text, the better the answers."
-          aria-label="Knowledge text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
+      <div className="mt-6 border-t border-border pt-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="grid h-6 w-6 place-items-center rounded bg-zinc-500/10 text-zinc-500">
+            <FileCode className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[13px] font-[650] text-fg">
+            Or paste text directly
+          </span>
+        </div>
+        
+        <div className="overflow-hidden rounded-xl border border-border bg-surface focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/20 transition-all">
+          <div className="border-b border-border bg-panel px-3 py-2">
+            <input
+              type="text"
+              placeholder="Filename (e.g. info.txt)"
+              aria-label="Filename"
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
+              className="w-full bg-transparent text-[12px] font-mono text-fg outline-none placeholder:text-muted"
+            />
+          </div>
+          <textarea
+            rows={4}
+            className="w-full resize-y bg-transparent p-3 text-[12.5px] text-fg outline-none font-mono placeholder:text-muted/60"
+            placeholder="Paste business info, pricing, FAQs, timings… the clearer the text, the better the agent's answers."
+            aria-label="Knowledge text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </div>
 
         {pasteError && (
-          <p className="mt-2 rounded-r1 bg-warn/10 px-3 py-2 text-[12.5px] text-warn">
+          <p className="mt-2 rounded-lg bg-warn/10 px-3 py-2 text-[12px] text-warn">
             {pasteError}
           </p>
         )}
 
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {ingest.isSuccess && (
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-md">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Saved — {ingest.data.chunks} chunks indexed
+              </span>
+            )}
+            {ingest.isError && (
+              <span className="text-[12px] font-medium text-warn bg-warn/10 px-2.5 py-1 rounded-md">
+                {ingest.error instanceof AdminApiError
+                  ? ingest.error.message
+                  : "Couldn't save that text — check your connection and try again."}
+              </span>
+            )}
+          </div>
           <button
             type="button"
-            className="cursor-pointer rounded-r1 bg-accent px-4 py-2 font-ui text-[13px] font-[700] text-white disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="cursor-pointer rounded-lg bg-accent px-4 py-1.5 text-[12.5px] font-[650] text-white transition-colors hover:bg-accent-strong disabled:opacity-50"
             onClick={submitPaste}
             disabled={!text.trim() || ingest.isPending}
           >
             {ingest.isPending ? "Saving…" : "Save & re-index"}
           </button>
-          {ingest.isSuccess && (
-            <span className="inline-flex items-center gap-1.5 text-[12.5px] text-good">
-              <Check className="h-3.5 w-3.5" /> Saved — {ingest.data.chunks} chunks indexed
-            </span>
-          )}
-          {ingest.isError && (
-            <span className="text-[12.5px] text-warn">
-              {ingest.error instanceof AdminApiError
-                ? ingest.error.message
-                : "Couldn't save that text — check your connection and try again."}
-            </span>
-          )}
         </div>
       </div>
 
@@ -234,32 +254,35 @@ export function DocsUpload({ botId }: { botId: string }) {
         </div>
 
         {docsError ? (
-          <div className="rounded-r1 bg-warn/10 p-3 text-[12.5px] text-warn">
+          <div className="rounded-lg bg-warn/10 p-3 text-[12.5px] text-warn">
             Couldn&apos;t load your documents — check your connection.{" "}
             <button type="button" onClick={() => refetchDocs()} className="font-[700] underline">
               Retry
             </button>
           </div>
         ) : docs.length === 0 ? (
-          <p className="text-[12px] text-faint italic bg-panel p-3 rounded-r1">
-            No documents uploaded yet for this bot. Upload a file above or select an industry template.
-          </p>
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-surface/30 py-8 text-center">
+            <FileText className="mb-2 h-6 w-6 text-faint" />
+            <span className="text-[13px] font-[600] text-fg">No documents uploaded</span>
+            <span className="mt-1 max-w-[250px] text-[12px] text-muted">Upload a file or paste text above to teach your agent.</span>
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {docs.map((doc) => (
               <div
                 key={doc.filename}
-                className="flex items-center justify-between gap-3 rounded-r1 border border-border bg-panel p-3 text-[12.5px] transition-colors hover:border-accent/30"
+                className="group relative flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-surface p-3 transition-all hover:border-accent/30 hover:shadow-sm overflow-hidden"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-r1 bg-accent/15 text-accent">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/20 group-hover:bg-accent transition-colors" />
+                <div className="flex items-center gap-3 min-w-0 pl-1.5">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded bg-accent/10 text-accent">
                     <FileText className="h-4 w-4" />
-                  </span>
+                  </div>
                   <div className="min-w-0">
-                    <b className="block truncate font-[680] text-fg text-[13px]">
+                    <b className="block truncate font-[650] text-fg text-[13px]">
                       {doc.filename}
                     </b>
-                    <span className="block text-[11px] text-faint">
+                    <span className="block text-[11px] text-muted mt-0.5">
                       {doc.chars.toLocaleString()} chars · {(doc.size / 1024).toFixed(1)} KB
                     </span>
                   </div>
@@ -269,7 +292,7 @@ export function DocsUpload({ botId }: { botId: string }) {
                   type="button"
                   onClick={() => setConfirmDeleteName(doc.filename)}
                   disabled={deleteDoc.isPending}
-                  className="tap inline-flex shrink-0 items-center gap-1 rounded-r1 border border-bad/30 bg-bad/10 px-2.5 py-1 text-[11px] font-[700] text-bad transition-colors hover:bg-bad hover:text-white disabled:opacity-40"
+                  className="tap inline-flex shrink-0 items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 text-[11px] font-[650] text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete

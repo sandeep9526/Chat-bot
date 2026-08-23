@@ -29,6 +29,14 @@ export function ZevaWidget({ positionMode = "fixed", themeScopeRef }: ZevaWidget
   const isOpen = useZevaStore((s) => s.isOpen);
   const setOpen = useZevaStore((s) => s.setOpen);
   const setAnchor = useZevaStore((s) => s.setAnchor);
+  const hydrateMessages = useZevaStore((s) => s.hydrateMessages);
+
+  // Restore any in-progress conversation from this tab's session, once,
+  // after mount — never during the initial render (see hydrateMessages).
+  useEffect(() => {
+    hydrateMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Surface / corners / font apply to `themeScopeRef` if given, else page-wide;
   // the accent always stays scoped to this widget root (below) so it never

@@ -24,7 +24,7 @@ export function EmbedCode({ config }: EmbedCodeProps) {
               <Zap className="h-4 w-4" />
             </span>
             <b className="text-[16px] font-[800] tracking-tight text-fg">
-              Ready to Launch Your Chatbot?
+              Ready to launch your agent?
             </b>
           </div>
           <p className="mt-1 text-[13.5px] font-[500] text-muted max-w-[540px]">

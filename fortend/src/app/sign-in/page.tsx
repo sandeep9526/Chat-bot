@@ -41,7 +41,7 @@ export default function SignInPage() {
       });
 
       if (signInError) {
-        setError(signInError.message || "Login failed");
+        setError(signInError.message || "That email or password doesn't match our records.");
       } else {
         // Success - redirect admin to /admin, normal user to /dashboard
         const target = email.toLowerCase() === "admin@zeva.app" ? "/admin" : "/dashboard";
@@ -49,7 +49,7 @@ export default function SignInPage() {
         router.refresh();
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("We couldn't sign you in — check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export default function SignInPage() {
             type="email"
             autoFocus
             required
-            className="w-full rounded-r1 border border-border bg-surface px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent-ring"
+            className="w-full rounded-md border border-border bg-panel px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -99,7 +99,7 @@ export default function SignInPage() {
           <input
             type="password"
             required
-            className="w-full rounded-r1 border border-border bg-surface px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent-ring"
+            className="w-full rounded-md border border-border bg-panel px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -107,7 +107,7 @@ export default function SignInPage() {
         </div>
 
         {error && (
-          <div className="rounded-r1 bg-[#ef4444]/10 px-4 py-3 text-[13px] text-[#ef4444]">
+          <div className="rounded-r1 bg-bad/10 px-4 py-3 text-[13px] text-bad">
             {error}
           </div>
         )}
@@ -115,7 +115,7 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full cursor-pointer rounded-r1 bg-gradient-to-br from-accent to-accent-strong py-3 text-[14.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full cursor-pointer rounded-md bg-accent hover:brightness-90 py-3 text-[14.5px] font-[650] text-fg transition-colors disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>

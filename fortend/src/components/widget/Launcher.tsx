@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Sparkle as SparkIcon } from "lucide-react";
+import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 import type { LauncherStyle } from "@/lib/types";
@@ -52,12 +53,11 @@ export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function La
       type="button"
       className={cn(
         launcher({ variant }),
-        // Bubble is always the gradient chip; pill/bar follow the glass toggle.
-        isBubble
-          ? "bg-gradient-to-br from-accent to-accent-strong text-[var(--on-accent)]"
-          : glass
-            ? "bg-glass backdrop-blur-xl"
-            : "bg-surface",
+        glass
+          ? "bg-glass backdrop-blur-xl border border-border/50 text-fg"
+          : isBubble
+            ? "bg-gradient-to-br from-accent to-accent-strong text-[var(--on-accent)]"
+            : "bg-surface text-fg border border-border",
         isDragging ? "cursor-grabbing" : "motion-safe:animate-breathe",
       )}
       aria-label={label}
@@ -85,8 +85,9 @@ export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function La
             <span className={cn(isBubble ? "text-lg" : "text-sm")}>{logo}</span>
           )
         ) : (
-          <SparkIcon
-            className={cn(isBubble ? "w-[26px] h-[26px] text-[var(--on-accent)]" : "w-3.5 h-3.5")}
+          <OchreshiftLogo
+            variant="mark"
+            className={cn(isBubble ? "w-full h-full text-[var(--on-accent)]" : "w-3.5 h-3.5")}
           />
         )}
       </span>

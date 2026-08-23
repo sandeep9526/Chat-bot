@@ -188,6 +188,33 @@
     }
   })();
 
+  // Shallow same-tab conversation cache — sessionStorage (not localStorage)
+  // so it survives a reload/navigation within this tab but never leaks across
+  // tabs or outlives the browsing session. Only message text/metadata is kept
+  // — never lead-form field values, so no PII sits in storage longer than a
+  // single form submission.
+  var HISTORY_KEY = "zeva_hist_" + BOT_ID;
+  var MAX_HISTORY = 24;
+
+  function loadHistory() {
+    try {
+      var raw = sessionStorage.getItem(HISTORY_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function appendHistory(entry) {
+    try {
+      var hist = loadHistory();
+      hist.push(entry);
+      if (hist.length > MAX_HISTORY) hist = hist.slice(hist.length - MAX_HISTORY);
+      sessionStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+    } catch (e) { /* storage unavailable/full — degrade to non-persistent */ }
+  }
+
   var liveWs = null;
   function connectLiveChat() {
     try {
@@ -302,6 +329,8 @@
       ".zeva-header-close:hover{background:var(--ring);color:var(--text);}" +
       ".zeva-header-close:focus-visible{outline:2px solid var(--accent);}" +
       ".zeva-header-close svg{width:16px;height:16px;}" +
+      // Screen-reader-only live region (announces completed assistant replies)
+      ".zeva-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}" +
       // Composer
       ".zeva-composer{position:relative;margin:12px;flex-shrink:0;}" +
       ".zeva-composer-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--accent);display:grid;place-items:center;pointer-events:none;}" +
@@ -376,6 +405,10 @@
       ".zeva-ticket-submit{all:unset;box-sizing:border-box;display:block;width:100%;margin-top:12px;border-radius:var(--r1);padding:11px;text-align:center;font-size:13.5px;font-weight:700;color:#fff;background:var(--accent);cursor:pointer;}" +
       ".zeva-ticket-submit:disabled{opacity:.4;cursor:not-allowed;}" +
       ".zeva-ticket-submit:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}" +
+      ".zeva-ticket-error{margin-top:10px;padding:9px 10px;border-radius:var(--r1);border:1px dashed #ef4444;background:rgba(239,68,68,.08);font-size:12px;line-height:1.5;color:var(--text);}" +
+      ".zeva-ticket-error b{display:block;margin-bottom:3px;}" +
+      ".zeva-ticket-retry{all:unset;box-sizing:border-box;font-weight:700;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:12px;}" +
+      ".zeva-ticket-retry:focus-visible{outline:2px solid var(--accent);}" +
       ".zeva-stub{margin-top:12px;display:flex;align-items:center;gap:10px;border-radius:var(--r2);padding:12px 14px;font-size:13px;border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.12);}" +
       ".zeva-stub-check{width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;display:grid;place-items:center;flex-shrink:0;}" +
       ".zeva-stub-check svg{width:14px;height:14px;}" +
@@ -595,7 +628,7 @@
     if (variant !== "bubble") {
       html +=
         '<span class="zeva-launcher-label" id="zeva-launcher-label">' + escapeHtml(label) + "</span>" +
-        '<span class="zeva-launcher-kbd">/</span>';
+        '<span class="zeva-launcher-kbd" title="Press / to open chat">/</span>';
     }
     html += "</button>";
     return html;
@@ -623,6 +656,7 @@
       '<input class="zeva-input" id="zeva-input" type="text" placeholder="" />' +
       '<button type="submit" class="zeva-send" id="zeva-send-btn" aria-label="Ask" disabled>' + ICON_ARROW + "</button>" +
       "</form>" +
+      '<div class="zeva-sr-only" id="zeva-live-region" aria-live="polite" aria-atomic="true"></div>' +
       '<div class="zeva-stream" id="zeva-stream"></div>' +
       '<div class="zeva-footer">' +
       '<span class="zeva-footer-left" id="zeva-footer-left">' + ICON_CHECK + "<span>Grounded in your documents</span></span>" +
@@ -686,6 +720,31 @@
     if (launcherBtn) launcherBtn.addEventListener("click", openPanel);
     if (RAW.draggable && launcherBtn) setupDrag(launcherBtn);
 
+    // Escape-to-close + a focus trap so Tab/Shift+Tab can't leave the panel
+    // while it's open (previously a keyboard user could tab straight out
+    // into the host page with no way back except finding the mouse).
+    panelEl.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closePanel();
+        var btn = shadow.getElementById("zeva-launcher-btn");
+        if (btn) btn.focus();
+        return;
+      }
+      if (e.key === "Tab") trapFocus(e);
+    });
+
+    // "/" opens the widget from anywhere on the host page — but only when
+    // nothing else on that page currently has focus, so this never steals
+    // the key from the host site's own inputs or shortcuts.
+    document.addEventListener("keydown", function (e) {
+      if (state.isOpen || e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      var active = document.activeElement;
+      if (active && active !== document.body && active !== document.documentElement) return;
+      e.preventDefault();
+      openPanel();
+    });
+
     var input = shadow.getElementById("zeva-input");
     var sendBtn = shadow.getElementById("zeva-send-btn");
     if (input) {
@@ -719,8 +778,30 @@
     }
 
     refreshBranding();
-    renderEmptyState();
+    if (!restoreHistory()) renderEmptyState();
     fetchConfig();
+  }
+
+  /** Rehydrate a cached conversation (same-tab reload/navigation). Returns true if anything was restored. */
+  function restoreHistory() {
+    var hist = loadHistory();
+    if (!hist.length) return false;
+    hist.forEach(function (entry) {
+      if (entry.role === "user") {
+        addUserMessage(entry.text, true);
+      } else if (entry.role === "assistant") {
+        addAssistantMessage(
+          {
+            text: entry.text,
+            sources: entry.sources || [],
+            isGuardrail: !!entry.isGuardrail,
+            limitReached: !!entry.limitReached,
+          },
+          true
+        );
+      }
+    });
+    return true;
   }
 
   function openPanel() {
@@ -743,6 +824,36 @@
     panelEl.setAttribute("inert", "");
     launcherWrapEl.style.display = "";
     anchorEl.classList.remove("zeva-gap");
+  }
+
+  var FOCUSABLE_SEL =
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function trapFocus(e) {
+    var focusable = Array.prototype.slice.call(panelEl.querySelectorAll(FOCUSABLE_SEL));
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    var active = shadow.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !panelEl.contains(active)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (active === last || !panelEl.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  /** Announce a completed assistant reply to screen readers once (not word-by-word during the typewriter animation). */
+  function announceToScreenReader(text) {
+    var region = shadow && shadow.getElementById("zeva-live-region");
+    if (!region || !text) return;
+    region.textContent = "";
+    setTimeout(function () { region.textContent = text; }, 50);
   }
 
   // =======================================================================
@@ -1063,9 +1174,10 @@
     if (el) el.remove();
   }
 
-  function typewriter(el, text) {
+  function typewriter(el, text, onComplete) {
     if (prefersReducedMotion() || !text) {
       el.textContent = text || "";
+      if (onComplete) onComplete();
       return;
     }
     var words = text.split(" ");
@@ -1074,17 +1186,22 @@
       i++;
       el.textContent = words.slice(0, i).join(" ");
       scrollToBottom();
-      if (i >= words.length) clearInterval(iv);
+      if (i >= words.length) {
+        clearInterval(iv);
+        if (onComplete) onComplete();
+      }
     }, 30);
   }
 
-  function addUserMessage(text) {
+  /** @param {boolean} [isRestore] - true when rehydrating from the sessionStorage cache: skip re-persisting and just render instantly. */
+  function addUserMessage(text, isRestore) {
     removeEmptyState();
     var el = document.createElement("div");
     el.className = "zeva-msg-user";
     el.textContent = text;
     streamEl.appendChild(el);
     scrollToBottom();
+    if (!isRestore) appendHistory({ role: "user", text: text });
   }
 
   function appendHighlighted(container, snip, hi) {
@@ -1148,12 +1265,14 @@
       '<div class="zeva-ticket-sub">Leave your details and the team will reach out.</div>' +
       '<div class="zeva-ticket-fields" id="zt-fields"></div>' +
       '<button type="button" class="zeva-ticket-submit" id="zt-submit" disabled>Hand me to the team →</button>' +
+      '<div class="zeva-ticket-error" id="zt-error" hidden></div>' +
       "</div>";
 
     var card = el.querySelector("#zt-card");
     var fieldsWrap = el.querySelector("#zt-fields");
     var submitBtn = el.querySelector("#zt-submit");
-    var phase = "idle";
+    var errorEl = el.querySelector("#zt-error");
+    var phase = "idle"; // idle | sending | sent | gone | error
     var inputEls = {};
 
     var schema = state.formSchema && state.formSchema.length > 0 ? state.formSchema : [
@@ -1172,7 +1291,7 @@
           if (val.trim().length === 0) can = false;
         }
       }
-      submitBtn.disabled = !can || phase !== "idle";
+      submitBtn.disabled = !can || phase === "sending" || phase === "sent" || phase === "gone";
     }
 
     for (var i = 0; i < schema.length; i++) {
@@ -1210,8 +1329,40 @@
       inputEls[f.id] = inputEl;
     }
 
-    submitBtn.addEventListener("click", function () {
-      if (submitBtn.disabled || phase !== "idle") return;
+    function clearError() {
+      errorEl.hidden = true;
+      errorEl.innerHTML = "";
+    }
+
+    // Success is only shown once the /lead POST actually confirms — previously
+    // this animated to "Sent ✓" unconditionally (fire-and-forget), so a failed
+    // submission looked identical to a successful one and the lead was lost
+    // with no signal to the visitor or the business. On failure the entered
+    // values are left in place and a retry re-submits the same payload.
+    function showError() {
+      phase = "error";
+      errorEl.hidden = false;
+      errorEl.innerHTML = "";
+      var strong = document.createElement("b");
+      strong.textContent = "Couldn't send — check your connection.";
+      errorEl.appendChild(strong);
+      var span = document.createElement("span");
+      span.textContent = "Your details below are still here. ";
+      errorEl.appendChild(span);
+      var retryBtn = document.createElement("button");
+      retryBtn.type = "button";
+      retryBtn.className = "zeva-ticket-retry";
+      retryBtn.textContent = "Try again";
+      retryBtn.addEventListener("click", submitLead);
+      errorEl.appendChild(retryBtn);
+      submitBtn.textContent = "Hand me to the team →";
+      refresh();
+    }
+
+    function submitLead() {
+      if (phase === "sending" || phase === "sent" || phase === "gone") return;
+      clearError();
+
       var leadName = (inputEls["name"] && inputEls["name"].value.trim()) || "Visitor";
       var emailVal = (inputEls["email"] && inputEls["email"].value.trim()) || "";
       var phoneVal = (inputEls["phone"] && inputEls["phone"].value.trim()) || "";
@@ -1225,30 +1376,43 @@
         }
       }
 
-      if (HAS_FETCH) {
-        var payload = { name: leadName, email: emailVal, botId: BOT_ID, custom_data: customData };
-        if (phoneVal) payload.phone = phoneVal;
-        if (msgVal) payload.message = msgVal;
-        fetch(API_URL + "/lead", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }).catch(function () { /* fire-and-forget — UX doesn't block on the response */ });
+      if (!HAS_FETCH) {
+        showError();
+        return;
       }
 
-      var reduce = prefersReducedMotion();
-      phase = "sent";
-      card.classList.add("zeva-sent");
-      submitBtn.textContent = "Sent ✓";
+      phase = "sending";
       submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
 
-      setTimeout(function () {
-        phase = "gone";
-        card.classList.remove("zeva-sent");
-        card.classList.add("zeva-gone");
-        setTimeout(function () { onDone(leadName); }, reduce ? 0 : 420);
-      }, reduce ? 0 : 640);
-    });
+      var payload = { name: leadName, email: emailVal, botId: BOT_ID, custom_data: customData };
+      if (phoneVal) payload.phone = phoneVal;
+      if (msgVal) payload.message = msgVal;
+
+      fetch(API_URL + "/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error("Lead submit failed (" + res.status + ")");
+          var reduce = prefersReducedMotion();
+          phase = "sent";
+          card.classList.add("zeva-sent");
+          submitBtn.textContent = "Sent ✓";
+          setTimeout(function () {
+            phase = "gone";
+            card.classList.remove("zeva-sent");
+            card.classList.add("zeva-gone");
+            setTimeout(function () { onDone(leadName); }, reduce ? 0 : 420);
+          }, reduce ? 0 : 640);
+        })
+        .catch(function () {
+          showError();
+        });
+    }
+
+    submitBtn.addEventListener("click", submitLead);
 
     setTimeout(function () { if (inputEls["name"]) inputEls["name"].focus(); }, 60);
 
@@ -1263,7 +1427,8 @@
     return el;
   }
 
-  function addAssistantMessage(payload) {
+  /** @param {boolean} [isRestore] - true when rehydrating from the sessionStorage cache. */
+  function addAssistantMessage(payload, isRestore) {
     removeEmptyState();
 
     var wrap = document.createElement("div");
@@ -1280,7 +1445,18 @@
     var hasSource = payload.sources && payload.sources.length > 0;
     var showProof = RAW.sources && hasSource;
 
-    if (payload.isGuardrail) {
+    // limitReached = a business/plan-level failure (bot disabled, monthly
+    // quota exceeded) — server-distinguished from a normal "no docs matched"
+    // guardrail via data.limitReached. Rendered like the /config-unavailable
+    // notice, not the friendly guardrail treatment, and with no lead-capture
+    // affordance: nobody on the business side can act on a submission right
+    // now, so offering the form would just collect details that go nowhere.
+    if (payload.limitReached) {
+      var la = document.createElement("div");
+      la.className = "zeva-unavailable";
+      la.textContent = payload.text;
+      wrap.appendChild(la);
+    } else if (payload.isGuardrail) {
       var g = document.createElement("div");
       g.className = "zeva-guardrail";
       g.innerHTML = ICON_WARNING;
@@ -1310,7 +1486,9 @@
       );
     }
 
-    if (payload.isGuardrail) {
+    if (payload.limitReached) {
+      // no lead-capture affordance — see the comment above
+    } else if (payload.isGuardrail) {
       mountTicket();
     } else if (hasSource) {
       var leadBtn = document.createElement("button");
@@ -1366,7 +1544,25 @@
     streamEl.appendChild(wrap);
     scrollToBottom();
 
-    typewriter(textSpan, payload.text);
+    if (!isRestore) {
+      appendHistory({
+        role: "assistant",
+        text: payload.text,
+        sources: payload.sources,
+        isGuardrail: payload.isGuardrail,
+        limitReached: payload.limitReached,
+      });
+    }
+
+    if (isRestore) {
+      // Rehydrating from cache: render instantly, no typing animation and no
+      // screen-reader announcement (nothing "just happened" on a page load).
+      textSpan.textContent = payload.text || "";
+    } else {
+      typewriter(textSpan, payload.text, function () {
+        announceToScreenReader(payload.text);
+      });
+    }
 
     if (showProof) {
       setTimeout(function () {
@@ -1404,7 +1600,11 @@
     })
       .then(function (res) {
         if (timer) clearTimeout(timer);
-        if (!res.ok) throw new Error("Backend responded " + res.status);
+        if (!res.ok) {
+          var err = new Error("Backend responded " + res.status);
+          err.status = res.status;
+          throw err;
+        }
         return res.json();
       })
       .then(function (data) {
@@ -1413,17 +1613,35 @@
           text: data.answer || "Sorry, I didn't get a response. Please try again.",
           sources: Array.isArray(data.sources) ? data.sources : [],
           isGuardrail: !!data.isGuardrail,
+          limitReached: !!data.limitReached,
         });
       })
-      .catch(function () {
+      .catch(function (err) {
         if (timer) clearTimeout(timer);
         setScanning(false);
         addAssistantMessage({
-          text: "Sorry — I couldn't reach the server just now. Please try again in a moment.",
+          text: classifyChatError(err),
           sources: [],
           isGuardrail: false,
         });
       });
+  }
+
+  // A network drop, a slow/timed-out request, a 5xx, and a 429 are different
+  // problems with different next steps for the visitor — collapsing them into
+  // one "couldn't reach the server" string made a temporary blip and an
+  // extended outage indistinguishable, so users had no signal for whether to
+  // retry immediately or come back later.
+  function classifyChatError(err) {
+    if (err && err.name === "AbortError") {
+      return "That's taking longer than expected. Please try again in a moment.";
+    }
+    if (err && typeof err.status === "number") {
+      if (err.status === 429) return "You're sending messages a little fast — please wait a moment and try again.";
+      if (err.status >= 500) return "We're having trouble on our end right now. Please try again shortly.";
+      if (err.status >= 400) return "Sorry, that request couldn't be processed. Please try again.";
+    }
+    return "Sorry — I couldn't reach the server just now. Please check your connection and try again.";
   }
 
   // ---- go ------------------------------------------------------------------

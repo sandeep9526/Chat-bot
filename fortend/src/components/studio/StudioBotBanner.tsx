@@ -107,14 +107,14 @@ export function StudioBotBanner({ botId }: { botId: string }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setErr(e instanceof AdminApiError ? e.message : "Save failed.");
+      setErr(e instanceof AdminApiError ? e.message : "We couldn't save your changes — try again.");
     }
   };
 
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-r2 border border-accent-ring bg-accent-soft px-4 py-3">
       <div className="min-w-0 text-[13px] leading-snug">
-        <span className="font-[700] text-accent">Editing a live bot</span>
+        <span className="font-[700] text-accent">Editing a live agent</span>
         <span className="text-muted">
           {" "}
           — all your widget changes save to{" "}
@@ -139,7 +139,7 @@ export function StudioBotBanner({ botId }: { botId: string }) {
           type="button"
           onClick={save}
           disabled={!canSave || createBot.isPending}
-          title={canSave ? undefined : "Open this bot from your dashboard to save changes."}
+          title={canSave ? undefined : "Open this agent from your dashboard to save changes."}
           className="rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-4 py-1.5 text-[12.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {createBot.isPending ? "Saving…" : canSave ? "Save changes" : "Sign in to save"}

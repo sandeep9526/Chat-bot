@@ -14,7 +14,9 @@ import {
   LayoutIcon,
   ArrowRightIcon,
 } from "./icons";
-import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
+import Image from "next/image";
+import { OchreshiftLogo } from "../ui/OchreshiftLogo";
+// import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 
 const NAV_ITEMS = [
   {
@@ -96,23 +98,21 @@ export function Nav() {
     <>
       <header
         data-scrolled={scrolled}
-        className={`nav-shell sticky top-0 z-50 border-b ${
-          scrolled
-            ? "border-border bg-glass backdrop-blur-xl"
-            : "border-transparent bg-transparent"
-        }`}
+        className={`nav-shell sticky top-0 z-50 border-b ${scrolled
+          ? "border-border bg-glass backdrop-blur-xl"
+          : "border-transparent bg-transparent"
+          }`}
       >
         <div
-          className={`mx-auto flex w-full max-w-[1280px] items-center justify-between px-6 lg:px-10 ${
-            scrolled ? "py-3" : "py-5"
-          } transition-[padding] duration-300`}
+          className={`mx-auto flex w-full max-w-[1280px] items-center justify-between px-6 lg:px-10 ${scrolled ? "py-3" : "py-5"
+            } transition-[padding] duration-300`}
         >
           <Link
             href="/"
             className="flex items-center gap-2.5"
             onClick={() => setOpen(false)}
           >
-            <OchreshiftLogo className="h-7 w-auto" />
+            <OchreshiftLogo className="h-[30px] w-auto" variant="default" />
           </Link>
 
           <nav className="hidden items-center gap-1.5 lg:flex">
@@ -125,13 +125,13 @@ export function Nav() {
             <ThemeToggle />
             <Link
               href="/sign-in"
-              className="rounded-r1 px-4 py-2 text-[15px] font-[500] text-[#08111F] transition-colors hover:bg-black/5 whitespace-nowrap"
+              className="rounded-r1 px-4 py-2 text-[15px] font-[500] text-fg transition-colors hover:bg-fg/5 whitespace-nowrap"
             >
               Sign in
             </Link>
             <Link
               href="/sign-up"
-              className="inline-flex items-center justify-center rounded-[8px] bg-[#F5A900] px-5 py-2 text-[15px] font-[600] text-[#08111F] transition-colors hover:brightness-105 whitespace-nowrap"
+              className="inline-flex items-center justify-center rounded-[8px] bg-accent px-5 py-2 text-[15px] font-[600] text-bg transition-colors hover:brightness-105 whitespace-nowrap"
             >
               Start Free
             </Link>
@@ -141,7 +141,7 @@ export function Nav() {
             <ThemeToggle />
             <Link
               href="/sign-up"
-              className="hidden sm:inline-flex items-center rounded-[8px] bg-[#F5A900] px-4 py-1.5 text-[14px] font-[600] text-[#08111F] whitespace-nowrap"
+              className="hidden sm:inline-flex items-center rounded-[8px] bg-accent px-4 py-1.5 text-[14px] font-[600] text-bg whitespace-nowrap"
             >
               Start Free
             </Link>
@@ -167,11 +167,10 @@ export function Nav() {
         aria-hidden={!open}
         inert={!open}
         style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
-        className={`fixed inset-0 top-0 left-0 right-0 bottom-0 z-[9999] h-[100dvh] w-full transition-all duration-300 ease-in-out lg:hidden flex flex-col ${
-          open
-            ? "pointer-events-auto opacity-100 translate-y-0"
-            : "pointer-events-none opacity-0 -translate-y-4"
-        }`}
+        className={`fixed inset-0 top-0 left-0 right-0 bottom-0 z-[9999] h-[100dvh] w-full transition-all duration-300 ease-in-out lg:hidden flex flex-col ${open
+          ? "pointer-events-auto opacity-100 translate-y-0"
+          : "pointer-events-none opacity-0 -translate-y-4"
+          }`}
       >
         {/* Header inside mobile menu */}
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-[var(--surface)] px-6 py-4">
@@ -180,7 +179,7 @@ export function Nav() {
             className="flex items-center gap-2.5"
             onClick={() => setOpen(false)}
           >
-            <OchreshiftLogo className="h-7 w-auto" />
+            <img src="/logo-dark.svg" alt="Logo" className="h-7 w-auto" />
           </Link>
 
           <div className="flex items-center gap-3">
@@ -215,7 +214,7 @@ export function Nav() {
                   className="group flex items-center justify-between rounded-2xl border border-border bg-[var(--surface)] p-4 transition-all hover:border-accent hover:shadow-md active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3.5">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/10 border border-accent/20 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/10 border border-accent/20 text-accent transition-colors group-hover:bg-accent group-hover:text-fg">
                       <Icon className="h-5.5 w-5.5" />
                     </span>
                     <div className="flex flex-col">
@@ -238,7 +237,7 @@ export function Nav() {
             <Link
               href="/sign-up"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#F5A900] py-3.5 text-[15px] font-[600] text-[#08111F] transition-transform active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#F5A900] py-3.5 text-[15px] font-[600] text-bg transition-transform active:scale-[0.98]"
             >
               <span>Start Free</span>
               <ArrowRightIcon className="h-4 w-4" />
@@ -266,7 +265,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
-      className="group relative rounded-[6px] px-4 py-2 text-[15px] font-[500] text-[#475569] transition-colors hover:text-[#08111F] whitespace-nowrap"
+      className="group relative rounded-[6px] px-4 py-2 text-[15px] font-[500] text-[#475569] transition-colors hover:text-bg whitespace-nowrap"
     >
       {label}
       <span className="pointer-events-none absolute inset-x-4 bottom-1 h-[2px] origin-left scale-x-0 bg-[#F5A900] transition-transform duration-300 group-hover:scale-x-100" />

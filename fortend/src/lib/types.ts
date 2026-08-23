@@ -45,6 +45,10 @@ export interface ChatMessage {
   ticketState?: TicketState;
   /** Name the visitor entered on the lead ticket (shown in the handoff stub). */
   leadName?: string;
+  /** True when this bubble is a failed-request notice, not a real answer. */
+  isError?: boolean;
+  /** The original question text, so a failed request can be retried. */
+  retryText?: string;
 }
 
 export type TicketState = "idle" | "gone";

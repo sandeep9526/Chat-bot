@@ -18,6 +18,7 @@ import psycopg
 import sentry_sdk
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -56,6 +57,9 @@ from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
 
+# .env file me se secret keys ko memory (environment) me load karo.
+load_dotenv()
+
 import httpx
 import billing
 import razorpay_billing
@@ -69,8 +73,6 @@ from rag import retrieve
 from auth import CurrentUser
 from logger import scrub_pii, secure_print
 
-# .env file me se secret keys ko memory (environment) me load karo.
-load_dotenv()
 
 
 # Error tracking — a genuine no-op until SENTRY_DSN is set (sentry_sdk.init
@@ -421,7 +423,8 @@ def make_handoff_summary(bot_name: str, name: str, message: str | None) -> str:
             ]
         )
         return summary
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/main.py: {e}")
         return f"{name} — {message or 'wants details'}. Follow up soon."
 
 
@@ -452,22 +455,25 @@ async def lead(req: LeadRequest, request: Request):
                 db.ensure_bot_owner(req.botId, getattr(user, "id"))
             elif isinstance(user, dict) and "id" in user:
                 db.ensure_bot_owner(req.botId, user["id"])
-        except Exception:
+        except Exception as e:
+            print(f"Exception caught in zeva-backend/main.py: {e}")
             pass
 
     score = score_lead(req.message, req.phone)
-    lead_id = db.save_lead(
+    lead_id = await run_in_threadpool(
+        db.save_lead,
         req.botId, req.name.strip(), req.email.strip(), req.phone, req.message, score, req.custom_data
     )
     # HOT/WARM lead → human handoff: AI summary sales team ke liye + real-time notification.
     if score in ("hot", "warm"):
-        bot = db.get_bot(req.botId)
+        bot = await run_in_threadpool(db.get_bot, req.botId)
         summary = make_handoff_summary(
             bot["name"] if bot else req.botId, req.name.strip(), req.message
         )
-        db.save_handoff(req.botId, req.name.strip(), req.phone or req.email, summary)
+        await run_in_threadpool(db.save_handoff, req.botId, req.name.strip(), req.phone or req.email, summary)
         # Real-time alert (Email + Webhook)
-        notifications.notify_lead_event(
+        await run_in_threadpool(
+            notifications.notify_lead_event,
             bot, lead_id, req.name.strip(), req.email.strip(), req.phone, req.message, score, summary
         )
     return {"ok": True, "leadId": lead_id, "score": score}
@@ -577,6 +583,9 @@ def resolve_unique_bot_id(requested_bot_id: str | None, name: str, owner_id: str
 def create_bot(req: CreateBotRequest, user: CurrentUser):
     check_rate_limit(f"admin:{user['id']}")
 
+    if not db.is_user_email_verified(user["id"]):
+        raise HTTPException(status_code=403, detail="Email not verified. Please verify your email first.")
+
     final_bot_id = resolve_unique_bot_id(req.botId, req.name, user["id"])
 
     try:
@@ -624,7 +633,8 @@ async def paddle_webhook(request: Request):
     raw_body = await request.body()
     if not billing.verify_signature(raw_body, request.headers.get("paddle-signature")):
         raise HTTPException(status_code=401, detail="invalid webhook signature")
-    billing.handle_event(await request.json())
+    req_json = await request.json()
+    await run_in_threadpool(billing.handle_event, req_json)
     return {"ok": True}
 
 
@@ -694,6 +704,40 @@ def admin_handoffs(botId: str, user: CurrentUser):
         raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
     return {"handoffs": db.list_handoffs(botId, user["id"])}
 
+
+class PlaygroundSessionUpsert(BaseModel):
+    id: str
+    title: str
+    messages: list
+
+@app.get("/admin/playground-sessions")
+def admin_get_playground_sessions(botId: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    return {"sessions": db.fetch_playground_sessions(user["id"], botId)}
+
+@app.put("/admin/playground-sessions")
+def admin_upsert_playground_session(payload: PlaygroundSessionUpsert, botId: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    
+    success = db.upsert_playground_session(user["id"], botId, payload.id, payload.title, payload.messages)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save playground session")
+    return {"ok": True}
+
+@app.delete("/admin/playground-sessions/{session_id}")
+def admin_delete_playground_session(session_id: str, botId: str, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    if not db.get_bot_for_owner(botId, user["id"]):
+        raise HTTPException(status_code=404, detail=f"bot '{botId}' not found")
+    
+    success = db.delete_playground_session(user["id"], botId, session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found or already deleted")
+    return {"ok": True}
 
 # ===== Platform admin (superadmin panel) — sees every tenant, not just their
 # own bots. Gated on PLATFORM_ADMIN_EMAILS, not ownership — every route here
@@ -821,7 +865,8 @@ def superadmin_delete_user(req: DeleteUserRequest, user: CurrentUser):
     for bot_id in bot_ids:
         try:
             delete_bot_docs(bot_id)
-        except Exception:
+        except Exception as e:
+            print(f"Exception caught in zeva-backend/main.py: {e}")
             pass
     return {"ok": True, "deleted_bots": bot_ids}
 
@@ -873,7 +918,9 @@ async def razorpay_webhook(request: Request):
         raw_body, request.headers.get("x-razorpay-signature")
     ):
         raise HTTPException(status_code=401, detail="invalid webhook signature")
-    razorpay_billing.handle_event(await request.json())
+    
+    req_json = await request.json()
+    await run_in_threadpool(razorpay_billing.handle_event, req_json)
     return {"ok": True}
 
 
@@ -888,7 +935,8 @@ async def stripe_webhook(request: Request):
     event = stripe_billing.verify_and_parse_event(raw_body, request.headers.get("stripe-signature"))
     if event is None:
         raise HTTPException(status_code=401, detail="invalid webhook signature")
-    stripe_billing.handle_event(event)
+    
+    await run_in_threadpool(stripe_billing.handle_event, event)
     return {"ok": True}
 
 
@@ -900,7 +948,7 @@ def ingest(req: IngestRequest, user: CurrentUser):
     check_rate_limit(f"ingest:{user['id']}", limit=10)
     if not db.get_bot_for_owner(req.botId, user["id"]):
         raise HTTPException(
-            status_code=404, detail=f"bot '{req.botId}' pehle create karo"
+            status_code=404, detail=f"Bot '{req.botId}' not found or you do not have permission to access it."
         )
     try:
         result = save_and_ingest(req.botId, req.filename, req.text)
@@ -945,7 +993,8 @@ def admin_apply_template(req: ApplyTemplateRequest, user: CurrentUser):
                     req.botId, user["id"], req.name, req.accent, req.welcome or "",
                     req.suggestions or [], ["*"], None, None, None, None, None, req.templateId
                 )
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/main.py: {e}")
                 pass
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1020,7 +1069,7 @@ async def ingest_file(
 ):
     check_rate_limit(f"ingest:{user['id']}", limit=10)
     if not db.get_bot_for_owner(botId, user["id"]):
-        raise HTTPException(status_code=404, detail=f"bot '{botId}' pehle create karo")
+        raise HTTPException(status_code=404, detail=f"Bot '{botId}' not found or you do not have permission to access it.")
 
     filename = file.filename or "upload"
     ext = extract.file_ext(filename)
@@ -1420,7 +1469,8 @@ async def whatsapp_incoming(request: Request):
     """Receive incoming WhatsApp user message, run RAG, and reply via WhatsApp API."""
     try:
         data = await request.json()
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/main.py: {e}")
         return {"ok": True}
 
     try:
@@ -1456,7 +1506,7 @@ async def whatsapp_incoming(request: Request):
     # Resolve bot configuration from WhatsApp Phone Number ID (Strict Security No-Fallback)
     bot = None
     if phone_number_id:
-        bot = db.get_bot_by_whatsapp_phone_id(phone_number_id)
+        bot = await run_in_threadpool(db.get_bot_by_whatsapp_phone_id, phone_number_id)
     if not bot:
         print(f"[WhatsApp] Unauthorized or unregistered phone_number_id rejected: {phone_number_id}")
         return {"ok": True, "error": "unauthorized_phone_number_id"}
@@ -1467,19 +1517,19 @@ async def whatsapp_incoming(request: Request):
     # Quota & Active License Enforcement for WhatsApp Channel
     if not bot.get("is_active", True):
         unavail_msg = f"This conversational assistant is temporarily offline due to inactive subscription status."
-        send_whatsapp_reply(sender_phone, unavail_msg, phone_number_id)
-        db.save_chat(bot_id, user_message, unavail_msg, is_guardrail=True)
+        await send_whatsapp_reply(phone_number_id, sender_phone, unavail_msg)
+        await run_in_threadpool(db.save_chat, bot_id, user_message, unavail_msg, is_guardrail=True)
         return {"ok": True}
 
-    if bot.get("owner_user_id") and not db.check_usage_limit(
-        bot_id, bot["owner_user_id"], bot.get("max_messages_per_month", 500) or 500
+    if bot.get("owner_user_id") and not await run_in_threadpool(
+        db.check_usage_limit, bot_id, bot["owner_user_id"], bot.get("max_messages_per_month", 500) or 500
     ):
         limit_msg = (
             f"{bot_name} has reached its monthly AI message interaction limit. "
             "Please try again next month or contact the business directly."
         )
-        send_whatsapp_reply(sender_phone, limit_msg, phone_number_id)
-        db.save_chat(bot_id, user_message, limit_msg, is_guardrail=True)
+        await send_whatsapp_reply(phone_number_id, sender_phone, limit_msg)
+        await run_in_threadpool(db.save_chat, bot_id, user_message, limit_msg, is_guardrail=True)
         try:
             notifications.send_quota_exceeded_alert(
                 bot.get("notification_email"),
@@ -1494,7 +1544,8 @@ async def whatsapp_incoming(request: Request):
     # RAG Retrieval & LLM Generation
     try:
         hits = retrieve(user_message, bot_id, k=3)
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/main.py: {e}")
         hits = []
 
     good = [h for h in hits if h["match"] >= RELEVANCE_THRESHOLD]
@@ -1577,7 +1628,8 @@ async def demo_ingest_url(req: DemoIngestUrlRequest):
         domain_clean = re.sub(r"[^a-zA-Z0-9]", "", domain.lower()) or "demo"
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/main.py: {e}")
         domain = "customsite.com"
         domain_clean = "customsite"
 
@@ -1609,7 +1661,8 @@ async def demo_ingest_url(req: DemoIngestUrlRequest):
                 raise HTTPException(status_code=400, detail="Private/internal URLs are not allowed")
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/main.py: {e}")
         pass  # DNS resolution failure — let the fetch attempt handle it
 
     slug_bot_id = f"demo-{domain_clean[:20]}"
@@ -1658,6 +1711,24 @@ def internal_send_password_reset(body: dict):
     if not to_email or not reset_url:
         raise HTTPException(status_code=400, detail="Missing email or url parameter")
     success = notifications.send_password_reset_email(to_email=to_email, reset_url=reset_url)
+    return {"ok": True, "delivered": success}
+
+@app.post("/internal/send-verification-email")
+def internal_send_verification_email(body: dict):
+    to_email = body.get("email")
+    verify_url = body.get("url")
+    if not to_email or not verify_url:
+        raise HTTPException(status_code=400, detail="Missing email or url parameter")
+    success = notifications.send_verification_email(to_email, verify_url)
+    return {"ok": True, "delivered": success}
+
+@app.post("/internal/send-magic-link")
+def internal_send_magic_link(body: dict):
+    to_email = body.get("email")
+    magic_url = body.get("url")
+    if not to_email or not magic_url:
+        raise HTTPException(status_code=400, detail="Missing email or url parameter")
+    success = notifications.send_magic_link_email(to_email, magic_url)
     return {"ok": True, "delivered": success}
 
 

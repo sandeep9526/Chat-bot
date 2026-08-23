@@ -80,7 +80,7 @@ export function useZevaTheme(
   // Surface → data-theme. Unscoped: respects saved zeva-theme first, then
   // follows surface/OS. Scoped: always reflects `surface` directly.
   useEffect(() => {
-    const root = scopeRef?.current ?? document.documentElement;
+    const root = scoped ? scopeRef.current : document.documentElement;
     if (!root) return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
@@ -108,7 +108,7 @@ export function useZevaTheme(
   // Corners radius scale. Scoped mode resets on unmount so switching away from
   // the preview (e.g. a dashboard tab change) can't leave the host stuck.
   useEffect(() => {
-    const root = scopeRef?.current ?? document.documentElement;
+    const root = scoped ? scopeRef.current : document.documentElement;
     if (!root) return;
     root.setAttribute("data-corners", corners);
     if (!scoped) return;
@@ -117,7 +117,7 @@ export function useZevaTheme(
 
   // Fonts: preset (CSS-driven) / google / custom @font-face / inherit.
   useEffect(() => {
-    const root = scopeRef?.current ?? document.documentElement;
+    const root = scoped ? scopeRef.current : document.documentElement;
     if (!root) return;
 
     if (fontSrc === "preset") {

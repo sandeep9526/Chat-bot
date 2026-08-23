@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  :root {
+    --b: red;
+    --a: var(--b);
+  }
+  .child {
+    --b: blue;
+    color: var(--a);
+  }
+</style>
+</head>
+<body>
+  <div class="child">This text should be blue if lazy, red if eager.</div>
+</body>
+</html>

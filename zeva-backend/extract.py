@@ -46,7 +46,8 @@ def _extract_pdf(data: bytes) -> str:
         # Attempt standard layout-aware structured text extraction (preserves multi-column & table spacing)
         try:
             t = page.extract_text(extraction_mode="layout") or page.extract_text() or ""
-        except Exception:
+        except Exception as e:
+            print(f"Exception caught in zeva-backend/extract.py: {e}")
             t = page.extract_text() or ""
         if t.strip():
             parts.append(f"--- Page {idx+1} ---\n{t.strip()}")
@@ -59,7 +60,8 @@ def _extract_pdf(data: bytes) -> str:
                     img_text = pytesseract.image_to_string(Image.open(io.BytesIO(img_obj.data)))
                     if img_text.strip():
                         parts.append(f"--- Page {idx+1} (OCR Extracted) ---\n{img_text.strip()}")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/extract.py: {e}")
                 pass
     return "\n\n".join(parts)
 

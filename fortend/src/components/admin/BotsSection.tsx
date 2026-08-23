@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Pencil as PencilIcon, Pause as PauseIcon, Play as PlayIcon, Trash2 as TrashIcon, Plus, Bot as BotIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDeleteBot, useSetBotPaused } from "@/hooks/useAdmin";
 import { AdminApiError, type AdminBot } from "@/lib/adminApi";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/panel/AppShell";
-import { BotFormModal, type BotInitial } from "./BotFormModal";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { CreationChoiceModal } from "./CreationChoiceModal";
+import { AdvancedCreateModal } from "./AdvancedCreateModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+
+export interface BotInitial {
+  name: string;
+  websiteUrl?: string;
+  accent?: string;
+  welcome?: string;
+  suggestions?: string[];
+}
 import {
   getPendingDesign,
   clearPendingDesign,
@@ -22,7 +33,7 @@ import type { ZevaConfig } from "@/lib/types";
 let autoOpenConsumed = false;
 
 type ModalState = {
-  mode: "create" | "edit";
+  mode: "choice" | "wizard" | "advanced" | "edit";
   bot?: AdminBot;
   initial?: BotInitial;
   fromPending?: boolean;
@@ -33,7 +44,7 @@ function pendingModal(): ModalState | null {
   const pd = getPendingDesign();
   if (!pd) return null;
   return {
-    mode: "create",
+    mode: "wizard",
     fromPending: true,
     initial: {
       name: pd.config.name,
@@ -58,6 +69,7 @@ interface BotsSectionProps {
   activeBotId: string;
   maxBots?: number;
   onSelect: (id: string) => void;
+  onBotCreated?: () => void;
   onOpenInstall: (id: string) => void;
   onOpenStudio?: (id: string) => void;
 }
@@ -67,16 +79,35 @@ export function BotsSection({
   activeBotId,
   maxBots,
   onSelect,
+  onBotCreated,
   onOpenInstall,
   onOpenStudio,
 }: BotsSectionProps) {
+  const queryClient = useQueryClient();
+
   // Open the pre-filled "Make it yours" create modal as the initial state (not
   // via an effect) so it appears on first paint and isn't cancelled by
   // StrictMode's dev mount/unmount cycle.
   const [modal, setModal] = useState<ModalState | null>(() =>
     autoOpenConsumed ? null : pendingModal(),
   );
+
+  useEffect(() => {
+    const handleOpen = () => setModal({ mode: "choice" });
+    window.addEventListener("zeva:open-bot-modal", handleOpen);
+    
+    // Auto-resume onboarding draft if the user reloaded the page mid-onboarding
+    try {
+      if (localStorage.getItem("zeva-onboarding-draft") && !autoOpenConsumed) {
+        setModal({ mode: "wizard" });
+      }
+    } catch {}
+
+    return () => window.removeEventListener("zeva:open-bot-modal", handleOpen);
+  }, []);
+
   const [confirmDelete, setConfirmDelete] = useState<AdminBot | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   // Full design kept so we can stash it under the new bot's id (for a complete
   // Studio restore) once it's created.
   const [pendingConfig, setPendingConfig] = useState<ZevaConfig | null>(
@@ -100,11 +131,14 @@ export function BotsSection({
 
   const doDelete = async (bot: AdminBot) => {
     setBusyId(bot.bot_id);
+    setDeleteError("");
     try {
       await deleteMut.mutateAsync(bot.bot_id);
       setConfirmDelete(null);
     } catch (err) {
-      alert(err instanceof AdminApiError ? err.message : "Delete failed.");
+      setDeleteError(
+        err instanceof AdminApiError ? err.message : "We couldn't delete this agent — try again in a moment.",
+      );
     } finally {
       setBusyId("");
     }
@@ -124,7 +158,7 @@ export function BotsSection({
             type="button"
             data-tour="new-bot"
             disabled={atLimit}
-            onClick={() => setModal({ mode: "create" })}
+            onClick={() => setModal({ mode: "choice" })}
             title={atLimit ? "You've reached your plan's agent limit — upgrade to add more." : undefined}
             className="inline-flex items-center gap-1.5 rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-4 py-2 text-[13.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -161,7 +195,7 @@ export function BotsSection({
           </p>
           <button
             type="button"
-            onClick={() => setModal({ mode: "create" })}
+            onClick={() => setModal({ mode: "choice" })}
             className="mt-6 inline-flex items-center gap-1.5 rounded-r1 bg-gradient-to-br from-accent to-accent-strong px-6 py-3 text-[14.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5"
           >
             <Plus className="h-4 w-4" />
@@ -297,7 +331,7 @@ export function BotsSection({
         {!atLimit && (
           <button
             type="button"
-            onClick={() => setModal({ mode: "create" })}
+            onClick={() => setModal({ mode: "choice" })}
             className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-r2 border border-dashed border-border bg-surface/40 p-5 text-muted transition-colors hover:border-accent hover:text-accent"
           >
             <span className="grid h-10 w-10 place-items-center rounded-full border border-current">
@@ -309,30 +343,43 @@ export function BotsSection({
       </div>
       )}
 
-      {modal && (
-        <BotFormModal
-          mode={modal.mode}
-          bot={modal.bot}
-          initial={modal.initial}
+      {modal?.mode === "choice" && (
+        <CreationChoiceModal
+          onClose={() => setModal(null)}
+          onSelectWizard={() => setModal({ mode: "wizard" })}
+          onSelectAdvanced={() => setModal({ mode: "advanced" })}
+        />
+      )}
+
+      {modal?.mode === "advanced" && (
+        <AdvancedCreateModal
+          onClose={() => setModal(null)}
+          onSaved={(id) => {
+            queryClient.invalidateQueries({ queryKey: ["admin", "bots"] });
+            setModal(null);
+            onBotCreated?.();
+            onSelect(id);
+          }}
+        />
+      )}
+
+      {modal?.mode === "wizard" && (
+        <OnboardingWizard
           onClose={() => {
-            // Cancelling the pre-filled modal: don't re-open it as they navigate
-            // (a full reload still re-offers the saved design).
             if (modal.fromPending) autoOpenConsumed = true;
             setModal(null);
           }}
           onSaved={(id) => {
+            queryClient.invalidateQueries({ queryKey: ["admin", "bots"] });
             setModal(null);
-            if (modal.mode === "create") {
-              // Carry the full "Make it yours" look onto the new bot so Studio
-              // restores corners/font/launcher too, then retire the pending copy.
-              if (pendingConfig) {
-                stashBotDesign(id, pendingConfig, getPendingDesign()?.websiteUrl ?? "");
-                clearPendingDesign();
-                setPendingConfig(null);
-                autoOpenConsumed = true;
-              }
-              onSelect(id);
+            if (pendingConfig) {
+              stashBotDesign(id, pendingConfig, getPendingDesign()?.websiteUrl ?? "");
+              clearPendingDesign();
+              setPendingConfig(null);
+              autoOpenConsumed = true;
             }
+            onBotCreated?.();
+            onSelect(id);
           }}
         />
       )}
@@ -347,7 +394,11 @@ export function BotsSection({
           }
           confirmLabel="Delete agent"
           busy={busyId === confirmDelete.bot_id}
-          onCancel={() => setConfirmDelete(null)}
+          error={deleteError}
+          onCancel={() => {
+            setConfirmDelete(null);
+            setDeleteError("");
+          }}
           onConfirm={() => doDelete(confirmDelete)}
         />
       )}

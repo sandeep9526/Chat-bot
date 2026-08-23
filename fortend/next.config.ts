@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
   output: "standalone",
+  devIndicators: false,
 };
 
 // Safe with no Sentry project configured — this only adds build-time

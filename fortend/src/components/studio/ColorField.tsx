@@ -25,7 +25,7 @@ export function ColorField({ value, onChange }: ColorFieldProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap ml-1">
         {ACCENT_SWATCHES.map((sw) => (
           <button
             key={sw.hex}
@@ -50,11 +50,11 @@ export function ColorField({ value, onChange }: ColorFieldProps) {
         ))}
         <label
           className={cn(
-            "relative w-[26px] h-[26px] rounded-full overflow-hidden cursor-pointer grid place-items-center transition-transform duration-100 hover:scale-110",
+            "relative w-[26px] h-[26px] rounded-full overflow-hidden cursor-pointer grid place-items-center transition-all duration-100 hover:scale-110",
             isCustom
               ? // Filled with the live custom colour + selected ring (currentColor).
-                "shadow-[0_0_0_2px_var(--surface),0_0_0_4px_currentColor] text-white"
-              : "border-2 border-dashed border-border text-faint",
+              "shadow-[0_0_0_2px_var(--surface),0_0_0_4px_currentColor] text-white"
+              : "border-2 border-dashed border-muted/70 text-muted hover:border-fg hover:text-fg bg-surface/50",
           )}
           // When custom, paint the swatch AND set currentColor for the ring.
           style={isCustom ? { backgroundColor: value, color: value } : undefined}

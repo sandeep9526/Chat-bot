@@ -60,10 +60,10 @@ function runTour(
   onGoto: (section: string) => void,
   seenKey: string,
 ) {
-  const steps: DriveStep[] = [
+  const steps: any[] = [
     {
       popover: {
-        title: "Welcome to ochreshift",
+        title: "Welcome to OchreShift",
         description:
           "This is your dashboard. Here's a quick 30-second tour of where everything lives.",
       },
@@ -73,7 +73,7 @@ function runTour(
       popover: {
         title: "Manage your agents",
         description:
-          "Create, customize, pause or delete every chatbot you run — all from one place.",
+          "Create, customize, pause or delete every agent you run — all from one place.",
         side: "right",
         align: "start",
       },
@@ -109,7 +109,7 @@ function runTour(
       },
     },
     {
-      element: '[data-tour="nav-leads"]',
+      element: '[data-tour="nav-inbox"]',
       popover: {
         title: "Capture every lead",
         description:
@@ -136,7 +136,11 @@ function runTour(
           : "Head to the Agents tab and hit “New agent” — it takes about a minute to get live.",
       },
     },
-  ];
+  ].filter((step) => {
+    // Skip the bot-switcher step if they have no bots, as it won't render
+    if (!hasBots && step.element === '[data-tour="bot-switcher"]') return false;
+    return true;
+  });
 
   const d = driver({
     showProgress: true,

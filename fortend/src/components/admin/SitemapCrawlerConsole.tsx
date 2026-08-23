@@ -80,15 +80,15 @@ export function SitemapCrawlerConsole({ botId, onCrawlComplete }: SitemapCrawler
         body: JSON.stringify({ botId, url: url.trim() }),
       });
       if (!res.ok) {
-        throw new Error("Failed to initialize sitemap crawler.");
+        throw new Error("We couldn't start the scan — try again.");
       }
       const data = await res.json();
       if (data.job) {
         setJob(data.job);
-        markSetupDone(botId, "doc");
+        markSetupDone(botId, "knowledge");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to start sitemap crawler.");
+      setError(err.message || "We couldn't start the scan — try again.");
     }
   };
 
@@ -101,9 +101,9 @@ export function SitemapCrawlerConsole({ botId, onCrawlComplete }: SitemapCrawler
           <Globe className="h-4.5 w-4.5" />
         </span>
         <div>
-          <b className="block text-[14px] font-[750] text-fg">Autonomous Sitemap.xml Crawler & Ingestion Console</b>
+          <b className="block text-[14px] font-[750] text-fg">Import from your website</b>
           <p className="text-[12px] text-muted">
-            Auto-discover internal pages via <code>/sitemap.xml</code> and crawl up to 50 sub-pages asynchronously.
+            We&apos;ll find and import up to 50 pages from your site automatically.
           </p>
         </div>
       </div>
@@ -127,12 +127,12 @@ export function SitemapCrawlerConsole({ botId, onCrawlComplete }: SitemapCrawler
           {["starting", "discovering", "scraping"].includes(job.status) ? (
             <>
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Crawling Active...
+              Scanning your site…
             </>
           ) : (
             <>
               <Search className="h-4 w-4" />
-              Run Sitemap Discovery & Crawl
+              Scan my website
             </>
           )}
         </button>
@@ -150,36 +150,36 @@ export function SitemapCrawlerConsole({ botId, onCrawlComplete }: SitemapCrawler
         <div className="mt-5 border-t border-border pt-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 bg-surface p-3.5 rounded-r1 border border-border">
             <div>
-              <span className="text-[11.5px] font-[700] text-faint uppercase tracking-wider block">Crawler Status</span>
+              <span className="text-[11.5px] font-[700] text-faint uppercase tracking-wider block">Status</span>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {job.status === "discovering" && (
                   <span className="text-amber-600 font-[700] text-[13.5px] flex items-center gap-1.5 animate-pulse">
-                    <Layers className="h-4 w-4" /> Parsing sitemap.xml indices...
+                    <Layers className="h-4 w-4" /> Finding your pages…
                   </span>
                 )}
                 {job.status === "scraping" && (
                   <span className="text-indigo-600 font-[700] text-[13.5px] flex items-center gap-1.5">
-                    <RefreshCw className="h-4 w-4 animate-spin" /> Scraping URLs ({job.scraped_urls} / {job.total_urls})
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Importing pages ({job.scraped_urls} / {job.total_urls})
                   </span>
                 )}
                 {job.status === "completed" && (
                   <span className="text-emerald-600 font-[700] text-[13.5px] flex items-center gap-1.5">
-                    <CheckCircle className="h-4 w-4" /> Ingestion Complete! Ready for RAG inference.
+                    <CheckCircle className="h-4 w-4" /> Done — your content is ready to use.
                   </span>
                 )}
                 {job.status === "failed" && (
-                  <span className="text-bad font-[700] text-[13.5px]">Crawl task interrupted or domain unreachable.</span>
+                  <span className="text-bad font-[700] text-[13.5px]">We couldn&apos;t finish — check the URL and try again.</span>
                 )}
               </div>
             </div>
 
             <div className="flex items-center gap-6 text-right">
               <div>
-                <span className="text-[11px] font-[600] text-muted block">Extracted Characters</span>
+                <span className="text-[11px] font-[600] text-muted block">Characters imported</span>
                 <span className="text-[15px] font-[750] font-mono text-fg">{job.total_chars.toLocaleString()}</span>
               </div>
               <div>
-                <span className="text-[11px] font-[600] text-muted block">Discovered Pages</span>
+                <span className="text-[11px] font-[600] text-muted block">Pages found</span>
                 <span className="text-[15px] font-[750] font-mono text-indigo-600">{job.discovered_pages.length}</span>
               </div>
             </div>
@@ -190,7 +190,7 @@ export function SitemapCrawlerConsole({ botId, onCrawlComplete }: SitemapCrawler
             <div className="space-y-1">
               <div className="flex justify-between text-[11.5px] font-[650] text-muted">
                 <span className="truncate max-w-[70%]">
-                  {job.current_url ? `Processing: ${job.current_url}` : "All tasks finished."}
+                  {job.current_url ? `Importing: ${job.current_url}` : "All pages imported."}
                 </span>
                 <span>{progressPct}%</span>
               </div>

@@ -27,16 +27,16 @@ export function LogoField({ value, onChange }: LogoFieldProps) {
           <img
             src={value}
             alt="Logo preview"
-            className="h-10 w-10 rounded-[10px] border border-border object-cover"
+            className="h-10 w-10 rounded-r2 border border-border object-cover"
           />
         ) : (
-          <div className="grid h-10 w-10 place-items-center rounded-[10px] border border-dashed border-border text-faint">
+          <div className="grid h-10 w-10 place-items-center rounded-r2 border border-dashed border-border text-faint">
             <ImageIcon className="h-4 w-4" />
           </div>
         )}
         <button
           type="button"
-          className="cursor-pointer rounded-[8px] border border-border bg-panel px-3 py-[7px] font-ui text-xs font-[600] text-fg hover:border-accent focus-visible:outline-2 focus-visible:outline-accent"
+          className="cursor-pointer rounded-r1 border border-border bg-panel px-3 py-1.5 font-ui text-xs font-[600] text-fg hover:border-accent focus-visible:outline-2 focus-visible:outline-accent"
           onClick={() => fileRef.current?.click()}
         >
           Upload
@@ -44,7 +44,7 @@ export function LogoField({ value, onChange }: LogoFieldProps) {
         {value && (
           <button
             type="button"
-            className="cursor-pointer rounded-[8px] border border-border bg-panel px-3 py-[7px] font-ui text-xs font-[600] text-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+            className="cursor-pointer rounded-r1 border border-border bg-panel px-3 py-1.5 font-ui text-xs font-[600] text-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
             onClick={() => onChange("")}
           >
             Remove
@@ -59,7 +59,7 @@ export function LogoField({ value, onChange }: LogoFieldProps) {
         />
       </div>
       <input
-        className="w-full rounded-[9px] border border-border bg-surface px-[11px] py-[9px] font-ui text-[13px] text-fg outline-none focus:border-accent focus:ring-[3px] focus:ring-accent-ring"
+        className="w-full rounded-r2 border border-border bg-surface px-3 py-2 font-ui text-sm text-fg outline-none focus:border-accent focus:ring-[3px] focus:ring-accent-ring"
         placeholder="…or paste an image URL"
         value={value.startsWith("data:") ? "" : value}
         onChange={(e) => onChange(e.target.value.trim())}

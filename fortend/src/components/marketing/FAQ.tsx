@@ -39,10 +39,8 @@ export function FAQ() {
         
         <Reveal>
           <div className="text-center mb-12">
-            <span className="eyebrow">
-              FAQ
-            </span>
-            <h2 className="mt-5 marketing-h2">
+            <p className="eyebrow mx-auto">FAQ</p>
+            <h2 className="mt-4 marketing-h2">
               Frequently Asked Questions
             </h2>
           </div>
@@ -56,17 +54,17 @@ export function FAQ() {
                 <div className="border-b border-[#E5E7EB]">
                   <button
                     onClick={() => setOpenIdx(isOpen ? null : idx)}
-                    className="group flex w-full items-center justify-between py-5 text-left transition-colors hover:bg-white/50 -mx-4 px-4 rounded-[10px]"
+                    className="group flex w-full items-center justify-between py-[22px] text-left transition-colors duration-200 hover:bg-white -mx-4 px-4 rounded-[10px]"
                   >
-                    <span className="text-[17px] font-[600] text-[#08111F] pr-4">{faq.q}</span>
-                    <span className={`ml-4 shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#475569] transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`}>
+                    <span className={`text-[16px] font-[600] pr-4 transition-colors duration-200 ${isOpen ? "text-[#F5A900]" : "text-bg group-hover:text-bg"}`}>{faq.q}</span>
+                    <span className={`ml-4 shrink-0 flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-300 ${isOpen ? "rotate-45 border-[#F5A900] bg-[#F5A900]/10 text-[#F5A900]" : "border-[#E5E7EB] bg-white text-[#475569] group-hover:border-[#F5A900]/40 group-hover:text-[#F5A900]"}`}>
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                         <path d="M7 3v8M3 7h8" />
                       </svg>
                     </span>
                   </button>
                   <div
-                    className="grid transition-all duration-300 ease-in-out"
+                    className="grid transition-all duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
                     style={{
                       gridTemplateRows: isOpen ? "1fr" : "0fr",
                       opacity: isOpen ? 1 : 0,

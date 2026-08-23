@@ -7,19 +7,19 @@ import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
  */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-5 py-12 relative overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center bg-bg px-5 py-12 relative overflow-hidden font-sans">
       {/* Background decoration */}
-      <div className="pointer-events-none absolute left-1/2 top-0 -ml-[50vw] h-[50vw] w-[100vw] bg-[radial-gradient(ellipse_at_top,var(--accent-ring),transparent_50%)] opacity-40 dark:opacity-20" />
+      <div className="pointer-events-none absolute left-1/2 top-0 -ml-[50vw] h-[50vw] w-[100vw] bg-[radial-gradient(ellipse_at_top,var(--accent-soft),transparent_50%)]" />
       
       <div className="w-full max-w-[420px] relative z-10">
         <Link
           href="/"
           className="mb-8 flex items-center justify-center"
         >
-          <OchreshiftLogo className="h-10 w-auto" />
+          <OchreshiftLogo className="h-10 w-auto" variant="default" />
         </Link>
         
-        <div className="rounded-[24px] border border-border bg-surface p-8 shadow-card sm:p-10">
+        <div className="rounded-[24px] border border-border bg-surface p-8 shadow-2xl sm:p-10 text-fg">
           {children}
         </div>
       </div>

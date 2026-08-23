@@ -35,7 +35,7 @@ export function SectionHead({
       <Reveal
         as="h2"
         delay={60}
-        className="mt-3 font-display text-[clamp(26px,4vw,40px)] font-[750] leading-[1.12] tracking-[-.02em] text-fg"
+        className="mt-4 text-[36px] md:text-[44px] lg:text-[52px] font-[750] leading-[1.1] tracking-tight text-fg"
       >
         {title}
       </Reveal>
@@ -43,7 +43,7 @@ export function SectionHead({
         <Reveal
           as="p"
           delay={120}
-          className="mt-4 text-[15.5px] leading-[1.65] text-muted"
+          className="mt-5 text-[18px] leading-[1.6] text-muted"
         >
           {description}
         </Reveal>

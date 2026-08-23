@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Sparkle as SparkSmallIcon, Sparkle as CrosshairIcon, ArrowRight as ArrowIcon, CornerDownLeft } from "lucide-react";
+import { ArrowUpRight as ArrowIcon } from "lucide-react";
 import { useZevaStore } from "@/stores/zevaStore";
+
+/** Mirrors the backend's MAX_MESSAGE_LEN (zeva-backend/main.py) so an
+ *  over-length message is caught before it round-trips to the server. */
+const MAX_MESSAGE_LEN = 1000;
 
 interface ComposerProps {
   name: string;
@@ -14,7 +18,6 @@ interface ComposerProps {
 }
 
 export function Composer({
-  name,
   value,
   isOpen,
   isScanning = false,
@@ -40,27 +43,30 @@ export function Composer({
   };
 
   return (
-    <form className="relative m-3" onSubmit={handleSubmit} autoComplete="off">
-      <span className="absolute left-3 top-1/2 grid -translate-y-1/2 place-items-center text-accent">
-        <CrosshairIcon className="h-4 w-4" />
-      </span>
+    <form className="relative m-3 mt-2" onSubmit={handleSubmit} autoComplete="off">
       <input
         ref={inputRef}
-        className="w-full rounded-r2 border border-border bg-surface py-3 pl-[38px] pr-11 font-ui text-[14px] text-fg outline-none focus:border-accent focus:ring-4 focus:ring-accent-ring disabled:opacity-60"
-        placeholder={`Ask anything about ${name}…`}
-        aria-label={`Ask anything about ${name}`}
+        className="w-full rounded-[10px] border border-border bg-panel py-3.5 pl-4 pr-14 font-ui text-[14px] text-fg outline-none transition-colors hover:border-border/80 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60 placeholder:text-muted"
+        placeholder="Ask anything..."
+        aria-label="Ask anything"
         value={value}
+        maxLength={MAX_MESSAGE_LEN}
         disabled={isScanning}
         onChange={(e) => onChange(e.target.value)}
       />
       <button
         type="submit"
-        className="tap absolute right-[7px] top-1/2 grid h-[30px] w-[30px] -translate-y-1/2 place-items-center rounded-r1 border-none bg-accent text-[var(--on-accent)] outline-none focus-visible:ring-2 focus-visible:ring-accent-ring disabled:cursor-not-allowed disabled:opacity-35"
+        className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-[8px] border-none bg-accent text-fg outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-accent-ring disabled:cursor-not-allowed disabled:opacity-35"
         disabled={!value.trim() || isScanning}
         aria-label="Ask"
       >
-        <ArrowIcon className="h-4 w-4" />
+        <ArrowIcon className="h-[18px] w-[18px]" strokeWidth={2.5} />
       </button>
+      {value.length > MAX_MESSAGE_LEN * 0.8 && (
+        <div className="mt-1 pr-1 text-right font-mono text-[10px] text-faint">
+          {value.length}/{MAX_MESSAGE_LEN}
+        </div>
+      )}
     </form>
   );
 }
@@ -80,7 +86,7 @@ const GENERIC_SUGGESTIONS = [
 
 export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
   const configuredSuggestions = useZevaStore((s) => s.config.suggestions);
-  
+
   // Use configured template suggestions if present, otherwise fallback to generic
   const suggestions =
     configuredSuggestions && configuredSuggestions.length > 0
@@ -88,19 +94,15 @@ export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
       : GENERIC_SUGGESTIONS;
   const chips = suggestions.map((q) => q.trim()).filter(Boolean);
   return (
-    <div className="flex flex-col gap-[7px]">
+    <div className="flex flex-wrap gap-2 px-3 pb-3 pt-1">
       {chips.map((q, i) => (
         <button
           key={`${i}-${q}`}
           type="button"
-          className="flex w-full cursor-pointer items-center gap-2.5 rounded-r1 border border-border bg-surface px-[11px] py-[9px] text-left font-ui text-[13px] text-fg transition-[border-color,transform] duration-100 hover:translate-x-0.5 hover:border-accent focus-visible:outline-2 focus-visible:outline-accent"
+          className="flex cursor-pointer items-center rounded-full border border-border bg-transparent px-3.5 py-1.5 font-ui text-[12.5px] font-[500] text-muted transition-colors hover:border-accent hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
           onClick={() => onSelect(q)}
         >
-          <SparkSmallIcon className="h-3.5 w-3.5 shrink-0 text-accent" />
           {q}
-          <span className="ml-auto grid place-items-center rounded-[5px] border border-border px-[5px] py-px text-faint">
-            <CornerDownLeft className="h-2.5 w-2.5" />
-          </span>
         </button>
       ))}
     </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2 as CheckCircleIcon, AlertTriangle as WarningIcon, UserPlus as UserPlusIcon } from "lucide-react";
+import { AlertTriangle as WarningIcon, UserPlus as UserPlusIcon, RotateCcw as RetryIcon } from "lucide-react";
+import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 import { ProofCard } from "./ProofCard";
 import { LeadTicket, LeadStub } from "./LeadTicket";
 import { useZevaStore } from "@/stores/zevaStore";
@@ -10,9 +11,10 @@ import type { ChatMessage } from "@/lib/types";
 interface AnswerEntryProps {
   message: ChatMessage;
   showSources: boolean;
+  onRetry?: (text: string) => void;
 }
 
-export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
+export function AnswerEntry({ message, showSources, onRetry }: AnswerEntryProps) {
   const name = useZevaStore((s) => s.config.name);
   const updateMessage = useZevaStore((s) => s.updateMessage);
 
@@ -29,7 +31,7 @@ export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
   // User question bubble.
   if (message.role === "user") {
     return (
-      <div className="max-w-[85%] self-end rounded-r1 rounded-br-[5px] bg-accent px-3 py-2 text-[13px] font-medium text-[var(--on-accent)]">
+      <div className="max-w-[85%] self-end rounded-[12px] rounded-br-[4px] bg-panel px-4 py-2.5 text-[14px] font-[500] text-fg shadow-sm border border-border">
         {message.text}
       </div>
     );
@@ -40,24 +42,49 @@ export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
 
   return (
     <div>
-      <div className="flex items-start gap-[9px]">
-        <CheckCircleIcon className="mt-[3px] h-4 w-4 shrink-0 text-accent" />
+    <div className="pl-[38px] relative">
+      <div className="absolute left-0 top-0 h-[28px] w-[28px] shrink-0 rounded-full bg-surface border border-border shadow-sm flex items-center justify-center p-[4px]">
+        {message.isError ? (
+          <WarningIcon className="h-full w-full text-amber-500" />
+        ) : (
+          <OchreshiftLogo className="h-full w-full" variant="mark" />
+        )}
+      </div>
+      <div className="pt-0.5">
         <TypewriterText text={message.text} />
       </div>
+    </div>
 
-      {/* Guardrail: no matching source. */}
-      {message.isGuardrail && !message.limitReached && (
-        <div className="mt-3 flex items-center gap-2.5 rounded-r2 border border-dashed border-border px-3 py-2.5 text-[12.5px] text-muted">
-          <WarningIcon className="h-4 w-4 shrink-0 text-amber-500" />
-          No matching source — routing you to a human.
+      {/* Failed request: distinct from a real answer, with a way to retry. */}
+      {message.isError && (
+        <div role="alert" className="mt-3">
+          <button
+            type="button"
+            className="inline-flex cursor-pointer items-center gap-[7px] rounded-r1 border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-ui text-[12.5px] font-[600] text-amber-600 transition-colors hover:border-amber-500 focus-visible:outline-2 focus-visible:outline-accent dark:text-amber-400"
+            onClick={() => message.retryText && onRetry?.(message.retryText)}
+            disabled={!message.retryText || !onRetry}
+          >
+            <RetryIcon className="h-3.5 w-3.5" />
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Quota limit or inactive subscription warning */}
-      {message.limitReached && (
-        <div className="mt-3.5 flex items-center gap-2.5 rounded-r2 border border-amber-500/40 bg-amber-500/10 px-3.5 py-3 text-[12.5px] font-[600] text-amber-600 dark:text-amber-400">
+      {/* Guardrail: no matching source. */}
+      {message.isGuardrail && !message.limitReached && (
+        <div role="status" className="mt-3 flex items-center gap-2.5 rounded-r2 border border-dashed border-border px-3 py-2.5 text-[12.5px] text-muted">
           <WarningIcon className="h-4 w-4 shrink-0 text-amber-500" />
-          <span>⚠️ AI interaction limit reached. Automated chatbot responses are temporarily paused.</span>
+          I couldn&rsquo;t find that in our docs — connecting you with our team.
+        </div>
+      )}
+
+      {/* Quota / inactive-subscription / other business-side pause. The specific
+          reason is already in the answer text above (from the backend); this
+          banner stays generic so it never conflicts with or duplicates that copy. */}
+      {message.limitReached && (
+        <div role="alert" className="mt-3.5 flex items-center gap-2.5 rounded-r2 border border-amber-500/40 bg-amber-500/10 px-3.5 py-3 text-[12.5px] font-[600] text-amber-600 dark:text-amber-400">
+          <WarningIcon className="h-4 w-4 shrink-0 text-amber-500" />
+          <span>This assistant is temporarily unavailable — leave your details below and we&rsquo;ll follow up.</span>
         </div>
       )}
 
@@ -84,7 +111,7 @@ export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
             onClick={() => updateMessage(message.id, { ticketState: "idle" })}
           >
             <UserPlusIcon className="h-3.5 w-3.5 text-accent" />
-            Book / leave my details
+            Leave your details
           </button>
         </div>
       )}
@@ -104,7 +131,7 @@ export function AnswerEntry({ message, showSources }: AnswerEntryProps) {
       {/* Handoff stub. */}
       {message.ticketState === "gone" && (
         <div className="mt-3">
-          <LeadStub name={message.leadName ?? "This visitor"} />
+          <LeadStub />
         </div>
       )}
     </div>

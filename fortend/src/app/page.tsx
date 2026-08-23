@@ -1,58 +1,53 @@
 import type { Metadata } from "next";
-import { FAQ } from "@/components/marketing/FAQ";
-import { Features } from "@/components/marketing/Features";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { Hero } from "@/components/marketing/Hero";
+import { ProblemSection } from "@/components/marketing/ProblemSection";
+import { ProductMechanism } from "@/components/marketing/ProductMechanism";
+import { GroundedAnswers } from "@/components/marketing/GroundedAnswers";
+import { KnowledgeBase } from "@/components/marketing/KnowledgeBase";
+import { LeadQualification } from "@/components/marketing/LeadQualification";
+import { HumanTakeover } from "@/components/marketing/HumanTakeover";
+import { UseCases } from "@/components/marketing/UseCases";
+import { TrustSection } from "@/components/marketing/TrustSection";
+import { InstallationSpeed } from "@/components/marketing/InstallationSpeed";
 import { FinalCTA } from "@/components/marketing/FinalCTA";
 import { Footer } from "@/components/marketing/Footer";
-import { Hero } from "@/components/marketing/Hero";
+import { SmoothScroll } from "@/components/marketing/SmoothScroll";
 import { MarketingThemeInit } from "@/components/marketing/MarketingThemeInit";
 
-import { SiteHeader } from "@/components/marketing/SiteHeader";
-import { ProductOverview } from "@/components/marketing/ProductOverview";
-import { DeveloperFeatures } from "@/components/marketing/DeveloperFeatures";
-import { AIChatPreview } from "@/components/marketing/AIChatPreview";
-import { DashboardPreview } from "@/components/marketing/DashboardPreview";
-import { Pricing } from "@/components/marketing/Pricing";
-
-import { TrustSection } from "@/components/marketing/TrustSection";
-
-
-import { ZevaWidget } from "@/components/widget/ZevaWidget";
-
 export const metadata: Metadata = {
-  title: "ochreshift · A chatbot that only answers from your content",
+  title: "OchreShift · AI Lead Capture for Service Businesses",
   description:
-    "ochreshift is a RAG-powered AI chat widget for small businesses. It reads your website, FAQs and docs, answers your customers 24/7 with cited sources — never made-up — and captures every lead. One script tag, any site, fully managed.",
+    "OchreShift is an AI lead capture platform that answers customer questions instantly using your business knowledge, qualifies leads, and alerts your team when a human is needed.",
   openGraph: {
-    title: "ochreshift · A chatbot that only answers from your content",
+    title: "OchreShift · AI Lead Capture for Service Businesses",
     description:
       "Answers only from your content, with sources — and captures every lead while you sleep. One script tag, any site, fully managed.",
     type: "website",
   },
 };
 
-// Dark-first, cinematic marketing home. MarketingBoot sets the theme + arms the
-// scroll-reveal system before first paint; the rest is progressive enhancement.
 export default function Home() {
   return (
     <>
       <MarketingThemeInit />
-      <SiteHeader />
-      <main>
-        <Hero />
-        <ProductOverview />
-        <DeveloperFeatures />
-
-        <Features />
-        <AIChatPreview />
-        <DashboardPreview />
-
-        <TrustSection />
-        <Pricing />
-        <FAQ />
-        <FinalCTA />
-      </main>
-      <ZevaWidget />
-      <Footer />
+      <SmoothScroll>
+        <SiteHeader />
+        <main>
+          <Hero />
+          <ProblemSection />
+          <ProductMechanism />
+          <GroundedAnswers />
+          <KnowledgeBase />
+          <LeadQualification />
+          <HumanTakeover />
+          <UseCases />
+          <TrustSection />
+          <InstallationSpeed />
+          <FinalCTA />
+        </main>
+        <Footer />
+      </SmoothScroll>
     </>
   );
 }

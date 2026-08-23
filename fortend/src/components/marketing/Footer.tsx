@@ -3,74 +3,68 @@ import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 
 const FOOTER_LINKS = {
   Product: [
+    { label: "How it works", href: "#how-it-works" },
     { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Integrations", href: "#integrations" },
-    { label: "API", href: "/docs/api" },
-  ],
-  Resources: [
-    { label: "Documentation", href: "/docs" },
-    { label: "Blog", href: "/blog" },
-    { label: "Help Center", href: "/help" },
-    { label: "Changelog", href: "/changelog" },
+    { label: "Use Cases", href: "#use-cases" },
   ],
   Company: [
-    { label: "About", href: "/about" },
-    { label: "Contact", href: "/contact" },
-    { label: "Careers", href: "/careers" },
+    { label: "Contact", href: "mailto:hello@ochreshift.com" },
+    { label: "Sign in", href: "/sign-in" },
+    { label: "Start free", href: "/sign-up" },
   ],
   Legal: [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
     { label: "Refund Policy", href: "/refund-policy" },
-  ],
+  ]
 };
 
 export function Footer() {
   return (
-    <footer className="bg-white border-t border-[#E5E7EB] pt-16 pb-10">
-      <div className="marketing-container">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-5">
-          
-          {/* Brand Column */}
-          <div className="lg:col-span-2">
-            <Link href="/" className="inline-block">
-              <OchreshiftLogo className="h-[30px] w-auto" />
-            </Link>
-            <p className="mt-5 max-w-[300px] text-[15px] leading-[1.65] text-[#475569]">
-              The intelligent answer engine for modern businesses. Build, deploy and scale AI-powered applications with developer-first tools.
-            </p>
-          </div>
+    <footer className="bg-bg border-t border-border py-20 px-6 sm:px-9 font-sans">
+      <div className="max-w-[1240px] mx-auto flex flex-col lg:flex-row justify-between items-start gap-16">
 
-          {/* Links Columns */}
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:col-span-3">
-            {Object.entries(FOOTER_LINKS).map(([category, links]) => (
-              <div key={category}>
-                <h4 className="text-[13px] font-[600] text-[#08111F] mb-5 uppercase tracking-wider">{category}</h4>
-                <ul className="space-y-3">
-                  {links.map((link) => (
-                    <li key={link.label}>
-                      <Link href={link.href} className="text-[15px] text-[#475569] transition-colors duration-150 hover:text-[#F5A900]">
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+        {/* Left Column */}
+        <div className="flex flex-col items-start max-w-sm">
+          <Link href="/" className="mb-8 block">
+            <OchreshiftLogo className="h-[30px] w-auto" variant="default" />
+          </Link>
+          <p className="text-[15px] text-muted mb-8 leading-relaxed">
+            OchreShift answers customer questions, detects buying intent, and captures qualified leads for your business 24/7.
+          </p>
+          <div className="flex gap-4 mb-8">
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-border" />
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-border" />
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-border" />
           </div>
-        </div>
-
-        <div className="mt-14 pt-6 border-t border-[#E5E7EB] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[14px] text-[#64748B]">
+          <p className="text-[14px] text-slate-500">
             © {new Date().getFullYear()} Ochreshift. All rights reserved.
           </p>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-2 text-[14px] text-[#64748B]">
-              <span className="h-2 w-2 rounded-full bg-[#16A34A]" /> Systems operational
-            </span>
-          </div>
         </div>
+
+        {/* Right Columns (Links Grid) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-12 gap-y-12 w-full lg:w-auto flex-1 lg:pl-16">
+          {Object.entries(FOOTER_LINKS).map(([category, links]) => (
+            <div key={category} className="flex flex-col">
+              <h4 className="text-[15px] font-[600] text-fg mb-6">
+                {category}
+              </h4>
+              <ul className="flex flex-col gap-4">
+                {links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-[15px] text-muted hover:text-[#FFB800] transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
       </div>
     </footer>
   );

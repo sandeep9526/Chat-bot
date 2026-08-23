@@ -18,6 +18,41 @@ import type {
 import { shade } from "@/lib/color";
 
 /* ------------------------------------------------------------------ */
+/*  Session persistence — sessionStorage, so a reload/back-nav doesn't  */
+/*  silently wipe an in-progress conversation. Tab-scoped on purpose:   */
+/*  a shared machine shouldn't leak one visitor's chat into the next.   */
+/* ------------------------------------------------------------------ */
+const SESSION_KEY = "zeva-session-messages";
+
+function loadPersistedMessages(): ChatMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePersistedMessages(messages: ChatMessage[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(messages));
+  } catch {
+    /* private mode / storage full — conversation just won't survive reload */
+  }
+}
+
+function clearPersistedMessages(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* private mode */
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Config slice                                                       */
 /* ------------------------------------------------------------------ */
 interface ConfigSlice {
@@ -68,6 +103,10 @@ interface SessionSlice {
   pushMessage: (msg: ChatMessage) => void;
   updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
   resetSession: () => void;
+  /** Loads any sessionStorage'd thread. Called post-mount only (never during
+   *  the initial render) so SSR and the first client render always agree on
+   *  an empty list — avoids a hydration mismatch. */
+  hydrateMessages: () => void;
 
   isQuestionProcessing: boolean;
   setIsQuestionProcessing: (v: boolean) => void;
@@ -93,18 +132,7 @@ export const useZevaStore = create<ZevaState>((set) => ({
       config: { ...s.config, accent: hex },
     })),
 
-  setSurface: (v) => {
-    if (typeof window !== "undefined") {
-      try {
-        if (v === "dark" || v === "light") {
-          localStorage.setItem("zeva-theme", v);
-        }
-      } catch {
-        /* private mode */
-      }
-    }
-    set((s) => ({ config: { ...s.config, surface: v } }));
-  },
+  setSurface: (v) => set((s) => ({ config: { ...s.config, surface: v } })),
   setCorners: (v) => set((s) => ({ config: { ...s.config, corners: v } })),
   setLauncher: (v) => set((s) => ({ config: { ...s.config, launcher: v } })),
 
@@ -151,12 +179,26 @@ export const useZevaStore = create<ZevaState>((set) => ({
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen })),
 
   messages: [],
-  pushMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+  hydrateMessages: () => {
+    const messages = loadPersistedMessages();
+    if (messages.length) set({ messages });
+  },
+  pushMessage: (msg) =>
+    set((s) => {
+      const messages = [...s.messages, msg];
+      savePersistedMessages(messages);
+      return { messages };
+    }),
   updateMessage: (id, patch) =>
-    set((s) => ({
-      messages: s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
-    })),
-  resetSession: () => set({ messages: [] }),
+    set((s) => {
+      const messages = s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m));
+      savePersistedMessages(messages);
+      return { messages };
+    }),
+  resetSession: () => {
+    clearPersistedMessages();
+    set({ messages: [] });
+  },
 
   isQuestionProcessing: false,
   setIsQuestionProcessing: (v) => set({ isQuestionProcessing: v }),

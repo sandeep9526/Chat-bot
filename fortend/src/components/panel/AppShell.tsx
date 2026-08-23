@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
-import { MenuIcon, CloseIcon } from "./panelIcons";
+import { MenuIcon, CloseIcon, SearchIcon } from "./panelIcons";
+import { Lock } from "lucide-react";
 
 export interface NavItem {
   key: string;
@@ -32,6 +33,8 @@ interface AppShellProps {
   topbarRight?: ReactNode;
   /** Pinned bottom-of-sidebar slot — usually the signed-in user block. */
   sidebarFooter?: ReactNode;
+  /** If true, locks all tabs except 'bots', 'settings', and 'help'. */
+  sidebarLocked?: boolean;
   children: ReactNode;
 }
 
@@ -43,13 +46,37 @@ export function AppShell({
   sectionTitle,
   topbarRight,
   sidebarFooter,
+  sidebarLocked,
   children,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => {
+          if (!o) setSearchQuery("");
+          return !o;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const allNavItems = groups.flatMap((g) => g.items);
+  const filteredItems = allNavItems.filter((i) =>
+    i.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const activeGroupLabel = groups.find((g) => g.items.some((i) => i.key === activeKey))?.label || brandLabel;
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+      <div className="flex items-center justify-between px-5 pt-5 pb-4">
         <div className="flex items-center gap-3">
           <OchreshiftLogo className="h-7 w-auto" />
         </div>
@@ -63,56 +90,62 @@ export function AppShell({
         </button>
       </div>
 
-      <nav className="ae-stream flex-1 overflow-y-auto px-3 py-4">
+
+      <nav className="ae-stream flex-1 overflow-y-auto px-3 py-1 mt-2">
         {groups.map((group, gi) => (
-          <div key={gi} className="mb-5">
+          <div key={gi} className="mb-4">
             {group.label && (
-              <div className="px-3 pb-2 text-[10px] font-[800] uppercase tracking-[.18em] text-muted/70">
+              <div className="px-3 mb-1.5 text-[11px] font-[750] uppercase tracking-[0.12em] text-faint">
                 {group.label}
               </div>
             )}
             <div className="flex flex-col gap-1">
-              {group.items.map((item) => {
+              {(searchQuery ? group.items.filter(i => i.label.toLowerCase().includes(searchQuery.toLowerCase())) : group.items).map((item) => {
                 const active = item.key === activeKey;
+                const isLocked = sidebarLocked && !["bots", "settings", "help"].includes(item.key);
                 return (
                   <button
                     key={item.key}
                     type="button"
                     data-tour={item.tour}
+                    disabled={isLocked}
+                    title={isLocked ? "Create an agent first" : undefined}
                     onClick={() => {
-                      onNavigate(item.key);
-                      setMobileOpen(false);
+                      if (!isLocked) {
+                        onNavigate(item.key);
+                        setMobileOpen(false);
+                      }
                     }}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-[650] transition-all duration-150 cursor-pointer",
+                      "group relative flex items-center justify-between rounded-[8px] px-3 py-2.5 text-left text-[13.5px] font-[600] transition-all duration-150",
                       active
-                        ? "bg-accent/15 text-accent shadow-sm font-[700]"
-                        : "text-muted hover:bg-panel hover:text-fg",
+                        ? "bg-accent/10 text-accent font-[750]"
+                        : isLocked
+                          ? "text-faint opacity-50 cursor-not-allowed [&.driver-active-element]:opacity-100 [&.driver-active-element]:text-fg"
+                          : "text-muted hover:bg-panel/50 hover:text-fg cursor-pointer",
                     )}
                   >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-[3.5px] -translate-y-1/2 rounded-r-full bg-accent" />
-                    )}
-                    <span
-                      className={cn(
-                        "shrink-0 transition-colors",
-                        active ? "text-accent" : "text-faint group-hover:text-muted",
-                      )}
-                    >
-                      {item.icon}
-                    </span>
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {item.badge != null && item.badge !== 0 && (
+                    <div className="flex flex-1 min-w-0 items-center gap-3">
                       <span
                         className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-[750] tabular-nums",
-                          active ? "bg-accent text-white" : "bg-panel text-muted border border-border/80",
+                          "shrink-0 transition-colors",
+                          active ? "text-accent" : isLocked ? "text-inherit" : "text-faint group-hover:text-muted",
                         )}
                       >
-                        {item.badge}
+                        {item.icon}
                       </span>
-                    )}
+                      <span className="truncate pr-2">{item.label}</span>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      {item.badge != null && item.badge !== 0 && !isLocked && (
+                        <span className="flex min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                          {item.badge}
+                        </span>
+                      )}
+                      {isLocked && <Lock className="h-3.5 w-3.5 opacity-50" />}
+                    </div>
                   </button>
                 );
               })}
@@ -128,7 +161,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-bg text-fg selection:bg-accent/20">
       {/* Desktop sidebar (1280px+) */}
-      <aside data-theme="dark" className="sticky top-0 hidden h-screen w-[240px] shrink-0 border-r border-border bg-bg xl:block">
+      <aside data-theme="auto" className="sticky top-0 hidden h-screen w-[240px] shrink-0 border-r border-border bg-bg xl:block">
         {sidebar}
       </aside>
 
@@ -158,26 +191,31 @@ export function AppShell({
               <MenuIcon className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2 truncate">
-              <span className="text-xs font-[600] text-muted">Workspace</span>
-              <span className="text-xs text-faint">/</span>
-              <h1 className="truncate text-[16px] font-[800] tracking-tight">{sectionTitle}</h1>
+              <span className="text-[12.5px] font-[650] text-muted">{activeGroupLabel}</span>
+              <span className="text-[12.5px] text-faint">/</span>
+              <h1 className="truncate text-[15px] font-[800] tracking-tight text-fg">{sectionTitle}</h1>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <div className="relative hidden md:flex items-center">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.3-4.3"/>
-              </svg>
-              <input 
-                type="text" 
-                placeholder="Search anything..." 
-                className="h-9 w-64 rounded-[8px] border border-border/80 bg-panel pl-9 pr-3 text-[13px] text-fg outline-none transition-colors focus:border-accent"
-              />
+
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setSearchOpen(true);
+              }}
+              className="relative hidden md:flex items-center text-left"
+            >
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-faint" />
+              <div
+                className="flex h-9 w-64 items-center rounded-[8px] border border-border/80 bg-panel pl-9 pr-3 text-[13px] text-muted transition-colors hover:border-accent"
+              >
+                Search anything...
+              </div>
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] text-faint font-mono">⌘K</kbd>
               </div>
-            </div>
+            </button>
             {topbarRight}
           </div>
         </header>
@@ -188,6 +226,57 @@ export function AppShell({
           </div>
         </main>
       </div>
+
+      {/* Search Modal */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-24 bg-black/60 backdrop-blur-sm" onClick={() => setSearchOpen(false)}>
+          <div
+            className="relative w-full max-w-xl mx-4 overflow-hidden rounded-[16px] border border-border bg-surface shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center border-b border-border/80 px-4">
+              <SearchIcon className="h-5 w-5 text-muted" />
+              <input
+                autoFocus
+                type="text"
+                className="flex-1 bg-transparent px-4 py-4 text-[15px] font-[500] text-fg outline-none placeholder:text-muted"
+                placeholder="Search panel..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setSearchOpen(false);
+                  if (e.key === "Enter" && filteredItems.length > 0) {
+                    setSearchOpen(false);
+                    onNavigate(filteredItems[0].key);
+                  }
+                }}
+              />
+              <button onClick={() => setSearchOpen(false)} className="rounded p-1.5 text-muted hover:bg-panel hover:text-fg">
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[360px] overflow-y-auto p-2">
+              {filteredItems.length === 0 ? (
+                <div className="p-8 text-center text-[14px] text-muted font-[500]">No matching sections found.</div>
+              ) : (
+                filteredItems.map((item) => (
+                  <button
+                    key={item.key}
+                    className="flex w-full items-center gap-3 rounded-[10px] px-4 py-3 text-left text-[14px] font-[500] text-fg hover:bg-accent/10 hover:text-accent transition-colors"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      onNavigate(item.key);
+                    }}
+                  >
+                    <span className="text-muted/70">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -43,7 +43,7 @@ export default function SignUpPage() {
       });
 
       if (signUpError) {
-        setError(signUpError.message || "Registration failed");
+        setError(signUpError.message || "We couldn't create your account — check your details and try again.");
       } else {
         // Success - Better Auth auto-signs in on registration (see
         // emailAndPassword.autoSignIn in lib/auth.ts), so we already have a
@@ -54,7 +54,7 @@ export default function SignUpPage() {
         router.refresh();
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("We couldn't create your account — check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export default function SignUpPage() {
             type="text"
             autoFocus
             required
-            className="w-full rounded-r1 border border-border bg-surface px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent-ring"
+            className="w-full rounded-md border border-border bg-panel px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="Priya Sharma"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -96,7 +96,7 @@ export default function SignUpPage() {
           <input
             type="email"
             required
-            className="w-full rounded-r1 border border-border bg-surface px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent-ring"
+            className="w-full rounded-md border border-border bg-panel px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -111,7 +111,7 @@ export default function SignUpPage() {
             type="password"
             required
             minLength={8}
-            className="w-full rounded-r1 border border-border bg-surface px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent-ring"
+            className="w-full rounded-md border border-border bg-panel px-4 py-2.5 text-[14px] text-fg outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="Min 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -119,7 +119,7 @@ export default function SignUpPage() {
         </div>
 
         {error && (
-          <div className="rounded-r1 bg-[#ef4444]/10 px-4 py-3 text-[13px] text-[#ef4444]">
+          <div className="rounded-r1 bg-bad/10 px-4 py-3 text-[13px] text-bad">
             {error}
           </div>
         )}
@@ -127,7 +127,7 @@ export default function SignUpPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full cursor-pointer rounded-r1 bg-gradient-to-br from-accent to-accent-strong py-3 text-[14.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full cursor-pointer rounded-md bg-accent hover:brightness-90 py-3 text-[14.5px] font-[650] text-fg transition-colors disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Creating account…" : "Create account"}
         </button>

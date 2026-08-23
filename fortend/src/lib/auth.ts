@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { jwt } from "better-auth/plugins";
+import { jwt, magicLink, haveIBeenPwned } from "better-auth/plugins";
 import { Pool } from "pg";
 
 /**
@@ -57,10 +57,41 @@ const socialProviders: NonNullable<Parameters<typeof betterAuth>[0]["socialProvi
  * - JWT token generation (for FastAPI backend)
  * - JWKS endpoint for token verification
  */
+import { APIError } from "better-auth/api";
+import { normalizeEmail, verifyEmailForFree } from "./email-verify";
+
 export const auth = betterAuth({
   // Database: Postgres (Neon) — shared with the FastAPI backend's tables so
   // bots.owner_user_id can reference this user table directly.
   database: new Pool({ connectionString: process.env.DATABASE_URL }),
+
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const email = user.email;
+          if (!email) return { data: user };
+
+          const normalized = normalizeEmail(email);
+          
+          if (email !== normalized) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Please enter your Gmail address without any dots (.) or plus (+) aliases. Google ignores dots, so it is the exact same inbox! This helps us prevent spam.",
+            });
+          }
+
+          const isValid = await verifyEmailForFree(normalized);
+          if (!isValid) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Disposable or invalid email addresses are not allowed. Please use a real work or personal email.",
+            });
+          }
+          
+          return { data: user };
+        }
+      }
+    }
+  },
 
   // Google/GitHub/LinkedIn/Facebook("Meta")/Twitter("X")/Apple — each only
   // active once its own env vars are set (see the definition above).
@@ -70,7 +101,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true, // automatically sign in after registration
-    sendResetPassword: async ({ user, url, token }) => {
+    requireEmailVerification: false,
+    sendResetPassword: async ({ user, url, token }: { user: any; url: string; token: string }) => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         await fetch(`${apiUrl}/internal/send-password-reset`, {
@@ -80,6 +112,18 @@ export const auth = betterAuth({
         });
       } catch (err) {
         console.error("Failed sending password reset email via backend:", err);
+      }
+    },
+    sendVerificationEmail: async ({ user, url, token }: { user: any; url: string; token: string }) => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        await fetch(`${apiUrl}/internal/send-verification-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, url, token }),
+        });
+      } catch (err) {
+        console.error("Failed sending verification email via backend:", err);
       }
     },
   },
@@ -94,6 +138,21 @@ export const auth = betterAuth({
         expirationTime: "15m", // tokens expire after 15 minutes
       },
     }),
+    magicLink({
+      sendMagicLink: async ({ email, token, url }, request) => {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+          await fetch(`${apiUrl}/internal/send-magic-link`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, url, token }),
+          });
+        } catch (err) {
+          console.error("Failed sending magic link via backend:", err);
+        }
+      },
+    }),
+    haveIBeenPwned(),
   ],
 
   // Session configuration

@@ -11,7 +11,7 @@ import { AdminApiError } from "./adminApi";
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 function base(): string {
-  if (!API_URL) throw new Error("NEXT_PUBLIC_API_URL set nahi hai");
+  if (!API_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
   if (typeof window !== "undefined" && window.location.protocol === "https:" && API_URL.startsWith("http://")) {
     throw new Error(
       "Mixed content blocked: page is HTTPS but API is HTTP. Open http://localhost:3000 instead of https://"

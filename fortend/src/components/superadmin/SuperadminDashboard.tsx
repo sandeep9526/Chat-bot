@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession, signOut } from "@/lib/auth-client";
 import { AdminApiError } from "@/lib/adminApi";
 import { cn } from "@/lib/cn";
+import { LogoLoader } from "@/components/ui/PageLoader";
 import {
   useAllBots,
   usePlatformStats,
@@ -26,6 +28,7 @@ import {
 } from "@/components/panel/panelIcons";
 import { StatCard } from "@/components/admin/StatCard";
 import { TestChatBox } from "@/components/admin/TestChatBox";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 type SectionKey = "overview" | "users" | "bots" | "leads" | "chats" | "revenue" | "analytics";
 
@@ -140,7 +143,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
         <>
           <SectionHeader title="Platform at a glance" description="Real-time totals across every tenant." />
           <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
-            <StatCard label="Total bots" value={statsPending ? "—" : stats?.totalBots ?? 0} hint="Across all clients" accent />
+            <StatCard label="Total bots" value={statsPending ? "—" : stats?.totalBots ?? 0} hint="Across all clients" />
             <StatCard label="Accounts" value={statsPending ? "—" : stats?.totalOwners ?? 0} hint="Signed-up owners" />
             <StatCard label="Total leads" value={statsPending ? "—" : stats?.totalLeads ?? 0} hint="Platform-wide" />
             <StatCard label="Total chats" value={statsPending ? "—" : stats?.totalChats ?? 0} hint="Platform-wide" />
@@ -277,7 +280,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
                       )}
                     </h3>
                     <p className="mt-1 text-xs text-muted">
-                      Direct interaction with tenant chatbot <b>{inspectingBot.name}</b> (<code>{inspectingBot.bot_id}</code>) &bull; Owner: {inspectingBot.owner_email || "unowned"} &bull; Plan: {inspectingBot.plan || "trial"}
+                      Direct interaction with agent <b>{inspectingBot.name}</b> (<code>{inspectingBot.bot_id}</code>) &bull; Owner: {inspectingBot.owner_email || "unowned"} &bull; Plan: {inspectingBot.plan || "trial"}
                     </p>
                   </div>
                   <button
@@ -285,7 +288,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
                     onClick={() => setInspectingBot(null)}
                     className="rounded-[8px] border border-border bg-surface px-3 py-1.5 text-xs font-[600] text-muted hover:bg-panel hover:text-fg transition cursor-pointer"
                   >
-                    Close Inspector ✕
+                    Close
                   </button>
                 </div>
                 <div className="flex flex-1 overflow-hidden p-6 gap-6 bg-surface/50">
@@ -301,19 +304,14 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
                     </div>
                     <div className="flex-1 flex flex-col justify-end">
                       <div className="rounded-[8px] border border-accent/20 bg-accent/5 p-3.5 text-muted leading-relaxed">
-                        💡 <b>Diagnostic Sandbox:</b> Responses generated here hit the live RAG vector similarity database and models configured for this tenant.
+                        <b>This is live:</b> responses here come from the real model configured for this agent. Nothing here is a simulation.
                       </div>
                     </div>
                   </div>
                   <div className="w-2/3 flex flex-col h-full">
                     <TestChatBox
-                      bot={{
-                        bot_id: inspectingBot.bot_id,
-                        name: inspectingBot.name,
-                        accent: inspectingBot.accent || "#4f46e5",
-                        is_active: inspectingBot.is_active,
-                        suspended: inspectingBot.suspended,
-                      } as any}
+                      botId={inspectingBot.bot_id}
+                      botName={inspectingBot.name}
                     />
                   </div>
                 </div>
@@ -331,7 +329,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
               <div className="flex items-center gap-2">
                 {searchBar("Search leads…")}
                 <button
-                  onClick={() => exportCSV(leads ?? [], ["id","bot_id","name","email","phone","score","created_at","summary"], "zeva-leads.csv")}
+                  onClick={() => exportCSV((leads as unknown as Record<string, unknown>[]) ?? [], ["id","bot_id","name","email","phone","score","created_at","summary"], "zeva-leads.csv")}
                   className="flex items-center gap-1.5 rounded-r1 border border-border bg-surface px-3 py-2 text-[12.5px] font-[600] text-muted hover:bg-panel"
                 >
                   <DownloadIcon className="h-3.5 w-3.5" /> Export CSV
@@ -426,7 +424,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
         <>
           <SectionHeader title="Revenue" description="Plan distribution and estimated monthly recurring revenue." />
           <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
-            <StatCard label="Est. MRR" value={usersPending ? "—" : `$${estimatedMRR.toLocaleString()}`} hint="Based on plan prices" accent />
+            <StatCard label="Est. MRR" value={usersPending ? "—" : `$${estimatedMRR.toLocaleString()}`} hint="Based on plan prices" />
             <StatCard label="Paid accounts" value={usersPending ? "—" : (users ?? []).filter(u => u.status === "active").length} hint="Active subscriptions" />
             <StatCard label="Trial accounts" value={usersPending ? "—" : (users ?? []).filter(u => !u.status || u.status === "trialing").length} hint="Free trial" />
           </div>
@@ -625,50 +623,65 @@ function UserRow({ user: u }: { user: PlatformUser }) {
   const deleteU = useDeleteUser();
   const [plan, setPlanValue] = useState<string>(u.plan ?? "trial");
   const [status, setStatusValue] = useState<string>(u.status ?? "trialing");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const onSave = () => {
     setPlan.mutate({ ownerUserId: u.user_id, plan: plan as never, status: status as never });
   };
 
-  const onDelete = () => {
-    if (!window.confirm(`⚠️ Permanently delete "${u.email}" and all their bots? This cannot be undone.`)) return;
-    deleteU.mutate(u.user_id);
+  const onDelete = () => setConfirmingDelete(true);
+
+  const doDelete = () => {
+    deleteU.mutate(u.user_id, { onSuccess: () => setConfirmingDelete(false) });
   };
 
   return (
-    <tr className="border-t border-border hover:bg-panel/40">
-      <td className="px-4 py-2.5">
-        <div className="font-[600] text-fg">{u.email}</div>
-        {u.name && <div className="text-[11.5px] text-muted">{u.name}</div>}
-      </td>
-      <td className="px-4 py-2.5">
-        <div className="flex items-center gap-1 flex-wrap">
-          <select value={plan} onChange={e => setPlanValue(e.target.value)}
-            className="rounded-[6px] border border-border bg-panel px-1.5 py-1 text-[11.5px] text-fg outline-none focus:border-accent">
-            {VALID_PLANS.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <select value={status} onChange={e => setStatusValue(e.target.value)}
-            className="rounded-[6px] border border-border bg-panel px-1.5 py-1 text-[11.5px] text-fg outline-none focus:border-accent">
-            {VALID_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button onClick={onSave} disabled={setPlan.isPending || (plan === u.plan && status === u.status)}
-            className="cursor-pointer rounded-[6px] bg-accent px-2 py-1 text-[11px] font-[600] text-white disabled:cursor-not-allowed disabled:opacity-40">
-            Save
+    <>
+      <tr className="border-t border-border hover:bg-panel/40">
+        <td className="px-4 py-2.5">
+          <div className="font-[600] text-fg">{u.email}</div>
+          {u.name && <div className="text-[11.5px] text-muted">{u.name}</div>}
+        </td>
+        <td className="px-4 py-2.5">
+          <div className="flex items-center gap-1 flex-wrap">
+            <select value={plan} onChange={e => setPlanValue(e.target.value)}
+              className="rounded-[6px] border border-border bg-panel px-1.5 py-1 text-[11.5px] text-fg outline-none focus:border-accent">
+              {VALID_PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={status} onChange={e => setStatusValue(e.target.value)}
+              className="rounded-[6px] border border-border bg-panel px-1.5 py-1 text-[11.5px] text-fg outline-none focus:border-accent">
+              {VALID_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button onClick={onSave} disabled={setPlan.isPending || (plan === u.plan && status === u.status)}
+              className="cursor-pointer rounded-[6px] bg-accent px-2 py-1 text-[11px] font-[600] text-white disabled:cursor-not-allowed disabled:opacity-40">
+              Save
+            </button>
+          </div>
+        </td>
+        <td className="px-4 py-2.5">
+          <StatusBadge status={u.status} />
+        </td>
+        <td className="px-4 py-2.5 text-center font-[700] text-fg">{u.bot_count}</td>
+        <td className="px-4 py-2.5 font-mono text-[11.5px] text-faint">{u.created_at?.slice(0, 10)}</td>
+        <td className="px-4 py-2.5">
+          <button onClick={onDelete} disabled={deleteU.isPending}
+            className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11.5px] font-[600] text-red-500 hover:bg-red-500/10 disabled:opacity-40">
+            <DeleteIcon className="h-3.5 w-3.5" /> Delete
           </button>
-        </div>
-      </td>
-      <td className="px-4 py-2.5">
-        <StatusBadge status={u.status} />
-      </td>
-      <td className="px-4 py-2.5 text-center font-[700] text-fg">{u.bot_count}</td>
-      <td className="px-4 py-2.5 font-mono text-[11.5px] text-faint">{u.created_at?.slice(0, 10)}</td>
-      <td className="px-4 py-2.5">
-        <button onClick={onDelete} disabled={deleteU.isPending}
-          className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11.5px] font-[600] text-red-500 hover:bg-red-500/10 disabled:opacity-40">
-          <DeleteIcon className="h-3.5 w-3.5" /> Delete
-        </button>
-      </td>
-    </tr>
+        </td>
+      </tr>
+      {confirmingDelete && typeof document !== "undefined" && createPortal(
+        <ConfirmDialog
+          title={`Delete "${u.email}"?`}
+          body={<>This permanently deletes their account and all their agents. This can&apos;t be undone.</>}
+          confirmLabel="Delete account"
+          busy={deleteU.isPending}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={doDelete}
+        />,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -677,13 +690,23 @@ function BotRow({ bot: b, onInspect }: { bot: PlatformBot; onInspect?: (bot: Pla
   const setPlan = useSetOwnerPlan();
   const [plan, setPlanValue] = useState(b.plan ?? "trial");
   const [status, setStatusValue] = useState(b.status ?? "trialing");
+  const [confirmingSuspend, setConfirmingSuspend] = useState(false);
 
   const onToggleSuspend = () => {
-    if (!window.confirm(b.suspended
-      ? `Reactivate "${b.name}"?`
-      : `Suspend "${b.name}"? Its chat will go dark immediately.`
-    )) return;
-    suspend.mutate({ botId: b.bot_id, suspended: !b.suspended });
+    // Reactivating is safe to undo (suspend again anytime) — only suspending
+    // (which cuts off a live customer's widget) needs a confirm step.
+    if (b.suspended) {
+      suspend.mutate({ botId: b.bot_id, suspended: false });
+    } else {
+      setConfirmingSuspend(true);
+    }
+  };
+
+  const doToggleSuspend = () => {
+    suspend.mutate(
+      { botId: b.bot_id, suspended: true },
+      { onSuccess: () => setConfirmingSuspend(false) },
+    );
   };
 
   const onSavePlan = () => {
@@ -692,6 +715,7 @@ function BotRow({ bot: b, onInspect }: { bot: PlatformBot; onInspect?: (bot: Pla
   };
 
   return (
+    <>
     <tr className="border-t border-border hover:bg-panel/40">
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-2">
@@ -745,6 +769,18 @@ function BotRow({ bot: b, onInspect }: { bot: PlatformBot; onInspect?: (bot: Pla
         </div>
       </td>
     </tr>
+    {confirmingSuspend && typeof document !== "undefined" && createPortal(
+      <ConfirmDialog
+        title={`Suspend "${b.name}"?`}
+        body={<>Its widget will stop responding to visitors immediately. You can reactivate it anytime.</>}
+        confirmLabel="Suspend"
+        busy={suspend.isPending}
+        onCancel={() => setConfirmingSuspend(false)}
+        onConfirm={doToggleSuspend}
+      />,
+      document.body,
+    )}
+    </>
   );
 }
 
@@ -825,10 +861,9 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 function Splash() {
   return (
-    <div className="grid min-h-screen place-items-center bg-bg">
-      <div className="flex items-center gap-2.5 text-muted">
-        <span className="h-2.5 w-2.5 animate-blink rounded-full bg-accent" />
-        <span className="text-[13px]">Loading platform admin…</span>
+    <div className="grid min-h-screen place-items-center bg-[var(--bg)]">
+      <div className="flex flex-col items-center gap-4 text-[var(--muted)]">
+        <LogoLoader />
       </div>
     </div>
   );

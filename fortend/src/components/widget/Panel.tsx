@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X as XIcon, Check as CheckSmallIcon } from "lucide-react";
+import { X as XIcon, Check as CheckSmallIcon, MoreHorizontal as MoreHorizontalIcon, RotateCcw as RotateCcwIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Composer } from "./Composer";
 import { MessageStream } from "./MessageStream";
 import { useZevaStore } from "@/stores/zevaStore";
 import { useZevaChat } from "@/hooks/useZevaChat";
 import { isLightColor } from "@/lib/color";
+import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 
 interface PanelProps {
   sideAlign: "start" | "end";
@@ -19,7 +20,6 @@ interface PanelProps {
 export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
   const name = useZevaStore((s) => s.config.name);
   const welcome = useZevaStore((s) => s.config.welcome);
-  const subtitle = useZevaStore((s) => s.config.subtitle);
   const logo = useZevaStore((s) => s.config.logo);
   const panelBg = useZevaStore((s) => s.config.panelBg);
   const glass = useZevaStore((s) => s.config.glass);
@@ -68,9 +68,9 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
         "flex w-full flex-col overflow-hidden h-[560px] max-h-[calc(100vh-150px)]",
         // Custom panel background (if picked) → --panel-bg var; else theme surface/glass.
         panelBg
-          ? cn("bg-[var(--panel-bg)]", glass && "backdrop-blur-[20px] backdrop-saturate-[1.3]")
+          ? cn("bg-[var(--panel-bg)]", glass && "backdrop-blur-xl backdrop-saturate-150")
           : glass
-            ? "bg-glass backdrop-blur-[20px] backdrop-saturate-[1.3]"
+            ? "bg-glass backdrop-blur-xl backdrop-saturate-150"
             : "bg-surface",
         "rounded-r3 border border-border shadow-panel",
         origin,
@@ -96,22 +96,45 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
             </div>
           )
         ) : (
-          <div className="h-[26px] w-[26px] shrink-0 rounded-full bg-gradient-to-br from-accent to-accent-strong shadow-[0_0_0_4px_var(--accent-soft)]" />
+          <div className="h-[28px] w-[28px] shrink-0 rounded-full bg-surface border border-border shadow-sm flex items-center justify-center p-[4px]">
+            <OchreshiftLogo className="h-full w-full" variant="mark" />
+          </div>
         )}
         <div className="min-w-0 flex-1">
-          <b className="block text-[13.5px] font-[700] leading-tight">{name}</b>
-          {subtitle && (
-            <small className="font-mono text-[11px] text-faint">{subtitle}</small>
-          )}
+          <b className="block text-[14px] font-[600] leading-tight">{name}</b>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="h-[6px] w-[6px] rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+            <small className="text-[11.5px] font-[500] text-muted">Online</small>
+          </div>
         </div>
-        <button
-          type="button"
-          className="tap grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <XIcon className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {messages.length > 0 && (
+            <button
+              type="button"
+              className="tap grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent transition-colors"
+              onClick={useZevaStore.getState().resetSession}
+              aria-label="Clear chat"
+              title="Clear chat"
+            >
+              <RotateCcwIcon className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="tap grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent transition-colors"
+            aria-label="More options"
+          >
+            <MoreHorizontalIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="tap grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent transition-colors"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <Composer
@@ -135,11 +158,11 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
       <div className="flex items-center justify-between border-t border-border px-[14px] py-[9px]">
         <span className="flex items-center gap-[5px] text-[10.5px] text-faint">
           <CheckSmallIcon className="h-3 w-3 text-good" />
-          Grounded in your documents
+          Answers from {name}&rsquo;s own info
         </span>
         {brand && (
-          <span className="text-[10px] text-faint">
-            Powered by <b className="font-[700] text-muted">ochreshift</b>
+          <span className="flex items-center gap-1.5 text-[10px] text-faint">
+            Powered by <OchreshiftLogo className="h-3 w-auto opacity-80" />
           </span>
         )}
       </div>

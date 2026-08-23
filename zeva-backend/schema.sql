@@ -321,3 +321,45 @@ GRANT REFERENCES ON "user" TO zeva_app;
 -- no sensitive columns beyond what Better Auth itself already returns to a
 -- signed-in session (name/email/image), so a full-table grant is fine.
 GRANT SELECT ON "user" TO zeva_app;
+
+CREATE TABLE IF NOT EXISTS playground_sessions (
+  id TEXT PRIMARY KEY,
+  bot_id TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_playground_sessions_bot ON playground_sessions(bot_id);
+
+ALTER TABLE playground_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE playground_sessions FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS playground_sessions_select_owner ON playground_sessions;
+DROP POLICY IF EXISTS playground_sessions_insert_owner ON playground_sessions;
+DROP POLICY IF EXISTS playground_sessions_update_owner ON playground_sessions;
+DROP POLICY IF EXISTS playground_sessions_delete_owner ON playground_sessions;
+
+CREATE POLICY playground_sessions_select_owner ON playground_sessions
+  FOR SELECT TO zeva_app
+  USING (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE POLICY playground_sessions_insert_owner ON playground_sessions
+  FOR INSERT TO zeva_app
+  WITH CHECK (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE POLICY playground_sessions_update_owner ON playground_sessions
+  FOR UPDATE TO zeva_app
+  USING (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE POLICY playground_sessions_delete_owner ON playground_sessions
+  FOR DELETE TO zeva_app
+  USING (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE TABLE IF NOT EXISTS email_campaign_logs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  campaign_stage TEXT NOT NULL,
+  sent_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, campaign_stage)
+);

@@ -115,51 +115,27 @@ def send_email_alert(
 
     # 1. Prefer HTTP REST API Delivery via Resend (Bypass SMTP timeouts & firewall restrictions)
     resend_api_key = os.getenv("RESEND_API_KEY")
-    if resend_api_key:
-        try:
-            with httpx.Client(timeout=8.0) as client:
-                resp = client.post(
-                    "https://api.resend.com/emails",
-                    headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
-                    json={
-                        "from": os.getenv("RESEND_FROM", f"Zeva AI <{sender_email}>"),
-                        "to": [to_email],
-                        "subject": subject,
-                        "html": html_content,
-                    },
-                )
-                resp.raise_for_status()
-            logger.info(f"[Resend] REST API email alert delivered to {to_email} for lead '{lead_name}'")
-            return True
-        except Exception as e:
-            logger.warning(f"[Resend] HTTP REST delivery failed ({e}), falling back to SMTP...")
-
-    # 2. Standard SMTP Delivery Fallback
-    smtp_host = os.getenv("SMTP_HOST")
-    if not smtp_host:
-        logger.info(f"Skipping email alert for lead '{lead_name}' (Neither RESEND_API_KEY nor SMTP_HOST configured)")
+    if not resend_api_key:
+        logger.info(f"Skipping email alert for lead '{lead_name}' (RESEND_API_KEY not configured)")
         return False
 
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_pass = os.getenv("SMTP_PASSWORD")
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = to_email
-    msg.attach(MIMEText(html_content, "html"))
-
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-            server.starttls()
-            if smtp_user and smtp_pass:
-                server.login(smtp_user, smtp_pass)
-            server.sendmail(sender_email, [to_email], msg.as_string())
-        logger.info(f"[SMTP] Email alert sent successfully to {to_email} for lead {lead_name}")
+        with httpx.Client(timeout=8.0) as client:
+            resp = client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
+                json={
+                    "from": os.getenv("RESEND_FROM", f"Zeva AI <{sender_email}>"),
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html_content,
+                },
+            )
+            resp.raise_for_status()
+        logger.info(f"[Resend] REST API email alert delivered to {to_email} for lead '{lead_name}'")
         return True
     except Exception as e:
-        logger.error(f"Failed to send SMTP email alert to {to_email}: {e}")
+        logger.warning(f"[Resend] HTTP REST delivery failed ({e})")
         return False
 
 
@@ -506,3 +482,51 @@ def send_password_reset_email(to_email: str, reset_url: str) -> bool:
         return False
 
 
+
+def send_generic_email(to_email: str, subject: str, html_body: str) -> bool:
+    """Send a generic email using Resend REST API."""
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    sender_email = os.getenv("NOTIFICATION_SENDER_EMAIL", "notifications@zeva-ai.com")
+    
+    if not resend_api_key:
+        logger.warning(f"[notifications] RESEND_API_KEY not configured. Would have sent email to {to_email}")
+        return False
+        
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            resp = client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
+                json={
+                    "from": f"Zeva AI <{sender_email}>",
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html_body,
+                },
+            )
+            resp.raise_for_status()
+        logger.info(f"[notifications] Email sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"[notifications] Failed to send email via Resend HTTP: {e}")
+        return False
+
+def send_verification_email(to_email: str, verify_url: str) -> bool:
+    subject = "Verify your email for Zeva AI"
+    body = f"""
+    <h2>Welcome to Zeva!</h2>
+    <p>Please verify your email address by clicking the link below:</p>
+    <a href="{verify_url}">Verify Email</a>
+    <p>Or paste this link in your browser: {verify_url}</p>
+    """
+    return send_generic_email(to_email, subject, body)
+
+def send_magic_link_email(to_email: str, magic_url: str) -> bool:
+    subject = "Sign in to Zeva AI"
+    body = f"""
+    <h2>Sign in to Zeva</h2>
+    <p>Click the link below to sign in:</p>
+    <a href="{magic_url}">Sign In</a>
+    <p>Or paste this link in your browser: {magic_url}</p>
+    """
+    return send_generic_email(to_email, subject, body)

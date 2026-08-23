@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useZevaStore } from "@/stores/zevaStore";
 import { INDUSTRY_TEMPLATES } from "@/lib/templates";
 
@@ -152,7 +153,6 @@ function getMatchedDetails(name: string, url: string) {
     return INDUSTRY_DETAILS[tmpl.id];
   }
 
-  // Keyword match
   if (n.includes("salon") || n.includes("spa") || n.includes("hair") || n.includes("beauty") || n.includes("glow") || (u && u.includes("salon"))) {
     return INDUSTRY_DETAILS.salon;
   }
@@ -178,7 +178,6 @@ function getMatchedDetails(name: string, url: string) {
     return INDUSTRY_DETAILS.education;
   }
 
-  // Fallback generic for custom names
   return {
     badge: "⚡ 24/7 AI-Powered Official Website",
     tagline: `Welcome to ${name || "Official Portal"}`,
@@ -202,8 +201,50 @@ export function DemoSite({ websiteUrl }: DemoSiteProps) {
 
 function SitePreview({ raw }: { raw: string }) {
   const url = normalizeUrl(raw);
-  if (!url) return <MockSite />;
-  return <CustomSiteMock url={url} />;
+  const [status, setStatus] = useState<"loading" | "loaded" | "blocked">("loading");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!url) return;
+    timer.current = setTimeout(() => {
+      setStatus((s) => (s === "loading" ? "blocked" : s));
+    }, 4500);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [url]);
+
+  if (!url) {
+    return <CustomSiteMock url={raw} />;
+  }
+
+  return (
+    <div className="absolute inset-0 top-[49px] bg-panel z-10 overflow-hidden">
+      <iframe
+        src={url}
+        className="h-full w-full border-0 pointer-events-none"
+        title="Website preview"
+        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        onLoad={() => setStatus("loaded")}
+      />
+
+      {status === "loading" && (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center bg-panel z-20">
+          <div className="flex items-center gap-2.5 text-[13px] text-muted font-[500]">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-accent" />
+            Loading {hostOf(url)}…
+          </div>
+        </div>
+      )}
+
+      {status === "blocked" && (
+        <div className="absolute inset-0 z-20 overflow-hidden">
+          <CustomSiteMock url={url} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CustomSiteMock({ url }: { url: string }) {
@@ -215,7 +256,7 @@ function CustomSiteMock({ url }: { url: string }) {
   const details = getMatchedDetails(name, url);
 
   return (
-    <div className="absolute inset-0 top-[49px] bg-panel overflow-y-auto px-6 py-10 sm:px-12 z-10">
+    <div className="absolute inset-0 bg-panel overflow-y-auto px-6 py-10 sm:px-12">
       <nav className="mb-8 flex items-center justify-between border-b border-border/60 pb-4 gap-4">
         <div className="flex items-center gap-2.5 min-w-0 max-w-[220px] sm:max-w-[320px]">
           {logo ? (
@@ -296,7 +337,7 @@ function MockSite() {
   const details = getMatchedDetails(name, websiteUrl || "");
 
   return (
-    <div className="px-6 py-10 sm:px-12">
+    <div className="px-6 py-10 sm:px-12 absolute inset-0 top-[49px] bg-panel z-10 overflow-y-auto">
       <nav className="mb-8 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5 min-w-0 max-w-[220px] sm:max-w-[320px]">
           {logo ? (

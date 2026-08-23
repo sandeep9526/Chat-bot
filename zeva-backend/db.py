@@ -44,6 +44,7 @@ def _get_pool() -> ConnectionPool:
                 min_size=1,
                 max_size=5,
                 open=False,
+                timeout=3.0,
                 check=ConnectionPool.check_connection,
             )
             pool.open(timeout=2.0)
@@ -137,6 +138,16 @@ _IS_ACTIVE_SQL = """
 """
 
 
+def is_user_email_verified(user_id: str) -> bool:
+    if _postgres_disabled:
+        return True # if sqlite, just pass
+    with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        cur.execute('SELECT "emailVerified" FROM "user" WHERE id = %s', (user_id,))
+        row = cur.fetchone()
+        if not row:
+            return False
+        return bool(row.get("emailVerified"))
+
 import sqlite3
 import json
 
@@ -161,7 +172,8 @@ def _sqlite_get_bot(bot_id: str) -> dict | None:
                 if isinstance(d.get(col), str):
                     try:
                         d[col] = json.loads(d[col])
-                    except Exception:
+                    except Exception as e:
+                        print(f"Exception caught in zeva-backend/db.py: {e}")
                         d[col] = [] if col != "design" else {}
             return d
     except Exception as e:
@@ -187,7 +199,8 @@ def _sqlite_list_bots(owner_user_id: str) -> list[dict]:
                     if isinstance(d.get(col), str):
                         try:
                             d[col] = json.loads(d[col])
-                        except Exception:
+                        except Exception as e:
+                            print(f"Exception caught in zeva-backend/db.py: {e}")
                             d[col] = [] if col != "design" else {}
                 res.append(d)
             return res
@@ -217,11 +230,13 @@ def _sqlite_upsert_bot(
             cur = conn.cursor()
             try:
                 cur.execute("ALTER TABLE bots ADD COLUMN model_override TEXT")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 pass
             try:
                 cur.execute("ALTER TABLE bots ADD COLUMN custom_prompt_style TEXT")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 pass
             cur.execute(
                 """
@@ -255,6 +270,7 @@ def _sqlite_upsert_bot(
             conn.commit()
     except Exception as e:
         print("[db] SQLite _sqlite_upsert_bot error:", e)
+        raise
 
 
 # ---- reads / writes --------------------------------------------------------
@@ -275,7 +291,8 @@ def get_bot(bot_id: str) -> dict | None:
             )
             row = cur.fetchone()
             return dict(row) if row else None
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/db.py: {e}")
         return _sqlite_get_bot(bot_id)
 
 
@@ -295,8 +312,15 @@ def get_bot_for_owner(bot_id: str, owner_user_id: str) -> dict | None:
                 (bot_id,),
             )
             row = cur.fetchone()
-            return dict(row) if row else None
-    except Exception:
+            if row:
+                return dict(row)
+            
+            sqlite_bot = _sqlite_get_bot(bot_id)
+            if sqlite_bot and sqlite_bot.get("owner_user_id") == owner_user_id:
+                return sqlite_bot
+            return None
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/db.py: {e}")
         return _sqlite_get_bot(bot_id)
 
 
@@ -307,7 +331,7 @@ def _ensure_trial_subscription(cur, owner_user_id: str) -> int:
     cur.execute("SELECT max_bots FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
     row = cur.fetchone()
     if row:
-        mb = row[0]
+        mb = row.get("max_bots") if isinstance(row, dict) else row[0]
         if mb < 5:
             cur.execute("UPDATE subscriptions SET max_bots = 5 WHERE owner_user_id = %s", (owner_user_id,))
             return 5
@@ -320,7 +344,8 @@ def _ensure_trial_subscription(cur, owner_user_id: str) -> int:
         """,
         (owner_user_id,),
     )
-    return cur.fetchone()[0]
+    row = cur.fetchone()
+    return row.get("max_bots") if isinstance(row, dict) else row[0]
 
 
 def get_subscription(owner_user_id: str) -> dict | None:
@@ -526,7 +551,8 @@ def list_bots_for_owner(owner_user_id: str) -> list[dict]:
                 """
             )
             return [dict(r) for r in cur.fetchall()]
-    except Exception:
+    except Exception as e:
+        print(f"Exception caught in zeva-backend/db.py: {e}")
         return _sqlite_list_bots(owner_user_id)
 
 
@@ -604,7 +630,8 @@ def upsert_bot(
         with _get_pool().connection() as conn, conn.cursor() as cur:
             try:
                 cur.execute("ALTER TABLE bots ADD COLUMN IF NOT EXISTS custom_prompt_style TEXT")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
 
             _set_owner(cur, owner_user_id)
@@ -650,7 +677,8 @@ def upsert_bot(
                         json.dumps(design) if design is not None else None,
                     ),
                 )
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
                 _set_owner(cur, owner_user_id)
                 # Fallback if DB column doesn't exist yet
@@ -725,7 +753,8 @@ def save_lead(
         with _get_pool().connection() as conn, conn.cursor() as cur:
             try:
                 cur.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS custom_data JSONB DEFAULT '{}'::jsonb")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
             _set_platform_admin(cur)
             _ensure_demo_bot_exists(cur, bot_id)
@@ -750,7 +779,8 @@ def update_bot_form_schema(bot_id: str, form_schema: list[dict]) -> bool:
         with _get_pool().connection() as conn, conn.cursor() as cur:
             try:
                 cur.execute("ALTER TABLE bots ADD COLUMN IF NOT EXISTS form_schema JSONB DEFAULT '[]'::jsonb")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
             _set_platform_admin(cur)
             cur.execute(
@@ -852,7 +882,8 @@ def save_chat(
             try:
                 cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0")
                 cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
             _set_platform_admin(cur)
             _ensure_demo_bot_exists(cur, bot_id)
@@ -863,7 +894,8 @@ def save_chat(
                 )
                 cur.execute("SELECT lastval()")
                 return cur.fetchone()[0]
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
                 _set_platform_admin(cur)
                 # Fallback if DB migration hasn't been applied yet
@@ -885,7 +917,8 @@ def save_chat_feedback(chat_id: int | None, bot_id: str, score: int, text: str |
             try:
                 cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0")
                 cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
             _set_platform_admin(cur)
             if chat_id:
@@ -914,7 +947,8 @@ def get_bot_hallucinations(bot_id: str, owner_user_id: str) -> list[dict]:
             try:
                 cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0")
                 cur.execute("ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT")
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
             _set_owner(cur, owner_user_id)
             cur.execute(
@@ -1092,7 +1126,8 @@ def list_all_users() -> list[dict]:
                     ORDER BY u.id DESC
                     """
                 )
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
                 _set_platform_admin(cur)
                 cur.execute(
@@ -1264,7 +1299,8 @@ def platform_analytics() -> dict:
                     """
                 )
                 daily_signups = [{"date": str(r[0]), "count": r[1]} for r in cur.fetchall()]
-            except Exception:
+            except Exception as e:
+                print(f"Exception caught in zeva-backend/db.py: {e}")
                 conn.rollback()
                 _set_platform_admin(cur)
                 try:
@@ -1277,7 +1313,8 @@ def platform_analytics() -> dict:
                         """
                     )
                     daily_signups = [{"date": str(r[0]), "count": r[1]} for r in cur.fetchall()]
-                except Exception:
+                except Exception as e:
+                    print(f"Exception caught in zeva-backend/db.py: {e}")
                     conn.rollback()
                     _set_platform_admin(cur)
                     daily_signups = []
@@ -1474,4 +1511,99 @@ def export_tenant_data(owner_user_id: str) -> dict:
         except Exception as sq_e:
             print("[db] export_tenant_data SQLite fallback failed:", sq_e)
     return export_bundle
+
+
+# ==============================================================================
+# Playground Sessions
+# ==============================================================================
+
+def fetch_playground_sessions(owner_user_id: str, bot_id: str) -> list[dict]:
+    """Fetch all playground sessions for a bot, ordered by updatedAt desc."""
+    try:
+        with _get_pool().connection() as conn, conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            _set_owner(cur, owner_user_id)
+            cur.execute(
+                "SELECT id, title, messages, updated_at FROM playground_sessions WHERE bot_id = %s ORDER BY updated_at DESC",
+                (bot_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print("[db] fetch_playground_sessions Postgres failed, using SQLite:", e)
+        try:
+            with _get_sqlite_conn() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT id, title, messages, updated_at FROM playground_sessions WHERE bot_id = ? ORDER BY updated_at DESC",
+                    (bot_id,)
+                )
+                rows = []
+                for r in cur.fetchall():
+                    d = dict(r)
+                    if isinstance(d.get("messages"), str):
+                        d["messages"] = json.loads(d["messages"])
+                    rows.append(d)
+                return rows
+        except Exception as sq_e:
+            print("[db] fetch_playground_sessions SQLite fallback failed:", sq_e)
+            return []
+
+
+def upsert_playground_session(owner_user_id: str, bot_id: str, session_id: str, title: str, messages: list) -> bool:
+    """Insert or update a playground session."""
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            _set_owner(cur, owner_user_id)
+            cur.execute(
+                """
+                INSERT INTO playground_sessions (id, bot_id, title, messages, updated_at)
+                VALUES (%s, %s, %s, %s, now())
+                ON CONFLICT (id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    messages = EXCLUDED.messages,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (session_id, bot_id, title, json.dumps(messages))
+            )
+            return True
+    except Exception as e:
+        print("[db] upsert_playground_session Postgres failed, using SQLite:", e)
+        try:
+            with _get_sqlite_conn() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    INSERT INTO playground_sessions (id, bot_id, title, messages, updated_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT (id) DO UPDATE SET
+                        title = excluded.title,
+                        messages = excluded.messages,
+                        updated_at = excluded.updated_at
+                    """,
+                    (session_id, bot_id, title, json.dumps(messages))
+                )
+                conn.commit()
+                return True
+        except Exception as sq_e:
+            print("[db] upsert_playground_session SQLite fallback failed:", sq_e)
+            return False
+
+
+def delete_playground_session(owner_user_id: str, bot_id: str, session_id: str) -> bool:
+    """Delete a playground session."""
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            _set_owner(cur, owner_user_id)
+            cur.execute("DELETE FROM playground_sessions WHERE id = %s AND bot_id = %s", (session_id, bot_id))
+            return cur.rowcount > 0
+    except Exception as e:
+        print("[db] delete_playground_session Postgres failed, using SQLite:", e)
+        try:
+            with _get_sqlite_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM playground_sessions WHERE id = ? AND bot_id = ?", (session_id, bot_id))
+                conn.commit()
+                return cur.rowcount > 0
+        except Exception as sq_e:
+            print("[db] delete_playground_session SQLite fallback failed:", sq_e)
+            return False
 

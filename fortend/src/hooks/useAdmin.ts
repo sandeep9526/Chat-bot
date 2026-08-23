@@ -17,6 +17,9 @@ import {
   deleteDocFile,
   createStripeCheckoutSession,
   createRazorpaySubscription,
+  fetchPlaygroundSessions,
+  upsertPlaygroundSession,
+  deletePlaygroundSession,
   type CreateBotPayload,
   type BillingPlan,
 } from "@/lib/adminApi";
@@ -138,5 +141,35 @@ export function useDeleteDoc() {
     mutationFn: (v: { botId: string; filename: string }) =>
       deleteDocFile(v.botId, v.filename),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
+  });
+}
+
+export function usePlaygroundSessions(botId: string) {
+  return useQuery({
+    queryKey: ["admin", "playground-sessions", botId],
+    queryFn: () => fetchPlaygroundSessions(botId),
+    enabled: Boolean(botId),
+  });
+}
+
+export function useUpsertPlaygroundSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { botId: string; id: string; title: string; messages: any[] }) =>
+      upsertPlaygroundSession(v.botId, v.id, v.title, v.messages),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ["admin", "playground-sessions", v.botId] });
+    },
+  });
+}
+
+export function useDeletePlaygroundSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { botId: string; sessionId: string }) =>
+      deletePlaygroundSession(v.botId, v.sessionId),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ["admin", "playground-sessions", v.botId] });
+    },
   });
 }

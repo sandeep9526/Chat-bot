@@ -33,7 +33,7 @@ export function MakeItYoursCard() {
         </h3>
         <p className="mt-2 max-w-[520px] text-[14px] leading-relaxed text-muted">
           Create your free account and this exact design becomes your live
-          chatbot — colour, welcome message and suggestions and all. You won&apos;t
+          agent — colour, welcome message and suggestions and all. You won&apos;t
           have to set any of it up again.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">

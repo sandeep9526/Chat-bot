@@ -49,7 +49,7 @@ export function StepNameBot({ data, onNext }: StepNameBotProps) {
       onNext({ businessName: trimmedName, botId: res.botId, welcome });
     } catch (err) {
       setErrorMsg(
-        err instanceof Error ? err.message : "Something went wrong. Please try again.",
+        err instanceof Error ? err.message : "We couldn't create your agent — check your connection and try again.",
       );
     }
   };
@@ -58,7 +58,7 @@ export function StepNameBot({ data, onNext }: StepNameBotProps) {
     <div className="rounded-r2 border border-border bg-surface p-6 shadow-panel">
       <b className="text-base font-[750] text-fg">Name your agent</b>
       <p className="mt-1 mb-5 text-[13px] text-muted">
-        Enter your business name to automatically create your custom chatbot.
+        Enter your business name — we&apos;ll set up your agent automatically.
       </p>
 
       <div className="space-y-4">

@@ -126,7 +126,7 @@ export function SocialSignInButtons({ callbackURL }: { callbackURL: string }) {
       </div>
 
       {error && (
-        <div className="mt-3 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</div>
+        <div className="mt-3 rounded-lg bg-bad/10 px-4 py-3 text-sm text-bad">{error}</div>
       )}
 
       <div className="my-5 flex items-center gap-3 text-xs text-muted">

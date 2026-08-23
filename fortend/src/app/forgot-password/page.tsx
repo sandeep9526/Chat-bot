@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
             We sent a password recovery link to <span className="font-[600] text-fg">{email}</span>. Click the link inside to set a new password.
           </p>
           <div className="mt-8 rounded-r1 border border-border bg-surface p-4 text-left text-[13px] text-muted">
-            💡 <span className="font-[600] text-fg">Didn&apos;t receive it?</span> Check your spam folder, or make sure you entered the correct email associated with your Ochreshift workspace.
+            <span className="font-[600] text-fg">Didn&apos;t get it?</span> Check spam, or make sure you typed the right email.
           </div>
           <a
             href="/sign-in"
@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
           Reset your password
         </h1>
         <p className="mt-1.5 text-[14px] text-muted">
-          Enter your registered workspace email and we&apos;ll dispatch a recovery instruction link.
+          Enter the email on your account and we&apos;ll send a link to reset your password.
         </p>
       </div>
 

@@ -10,10 +10,29 @@ import { useCallback } from "react";
 import { useZevaStore } from "@/stores/zevaStore";
 import { useSendMessage } from "./useZevaApi";
 import { BOT_ID } from "@/lib/defaults";
+import { ChatRequestError, type ChatErrorKind } from "@/lib/api";
 
 let seq = 0;
 function nextId(): string {
   return `m${++seq}`;
+}
+
+/** User-facing copy per failure cause — a network blip, a timeout, a rate
+ *  limit, and a server error all need different next steps. */
+function errorTextForKind(kind: ChatErrorKind): string {
+  switch (kind) {
+    case "offline":
+      return "You appear to be offline. Reconnect and try again.";
+    case "timeout":
+      return "That took longer than expected. Want to try again?";
+    case "rate_limited":
+      return "You're sending messages a little fast — give it a few seconds and try again.";
+    case "server":
+      return "Something went wrong on our end — try again in a moment.";
+    case "network":
+    default:
+      return "Connection trouble — check your internet and try again.";
+  }
 }
 
 export function useZevaChat() {
@@ -48,13 +67,17 @@ export function useZevaChat() {
               ticketState: (res.isGuardrail && !res.limitReached) ? "idle" : undefined,
             });
           },
-          onError: () => {
+          onError: (error) => {
             setIsQuestionProcessing(false);
+            const kind =
+              error instanceof ChatRequestError ? error.kind : "network";
             pushMessage({
               id: nextId(),
               role: "assistant",
-              text: "Couldn't reach the server. Try again in a moment.",
+              text: errorTextForKind(kind),
               sources: [],
+              isError: true,
+              retryText: text,
             });
           },
         },

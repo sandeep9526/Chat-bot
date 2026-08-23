@@ -10,8 +10,11 @@ export function DeveloperFeatures() {
           {/* Left: Features List */}
           <Reveal>
             <div>
-              <span className="eyebrow">
-                FEATURES
+              <span className="badge-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mr-0.5">
+                  <polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                DEVELOPER
               </span>
               <h2 className="mt-5 marketing-h2">
                 Built for <span className="text-[#F5A900]">performance</span>{" "}
@@ -26,11 +29,11 @@ export function DeveloperFeatures() {
                   { icon: ShieldCheck, title: "Secure by Design", desc: "Your data is protected with enterprise-grade security. We never use your data to train public models." },
                 ].map((item, i) => (
                   <div key={i} className="group flex gap-5 rounded-[12px] p-4 -mx-4 transition-colors duration-200 hover:bg-[#F8F8F6]">
-                    <div className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-[#F8F8F6] text-[#475569] transition-colors duration-200 group-hover:bg-[#F5A900]/10 group-hover:text-[#F5A900]">
-                      <item.icon strokeWidth={1.5} className="h-6 w-6" />
+                    <div className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-[#F8F8F6] text-[#475569] transition-colors duration-200 group-hover:bg-[#F5A900]/10 group-hover:text-[#F5A900]">
+                      <item.icon strokeWidth={1.5} className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-[17px] font-[600] text-[#08111F]">{item.title}</h3>
+                      <h3 className="text-[17px] font-[600] text-bg">{item.title}</h3>
                       <p className="mt-1.5 text-[15px] leading-[1.6] text-[#475569]">{item.desc}</p>
                     </div>
                   </div>
@@ -42,17 +45,17 @@ export function DeveloperFeatures() {
           {/* Right: Code Editor Panel */}
           <Reveal delay={200} variant="zoom">
             <div className="relative">
-              <div className="overflow-hidden rounded-[14px] bg-[#08111F] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] ring-1 ring-black/10">
+              <div className="overflow-hidden rounded-[14px] bg-bg shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] ring-1 ring-black/10">
                 {/* Tabs */}
-                <div className="flex items-center gap-6 border-b border-white/10 px-6 py-4">
+                <div className="flex items-center gap-6 border-b border-border px-6 py-4">
                   <button className="text-[14px] font-[600] text-[#F5A900] border-b-2 border-[#F5A900] pb-[14px] -mb-[15px]">JavaScript</button>
-                  <button className="text-[14px] font-[500] text-white/40 transition-colors hover:text-white/80 pb-[14px] -mb-[15px]">Python</button>
-                  <button className="text-[14px] font-[500] text-white/40 transition-colors hover:text-white/80 pb-[14px] -mb-[15px]">cURL</button>
+                  <button className="text-[14px] font-[500] text-fg/40 transition-colors hover:text-fg/80 pb-[14px] -mb-[15px]">Python</button>
+                  <button className="text-[14px] font-[500] text-fg/40 transition-colors hover:text-fg/80 pb-[14px] -mb-[15px]">cURL</button>
                 </div>
                 
                 {/* Code Area */}
                 <div className="p-6 font-mono text-[14px] sm:text-[15px] leading-[1.9]">
-                  <div className="text-white/70 overflow-x-auto whitespace-pre pb-4">
+                  <div className="text-fg/70 overflow-x-auto whitespace-pre pb-4">
                     <span className="text-[#F5A900]">import</span> {"{ OchreClient }"} <span className="text-[#F5A900]">from</span> <span className="text-[#16A34A]">'ochreshift'</span>;{"\n\n"}
                     <span className="text-[#F5A900]">const</span> client = <span className="text-[#F5A900]">new</span> OchreClient({"{\n"}
                     {"  "}apiKey: <span className="text-[#16A34A]">'YOUR_API_KEY'</span>{"\n"}
@@ -65,9 +68,9 @@ export function DeveloperFeatures() {
                 </div>
 
                 {/* Copy button bar */}
-                <div className="flex items-center justify-end border-t border-white/5 px-6 py-3">
-                  <button className="flex items-center gap-2 text-[12px] text-white/30 hover:text-white/60 transition-colors">
-                    <Copy className="h-3.5 w-3.5" />
+                <div className="flex items-center justify-end border-t border-border px-6 py-3">
+                  <button className="flex items-center gap-2 text-[12px] text-fg/30 hover:text-fg/60 transition-colors">
+                    <Copy strokeWidth={1.5} className="h-3.5 w-3.5" />
                     Copy code
                   </button>
                 </div>
@@ -75,11 +78,11 @@ export function DeveloperFeatures() {
 
               {/* Floating Info Box */}
               <div className="absolute -bottom-7 -left-7 hidden sm:flex items-center gap-5 rounded-[14px] border border-[#E5E7EB] bg-white px-6 py-5 shadow-xl">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[10px] bg-[#F8F8F6] text-[#08111F]">
-                  <Terminal strokeWidth={1.5} className="h-6 w-6" />
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[8px] bg-[#F8F8F6] text-bg">
+                  <Terminal strokeWidth={1.5} className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-[15px] font-[600] text-[#08111F]">Get started in minutes</h4>
+                  <h4 className="text-[15px] font-[600] text-bg">Get started in minutes</h4>
                   <p className="text-[13px] text-[#475569]">Install the SDK and start building.</p>
                 </div>
               </div>

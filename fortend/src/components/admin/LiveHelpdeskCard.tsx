@@ -144,7 +144,12 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-[13px] text-muted">Connecting to Live Helpdesk stream...</div>
+        <div className="flex h-[480px] w-full items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-r-transparent" />
+            <span className="text-[13px] font-[600] text-muted">Connecting to Live Stream...</span>
+          </div>
+        </div>
       ) : sessions.length === 0 ? (
         <div className="py-12 text-center">
           <Wifi className="mx-auto h-8 w-8 text-faint mb-2 opacity-60 animate-pulse" />
@@ -168,10 +173,10 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
                   key={s.sessionId}
                   type="button"
                   onClick={() => setSelectedSessionId(s.sessionId)}
-                  className={`flex flex-col gap-1.5 rounded-r1 p-3 text-left transition-all border ${
+                  className={`group flex flex-col gap-1.5 rounded-r1 p-3 text-left transition-all border ${
                     isSelected
                       ? "bg-surface border-accent shadow-sm ring-1 ring-accent/20"
-                      : "bg-surface/50 border-border hover:border-accent-ring hover:bg-surface"
+                      : "bg-surface/50 border-border/50 hover:border-accent/40 hover:bg-surface hover:shadow-sm hover:-translate-y-[1px]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 w-full">

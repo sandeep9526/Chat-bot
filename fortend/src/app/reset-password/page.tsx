@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
           Set new password
         </h1>
         <p className="mt-1.5 text-[14px] text-muted">
-          Create a strong password to re-secure your ochreshift autonomous intelligence workspace.
+          Create a new password for your ochreshift account.
         </p>
       </div>
 
@@ -147,7 +147,7 @@ export default function ResetPasswordPage() {
           disabled={loading || !password || !confirmPassword}
           className="w-full cursor-pointer rounded-r1 bg-gradient-to-br from-accent to-accent-strong py-3 text-[14.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Updating password…" : "Save & Continue"}
+          {loading ? "Updating password…" : "Reset password"}
         </button>
       </form>
     </AuthShell>

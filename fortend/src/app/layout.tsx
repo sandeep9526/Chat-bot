@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import { Providers } from "./providers";
+import Script from "next/script";
+import { PageLoader } from "@/components/ui/PageLoader";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,6 +14,12 @@ const inter = Inter({
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
   display: "swap",
 });
 
@@ -41,13 +49,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" translate="no" suppressHydrationWarning>
-      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased notranslate`}>
-        {/* Raw inline <script> (NOT next/script) — runs synchronously during
-            HTML parse, before any body content paints. next/script's
-            beforeInteractive can run AFTER first paint on dynamic (SSR) routes
-            like /studio, which flashed the wrong theme (white → dark). This
-            sets data-theme before paint on every route, static or dynamic. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased notranslate`}>
+        <PageLoader />
+        <Script id="theme-boot" strategy="beforeInteractive">
+          {THEME_BOOT}
+        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

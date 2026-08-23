@@ -9,6 +9,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   busyLabel?: string;
   busy?: boolean;
+  error?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   confirmLabel = "Delete",
   busyLabel = "Deleting…",
   busy = false,
+  error,
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
@@ -51,6 +53,11 @@ export function ConfirmDialog({
           {title}
         </h2>
         <div className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{body}</div>
+        {error && (
+          <p role="alert" className="mt-3 text-[13px] leading-relaxed text-bad">
+            {error}
+          </p>
+        )}
         <div className="mt-6 flex items-center justify-end gap-2.5">
           <button
             type="button"

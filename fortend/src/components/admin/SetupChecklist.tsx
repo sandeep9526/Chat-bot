@@ -54,7 +54,7 @@ const STEPS: StepDef[] = [
   {
     key: "knowledge",
     title: "Add your knowledge",
-    desc: "Upload docs, FAQs or prices. Your bot answers only from these.",
+    desc: "Upload documents, FAQs or prices. Your agent answers only from these.",
     cta: "Add knowledge",
     needsBot: true,
   },
@@ -120,7 +120,7 @@ export function SetupChecklist({
           </b>
           <p className="mt-0.5 text-[12.5px] text-muted">
             {allDone
-              ? "Nice — your bot is ready to help your visitors."
+              ? "Nice — your agent is ready to help your visitors."
               : "A few quick steps and you’ll be answering visitors automatically."}
           </p>
         </div>

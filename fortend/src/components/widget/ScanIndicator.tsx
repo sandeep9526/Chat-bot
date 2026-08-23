@@ -9,7 +9,7 @@ export function ScanIndicator() {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-[7px] font-mono text-[11.5px] text-muted">
         <span className="h-[7px] w-[7px] rounded-full bg-accent motion-safe:animate-blink" />
-        searching your knowledge…
+        Searching…
       </div>
       <div className={`${SHIMMER} w-[92%] motion-safe:animate-sweep`} />
       <div className={`${SHIMMER} w-[74%] motion-safe:animate-scan-delayed-1`} />

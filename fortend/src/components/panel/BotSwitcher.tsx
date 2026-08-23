@@ -9,7 +9,7 @@ interface BotSwitcherProps {
   bots: AdminBot[];
   activeBotId: string;
   onSelect: (botId: string) => void;
-  /** Called when the user picks "New bot". */
+  /** Called when the user picks "New agent". */
   onCreate?: () => void;
 }
 
@@ -53,7 +53,7 @@ export function BotSwitcher({ bots, activeBotId, onSelect, onCreate }: BotSwitch
           style={{ background: active?.accent || "var(--accent)" }}
         />
         <span className="truncate text-[13px] font-[650] text-fg">
-          {active?.name || "Select bot"}
+          {active?.name || "Select agent"}
         </span>
         <ChevronDownIcon className="h-4 w-4 shrink-0 text-faint" />
       </button>
@@ -116,7 +116,7 @@ export function BotSwitcher({ bots, activeBotId, onSelect, onCreate }: BotSwitch
                 className="flex w-full items-center gap-2.5 rounded-r1 px-2.5 py-2 text-left text-[13px] font-[600] text-muted hover:bg-panel hover:text-fg"
               >
                 <PlusIcon className="h-4 w-4" />
-                New bot
+                New agent
               </button>
             </>
           )}

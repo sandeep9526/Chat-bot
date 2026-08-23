@@ -18,9 +18,11 @@ export function StepDone({ data, onRestart }: StepDoneProps) {
         {data.businessName || "Your agent"} is ready
       </b>
       <p className="mx-auto mt-2 max-w-md text-[13.5px] text-muted">
-        Bot ID <code className="rounded-[5px] border border-border bg-panel px-1.5 py-0.5 font-mono text-[.92em] text-fg">{data.botId}</code>{" "}
-        is live. Paste the script tag on your site to go live — visitors will
-        see your widget right away.
+        Your agent is live. Paste the script tag on your site and visitors
+        will see your widget right away.
+      </p>
+      <p className="mx-auto mt-1 max-w-md text-[11.5px] text-faint">
+        Bot ID: <code className="rounded-[5px] border border-border bg-panel px-1.5 py-0.5 font-mono text-[.92em] text-fg">{data.botId}</code>
       </p>
 
       <p className="mx-auto mt-3 max-w-md text-[12.5px] text-muted">
@@ -46,7 +48,7 @@ export function StepDone({ data, onRestart }: StepDoneProps) {
           className="w-full cursor-pointer rounded-lg border border-border bg-panel px-6 py-2.5 font-medium text-fg transition-colors hover:border-accent sm:w-auto"
           onClick={onRestart}
         >
-          Set up another bot
+          Set up another agent
         </button>
       </div>
     </div>

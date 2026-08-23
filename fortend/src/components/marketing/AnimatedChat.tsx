@@ -70,7 +70,7 @@ export function AnimatedChat() {
       <div className="overflow-hidden rounded-r3 border border-border bg-surface shadow-panel">
         {/* header */}
         <div className="flex items-center gap-2.5 border-b border-border bg-panel px-4 py-3">
-          <span className="grid h-8 w-8 place-items-center rounded-r1 bg-gradient-to-br from-accent to-accent-strong text-white">
+          <span className="grid h-8 w-8 place-items-center rounded-r1 bg-gradient-to-br from-accent to-accent-strong text-fg">
             <SourceCheckIcon className="h-4 w-4" />
           </span>
           <div className="leading-tight">
@@ -85,7 +85,7 @@ export function AnimatedChat() {
         <div className="flex min-h-[220px] flex-col gap-2.5 px-4 py-5">
           {step >= 1 && (
             <div
-              className="max-w-[80%] self-end rounded-r1 rounded-br-[4px] bg-accent px-3 py-2 text-[13px] font-medium text-white"
+              className="max-w-[80%] self-end rounded-r1 rounded-br-[4px] bg-accent px-3 py-2 text-[13px] font-medium text-fg"
               style={{ animation: "msg-in 0.4s ease both" }}
             >
               Are you open on Sunday?
@@ -122,7 +122,7 @@ export function AnimatedChat() {
               className="flex w-fit items-center gap-2 self-start rounded-r1 border border-good/45 bg-good/12 px-3 py-2 text-[11.5px] font-[700] text-good"
               style={{ animation: "msg-in 0.45s ease both" }}
             >
-              <span className="grid h-4 w-4 place-items-center rounded-full bg-good text-white">
+              <span className="grid h-4 w-4 place-items-center rounded-full bg-good text-fg">
                 <SourceCheckIcon className="h-3 w-3" />
               </span>
               From: hours.pdf · 98% match

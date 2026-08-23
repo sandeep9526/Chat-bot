@@ -36,6 +36,9 @@ export function MessageStream({
   return (
     <div
       ref={scrollRef}
+      role="log"
+      aria-live="polite"
+      aria-relevant="additions"
       className="ae-stream flex flex-1 flex-col gap-4 overflow-y-auto px-[14px] py-0.5 pb-[14px]"
     >
       {isEmpty && (
@@ -48,7 +51,12 @@ export function MessageStream({
       )}
 
       {messages.map((msg) => (
-        <AnswerEntry key={msg.id} message={msg} showSources={showSources} />
+        <AnswerEntry
+          key={msg.id}
+          message={msg}
+          showSources={showSources}
+          onRetry={onAsk}
+        />
       ))}
 
       {isScanning && <ScanIndicator />}

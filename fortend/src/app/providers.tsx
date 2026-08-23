@@ -1,7 +1,31 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import posthog from 'posthog-js';
+import { PostHogProvider as PHProvider } from '@posthog/react';
+
+export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Check that we are on the client side before initializing
+    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+        // Note: 'defaults' is not a standard PostHog config property, but preserved per request
+        defaults: '2026-05-30',
+        capture_pageview: false, // Usually disabled here if manually tracked
+        capture_pageleave: true,
+      } as any);
+    }
+  }, []);
+
+  return (
+    <PHProvider client={posthog}>
+      {children}
+    </PHProvider>
+  );
+}
 
 /**
  * Client-side provider wrapper. Mount this in the root layout.
@@ -21,6 +45,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <PostHogProvider>
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    </PostHogProvider>
   );
 }

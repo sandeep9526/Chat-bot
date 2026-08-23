@@ -72,11 +72,11 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ botId, formSchema: fields }),
       });
-      if (!res.ok) throw new Error("Failed to save custom lead capture schema.");
+      if (!res.ok) throw new Error("We couldn't save your changes — try again.");
       setSavedMsg(true);
       setTimeout(() => setSavedMsg(false), 3500);
     } catch (err: any) {
-      setError(err.message || "Could not update form schema.");
+      setError(err.message || "We couldn't save your changes — try again.");
     } finally {
       setSaving(false);
     }
@@ -121,7 +121,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
   };
 
   return (
-    <div className="rounded-r2 border border-border bg-panel p-5 mt-6 shadow-xs">
+    <div className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-border pb-4">
         <div className="flex items-center gap-3">
           <span className="grid h-9 w-9 place-items-center rounded-r1 bg-indigo-500/15 text-indigo-600">
@@ -129,13 +129,13 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
           </span>
           <div>
             <div className="flex items-center gap-2">
-              <b className="text-[15px] font-[750] text-fg">Dynamic Lead Form Builder</b>
+              <b className="text-[14px] font-[750] text-fg">Lead form fields</b>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-600 px-2 py-0.5 text-[10.5px] font-[700]">
-                <Sparkles className="h-3 w-3" /> Custom Schema
+                <Sparkles className="h-3 w-3" /> Custom
               </span>
             </div>
-            <p className="text-[12.5px] text-muted">
-              Customize lead capturing for your business vertical (e.g. Budget, Insurance Provider, Vehicle Year).
+            <p className="text-[11.5px] text-muted">
+              Add extra fields to capture visitor data.
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
             className="flex items-center gap-1.5 rounded-r1 border border-border bg-surface hover:bg-panel text-fg font-[700] px-3.5 py-2 text-[12.5px] transition-colors shadow-2xs"
           >
             <Plus className="h-4 w-4 text-indigo-600" />
-            Add Custom Field
+            Add field
           </button>
           <button
             type="button"
@@ -155,7 +155,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
             disabled={saving || loading}
             className="flex items-center gap-1.5 rounded-r1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-[700] px-4 py-2 text-[12.5px] transition-colors shadow-2xs"
           >
-            {saving ? "Saving Schema..." : "Save Form Configuration"}
+            {saving ? "Saving…" : "Save fields"}
           </button>
         </div>
       </div>
@@ -163,7 +163,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
       {savedMsg && (
         <div className="mb-4 rounded-r1 bg-emerald-500/15 border border-emerald-500/30 p-3 text-[13px] font-[650] text-emerald-700 flex items-center gap-2 animate-fadeIn">
           <Check className="h-4 w-4 text-emerald-600" />
-          Lead capture schema updated! The widget will now render these dynamic fields.
+          Saved — your lead form is updated.
         </div>
       )}
 
@@ -177,10 +177,10 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
       {/* Add Custom Field Box */}
       {showAdd && (
         <form onSubmit={handleAddField} className="mb-6 bg-surface p-4 rounded-r1 border border-indigo-500/30 space-y-3.5">
-          <b className="block text-[13.5px] font-[750] text-fg">Configure New Custom Input Field</b>
+          <b className="block text-[13.5px] font-[750] text-fg">Add a field</b>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-[11.5px] font-[700] text-muted mb-1">Field Label / Prompt</label>
+              <label className="block text-[11.5px] font-[700] text-muted mb-1">Field label</label>
               <input
                 type="text"
                 value={newLabel}
@@ -191,15 +191,15 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
               />
             </div>
             <div>
-              <label className="block text-[11.5px] font-[700] text-muted mb-1">Input Type</label>
+              <label className="block text-[11.5px] font-[700] text-muted mb-1">Field type</label>
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as any)}
                 className="w-full rounded-r1 border border-border bg-panel px-3 py-1.5 text-[13px] text-fg focus:border-indigo-500 outline-none font-medium"
               >
-                <option value="text">Single Line Text</option>
-                <option value="dropdown">Dropdown Options Selection</option>
-                <option value="textarea">Multiline Textarea / Notes</option>
+                <option value="text">Text</option>
+                <option value="dropdown">Dropdown</option>
+                <option value="textarea">Long text</option>
               </select>
             </div>
             <div className="flex items-end pb-1.5">
@@ -210,7 +210,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
                   onChange={(e) => setNewRequired(e.target.checked)}
                   className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
                 />
-                Mandatory Field (Required)
+                Required
               </label>
             </div>
           </div>
@@ -218,7 +218,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
           {newType === "dropdown" && (
             <div>
               <label className="block text-[11.5px] font-[700] text-muted mb-1">
-                Dropdown Option List <span className="text-faint">(comma separated)</span>
+                Dropdown options <span className="text-faint">(comma separated)</span>
               </label>
               <input
                 type="text"
@@ -243,7 +243,7 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
               type="submit"
               className="px-4 py-1.5 rounded-r1 bg-indigo-600 hover:bg-indigo-700 text-white font-[700] text-[12.5px] transition-colors shadow-2xs"
             >
-              Add Field To Schema
+Add field
             </button>
           </div>
         </form>
@@ -252,9 +252,9 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
       {/* Existing Fields Table / List */}
       <div className="rounded-r1 border border-border overflow-hidden bg-surface divide-y divide-border">
         <div className="grid grid-cols-12 bg-panel/70 px-4 py-2.5 text-[11.5px] font-[750] text-faint uppercase tracking-wider">
-          <div className="col-span-5 sm:col-span-6">Field Name & Identifier</div>
-          <div className="col-span-3 sm:col-span-3">Input Type</div>
-          <div className="col-span-4 sm:col-span-3 text-right">Required / Actions</div>
+          <div className="col-span-5 sm:col-span-6">Field</div>
+          <div className="col-span-3 sm:col-span-3">Type</div>
+          <div className="col-span-4 sm:col-span-3 text-right">Required</div>
         </div>
         {fields.map((f, idx) => (
           <div key={f.id} className="grid grid-cols-12 items-center px-4 py-3 text-[13px] hover:bg-panel/40 transition-colors gap-2">

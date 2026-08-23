@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { checkPlatformAdmin } from "@/lib/superadminApi";
 
+import { LogoLoader } from "@/components/ui/PageLoader";
+
 // Dashboard is a browser-only tool (fetches the backend live) → load
 // client-side, no SSR.
 const AdminDashboard = dynamic(
@@ -35,10 +37,9 @@ export function DashboardClient() {
 
   if (checking) {
     return (
-      <div className="grid min-h-screen place-items-center bg-bg">
-        <div className="flex items-center gap-2.5 text-muted">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
-          <span className="text-[13px]">Loading…</span>
+      <div className="grid min-h-screen place-items-center bg-[var(--bg)]">
+        <div className="flex flex-col items-center gap-4 text-[var(--muted)]">
+          <LogoLoader />
         </div>
       </div>
     );

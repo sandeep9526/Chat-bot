@@ -1,115 +1,147 @@
-import Link from "next/link";
-import type { ComponentType } from "react";
-import { ArrowRightIcon, DocumentCheckIcon, SourceCheckIcon, ClockIcon, CodeIcon, PaletteIcon, LayoutIcon, ContrastIcon, SparkleIcon } from "./icons";
-import { Reveal } from "./Reveal";
+"use client";
 
-interface Feature {
-  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-  title: string;
-  body: string;
-  href?: string;
-}
+import { RefreshCw, Code2, Lock } from "lucide-react";
+import { motion } from "framer-motion";
 
-const FEATURES: Feature[] = [
+const FEATURES_DATA = [
   {
-    icon: DocumentCheckIcon,
-    title: "Answers only from your content",
-    body: "RAG-powered. If it isn't in your docs, Ochreshift won't make it up. No off-brand answers, ever — just what you actually published.",
+    title: "Real-time Content Sync",
+    description: "Connect your Notion, Zendesk, or website. Ochreshift instantly detects changes and updates its vector index within seconds—no manual retrains required.",
+    icon: RefreshCw,
+    uiElement: (
+      <div className="flex flex-col gap-3 font-mono text-[10px] text-muted">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-green-500">Syncing active</span>
+        </div>
+        <div className="bg-bg rounded p-2 border border-border flex justify-between items-center">
+          <span>docs/api/endpoints.md</span>
+          <span className="text-slate-500">updated 2s ago</span>
+        </div>
+        <div className="bg-bg rounded p-2 border border-border flex justify-between items-center">
+          <span>help/billing-faq.md</span>
+          <span className="text-slate-500">updated 12m ago</span>
+        </div>
+      </div>
+    )
   },
   {
-    icon: SourceCheckIcon,
-    title: "Shows its sources",
-    body: "Every reply carries a proof card: the source file and a match %. Your customers trust it — and so do you.",
+    title: "Advanced Vector Search",
+    description: "Powered by semantic search, the engine understands context and intent, retrieving the exact technical snippet or policy detail instantly.",
+    icon: Code2,
+    uiElement: (
+      <div className="flex flex-col gap-2">
+        <div className="bg-bg rounded p-2 text-[10px] font-mono text-slate-500 border border-border">
+          <span className="text-[#FFB800]">&gt;</span> query: "reset API key"
+        </div>
+        <div className="flex gap-1 h-12 items-end pt-2">
+          {[40, 70, 95, 60, 30].map((height, i) => (
+            <div key={i} className="flex-1 bg-bg rounded-t-sm relative group overflow-hidden border border-b-0 border-border" style={{ height: '100%' }}>
+              <div 
+                className={`absolute bottom-0 left-0 right-0 rounded-t-sm transition-all duration-500 ${i === 2 ? 'bg-[#FFB800]' : 'bg-slate-700/50'}`} 
+                style={{ height: `${height}%` }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   },
   {
-    icon: ClockIcon,
-    title: "Captures leads 24/7",
-    body: "Night, weekend or festival, Ochreshift never sleeps. It collects name + phone and never lets a customer slip away.",
-  },
-  {
-    icon: CodeIcon,
-    title: "One-line embed, any site",
-    body: "A single script tag. HTML, WordPress, Shopify, PrestaShop. No npm, no build, no developer.",
-  },
-  {
-    icon: PaletteIcon,
-    title: "Live Studio",
-    body: "Tune color, corners, font, launcher and glass — and copy your embed code instantly. Changes preview live.",
-    href: "/dashboard#appearance",
-  },
-  {
-    icon: LayoutIcon,
-    title: "Your dashboard",
-    body: "Leads, conversations, uploaded docs and a copy-embed button — plus a monthly report in your inbox.",
-  },
-  {
-    icon: ContrastIcon,
-    title: "Light + dark, glass UI",
-    body: "A polished frosted-glass widget that follows your customer's system theme automatically.",
-  },
-  {
-    icon: SparkleIcon,
-    title: "Fully managed",
-    body: "We build it, host it and maintain it. You don't touch a line of code — you just watch the leads arrive.",
-  },
+    title: "Granular Access Control",
+    description: "Keep internal docs internal. Configure strict RBAC rules so the AI only cites public docs for customers, and private repos for employees.",
+    icon: Lock,
+    uiElement: (
+      <div className="flex flex-col gap-2 text-xs">
+        <div className="flex items-center justify-between bg-bg p-2 rounded border border-border">
+          <span className="text-muted">Public KB</span>
+          <span className="bg-green-500/20 text-green-500 px-2 py-0.5 rounded text-[10px]">Read-All</span>
+        </div>
+        <div className="flex items-center justify-between bg-bg p-2 rounded border border-border">
+          <span className="text-muted">Internal Wiki</span>
+          <span className="bg-red-500/20 text-red-500 px-2 py-0.5 rounded text-[10px]">Restricted</span>
+        </div>
+        <div className="flex items-center justify-between bg-bg p-2 rounded border border-border">
+          <span className="text-muted">Slack Data</span>
+          <span className="bg-[#FFB800]/20 text-[#FFB800] px-2 py-0.5 rounded text-[10px]">Team Only</span>
+        </div>
+      </div>
+    )
+  }
 ];
 
 export function Features() {
   return (
-    <section id="features" className="bg-white section-normal">
-      <div className="marketing-container">
-        
-        <Reveal>
-          <div className="text-center max-w-[560px] mx-auto mb-14">
-            <span className="eyebrow">
-              CAPABILITIES
-            </span>
-            <h2 className="mt-5 marketing-h2">
-              Everything a small business needs.
-            </h2>
-            <p className="mt-5 text-[17px] text-[#475569]">
-              Powerful features without the unnecessary complexity.
-            </p>
-          </div>
-        </Reveal>
+    <section className="relative bg-bg w-full font-sans overflow-hidden">
+      {/* Atmospheric Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#FFB800]/5 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {FEATURES.map((f, i) => (
-            <Reveal key={i} delay={i * 60}>
-              <FeatureCard feature={f} />
-            </Reveal>
+      <div className="max-w-7xl mx-auto px-6 py-24 relative z-10">
+        
+        {/* Part 1: Section Header */}
+        <div className="max-w-2xl mx-auto text-center mb-20">
+          <motion.h3 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-xs font-semibold text-[#FFB800] uppercase tracking-widest mb-3"
+          >
+            Core Architecture
+          </motion.h3>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-4xl md:text-5xl font-bold text-fg tracking-tight leading-tight"
+          >
+            Support infrastructure that knows your business.
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-lg text-muted mt-6"
+          >
+            Built for engineering and product teams who demand reliability. Connect your data sources securely and let the engine do the heavy lifting.
+          </motion.p>
+        </div>
+
+        {/* Part 2: The Features Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {FEATURES_DATA.map((feature, idx) => (
+            <motion.div 
+              key={feature.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 * idx }}
+              className="bg-surface/80 backdrop-blur-sm border border-border rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 hover:border-[#FFB800]/30 shadow-xl shadow-black/40 flex flex-col h-full group"
+            >
+              {/* Header Row */}
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-10 h-10 rounded-lg bg-[#FFB800]/10 flex items-center justify-center text-[#FFB800] shrink-0 transition-transform duration-300 group-hover:scale-110">
+                  <feature.icon size={20} />
+                </div>
+              </div>
+              
+              <h3 className="text-xl font-bold text-fg mb-3 tracking-tight">{feature.title}</h3>
+              
+              {/* Description */}
+              <p className="text-sm text-muted leading-relaxed mb-10 flex-1">
+                {feature.description}
+              </p>
+              
+              {/* Visual Element */}
+              <div className="bg-surface rounded-xl p-4 border border-border mt-auto shadow-inner">
+                {feature.uiElement}
+              </div>
+            </motion.div>
           ))}
         </div>
 
       </div>
     </section>
-  );
-}
-
-function FeatureCard({ feature: f }: { feature: Feature }) {
-  const inner = (
-    <div className="group flex h-full flex-col rounded-[14px] border border-[#E5E7EB] bg-white p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_-8px_rgba(8,17,31,0.08)] hover:border-[#F5A900]/25">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-[10px] bg-[#F8F8F6] text-[#08111F] transition-colors duration-200 group-hover:bg-[#F5A900]/10 group-hover:text-[#F5A900]">
-        <f.icon strokeWidth={1.5} className="h-6 w-6" />
-      </div>
-      <h3 className="text-[16px] font-[600] text-[#08111F]">{f.title}</h3>
-      <p className="mt-2.5 text-[14px] leading-[1.65] text-[#475569]">
-        {f.body}
-      </p>
-      {f.href && (
-        <span className="mt-auto pt-5 flex items-center gap-1.5 text-[14px] font-[600] text-[#F5A900] transition-transform duration-150 group-hover:translate-x-0.5">
-          Open the Studio
-          <ArrowRightIcon className="h-3.5 w-3.5" />
-        </span>
-      )}
-    </div>
-  );
-
-  return f.href ? (
-    <Link href={f.href} className="block h-full">
-      {inner}
-    </Link>
-  ) : (
-    inner
   );
 }

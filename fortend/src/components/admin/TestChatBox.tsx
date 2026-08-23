@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FlaskConical, MessageSquare, FileText } from "lucide-react";
+import { FlaskConical, MessageSquare, FileText, Trash2, SendHorizonal } from "lucide-react";
 import { useSendMessage } from "@/hooks/useZevaApi";
 import type { ChatSource } from "@/lib/types";
 
-interface Msg {
+import { cn } from "@/lib/cn";
+
+export interface PlaygroundMsg {
   id: number;
   role: "user" | "assistant";
   text: string;
@@ -17,16 +19,58 @@ interface Msg {
 
 let seq = 0;
 
-/**
- * Lets the bot owner chat with their OWN bot directly from the dashboard —
- * there was previously no way to do this without an external test page:
- * /demo and /studio are both hardcoded to the acme-salon demo bot, not
- * whichever bot is selected here. Reuses the same useSendMessage() hook
- * the real widget uses (POST /chat with this botId), so what you see here
- * is exactly what a real visitor would get — not a separate mock path.
- */
-export function TestChatBox({ botId }: { botId: string }) {
-  const [messages, setMessages] = useState<Msg[]>([]);
+export function TestChatBox({ 
+  botId, 
+  botName, 
+  welcomeMessage, 
+  autoAnimate = false, 
+  suggestions,
+  messages = [],
+  onMessagesChange,
+  onClear
+}: { 
+  botId: string; 
+  botName?: string; 
+  welcomeMessage?: string; 
+  autoAnimate?: boolean; 
+  suggestions?: string[];
+  messages?: PlaygroundMsg[];
+  onMessagesChange?: (msgs: PlaygroundMsg[]) => void;
+  onClear?: () => void;
+}) {
+  const displayTitle = botName && botName.trim() ? botName.trim() : "OchreShift AI Assistant";
+  const displayWelcome = welcomeMessage && welcomeMessage.trim() ? welcomeMessage.trim() : "Hi there! How can I help you today?";
+  const initial = displayTitle.charAt(0).toUpperCase() || "Z";
+
+  const [animState, setAnimState] = useState<"closed" | "opening" | "open">(autoAnimate ? "closed" : "open");
+
+  useEffect(() => {
+    if (!autoAnimate) {
+      setAnimState("open");
+      return;
+    }
+
+    // If we are auto-animating but the user hasn't provided a name or welcome message yet,
+    // stay in the closed state and wait.
+    if (!botName?.trim() || !welcomeMessage?.trim()) {
+      setAnimState("closed");
+      return;
+    }
+
+    let timeout: NodeJS.Timeout;
+    if (animState === "closed") {
+      timeout = setTimeout(() => setAnimState("opening"), 2000);
+    } else if (animState === "opening") {
+      timeout = setTimeout(() => setAnimState("open"), 1500); // 1.5s typing/delay before message
+    } else if (animState === "open") {
+      timeout = setTimeout(() => setAnimState("closed"), 5000); // 5s reading time
+    }
+    return () => clearTimeout(timeout);
+  }, [animState, autoAnimate, botName, welcomeMessage]);
+
+  const [internalMessages, setInternalMessages] = useState<PlaygroundMsg[]>([]);
+  const actualMessages = onMessagesChange ? messages : internalMessages;
+  const setActualMessages = onMessagesChange ? onMessagesChange : setInternalMessages;
   const [input, setInput] = useState("");
   const send = useSendMessage();
   const qc = useQueryClient();
@@ -34,20 +78,24 @@ export function TestChatBox({ botId }: { botId: string }) {
 
   useEffect(() => {
     streamEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, send.isPending]);
+  }, [actualMessages, send.isPending]);
 
   const ask = (e?: React.FormEvent, customText?: string) => {
     if (e) e.preventDefault();
     const text = (customText || input).trim();
     if (!text || send.isPending) return;
     setInput("");
-    setMessages((m) => [...m, { id: ++seq, role: "user", text }]);
+    
+    // Optimistic update
+    const newMsgs: PlaygroundMsg[] = [...actualMessages, { id: ++seq, role: "user", text }];
+    setActualMessages(newMsgs);
+    
     send.mutate(
       { message: text, botId },
       {
         onSuccess: (res) => {
-          setMessages((m) => [
-            ...m,
+          setActualMessages([
+            ...newMsgs,
             {
               id: ++seq,
               role: "assistant",
@@ -60,12 +108,12 @@ export function TestChatBox({ botId }: { botId: string }) {
           qc.invalidateQueries({ queryKey: ["admin"] });
         },
         onError: () => {
-          setMessages((m) => [
-            ...m,
+          setActualMessages([
+            ...newMsgs,
             {
               id: ++seq,
               role: "assistant",
-              text: "Couldn't reach the server just now. Try again in a moment.",
+              text: "Connection trouble — try again in a moment.",
             },
           ]);
         },
@@ -73,180 +121,154 @@ export function TestChatBox({ botId }: { botId: string }) {
     );
   };
 
-  const samplePrompts = [
+  const samplePrompts = (suggestions !== undefined ? suggestions : [
     "What services do you provide?",
     "What are your business hours?",
     "How can I contact support?",
     "Tell me about pricing plans",
-  ];
+  ]).filter((p) => p.trim());
 
   return (
-    <div className="overflow-hidden rounded-r2 border border-border/80 bg-surface shadow-card">
-      {/* Workbench Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-panel/50 px-6 py-4">
+    <div className="flex-1 flex flex-col min-h-0 h-full w-full bg-surface relative">
+      {/* Chat Header */}
+      <div className="bg-panel/40 border-b border-border px-5 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <span className="grid h-8 w-8 place-items-center rounded-r1 bg-accent/15 text-accent">
-            <FlaskConical className="h-4 w-4" />
-          </span>
-          <div>
-            <b className="text-base font-[800]">Test your agent</b>
-            <p className="text-xs text-muted">Try real questions and see exactly what your visitors would get</p>
+          <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-white font-[700] text-[16px] shadow-sm">
+            {initial}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-fg font-[700] text-[15px] leading-tight line-clamp-1">{displayTitle}</span>
+            <span className="text-muted font-[500] text-[12px] flex items-center gap-1.5 mt-0.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Playground Active
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-good/10 px-3 py-1 text-xs font-[700] text-good flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-good animate-pulse" />
-            Bot ID: {botId}
-          </span>
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setMessages([])}
-              className="cursor-pointer rounded-r1 border border-border bg-surface px-3 py-1 text-xs font-[650] text-muted hover:text-fg"
-            >
-              Clear chat
-            </button>
-          )}
-        </div>
+        {actualMessages.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (onClear) onClear();
+              else setActualMessages([]);
+            }}
+            className="text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors p-2 rounded-lg"
+            title="Clear Chat"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[460px]">
-        {/* Left Side: Parameters & Quick Prompts */}
-        <div className="lg:col-span-4 border-r border-border/60 bg-panel/20 p-5 flex flex-col justify-between border-b lg:border-b-0">
-          <div>
-            <span className="text-[11px] font-[800] uppercase tracking-[.15em] text-muted">
-              How this bot answers
-            </span>
-            <div className="mt-3 flex flex-col gap-3">
-              <div className="rounded-r1 border border-border/70 bg-surface p-3 text-xs">
-                <div className="flex justify-between font-[650] text-fg">
-                  <span>Answers from your documents</span>
-                  <span className="text-good font-[750]">On</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted leading-relaxed">
-                  Every answer comes only from the docs you&apos;ve uploaded — never made up.
-                </p>
-              </div>
-
-              <div className="rounded-r1 border border-border/70 bg-surface p-3 text-xs">
-                <div className="flex justify-between font-[650] text-fg">
-                  <span>Off-topic questions</span>
-                  <span className="text-accent font-[750]">Redirected</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted leading-relaxed">
-                  Off-topic questions get a polite redirect instead of a guess.
-                </p>
-              </div>
+      {/* Chat Messages */}
+      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-surface custom-scrollbar">
+        {animState === "open" && (
+          <div className="flex items-start gap-2 animate-fade-in-up">
+            <div className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-white font-[700] text-[11px] shrink-0 mt-1">
+              {initial}
             </div>
-
-            <span className="mt-6 block text-[11px] font-[800] uppercase tracking-[.15em] text-muted">
-              Quick test prompts
-            </span>
-            <div className="mt-2.5 flex flex-col gap-1.5">
-              {samplePrompts.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => ask(undefined, p)}
-                  disabled={send.isPending}
-                  className="rounded-r1 border border-border/80 bg-surface px-3 py-2 text-left text-xs font-[600] text-muted hover:border-accent hover:text-accent transition-colors cursor-pointer"
-                >
-                  &quot;{p}&quot;
-                </button>
-              ))}
+            <div className="bg-surface border border-border/50 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] text-fg leading-relaxed max-w-[85%]">
+              {displayWelcome}
             </div>
           </div>
-
-          <div className="mt-6 pt-4 border-t border-border/50 text-[11px] text-faint font-[550]">
-            Runs the same answer engine your visitors use.
+        )}
+        {animState === "opening" && (
+          <div className="flex items-start gap-2 animate-fade-in">
+            <div className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-white font-[700] text-[11px] shrink-0 mt-1">
+              {initial}
+            </div>
+            <div className="bg-surface border border-border/50 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0ms" }}></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: "150ms" }}></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: "300ms" }}></span>
+            </div>
           </div>
+        )}
+
+        {actualMessages.map((m) => (
+          <div key={m.id} className={cn("flex w-full", m.role === "user" ? "justify-end" : "justify-start")}>
+            {m.role === "assistant" && (
+              <div className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-white font-[700] text-[11px] shrink-0 mt-1 mr-2">
+                {initial}
+              </div>
+            )}
+
+            <div
+              className={cn(
+                "px-4 py-2.5 text-[13.5px] leading-[1.6] max-w-[85%] shadow-sm",
+                m.role === "user"
+                  ? "bg-accent text-white rounded-2xl rounded-tr-sm font-[400]"
+                  : "bg-surface border border-border/50 rounded-2xl rounded-tl-sm text-fg"
+              )}
+            >
+              <p>{m.text}</p>
+              {m.sources && m.sources.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5 pt-2.5 border-t border-border/60">
+                  {m.sources.map((s, i) => (
+                    <span key={i} className="text-[10px] text-muted flex items-center gap-1 bg-panel px-2 py-0.5 rounded-full border border-border/40">
+                      <FileText className="h-3 w-3" /> {s.file}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {send.isPending && (
+          <div className="flex items-start gap-2">
+            <div className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-white font-[700] text-[11px] shrink-0 mt-1">
+              {initial}
+            </div>
+            <div className="bg-surface border border-border/50 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0ms" }}></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: "150ms" }}></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-bounce" style={{ animationDelay: "300ms" }}></span>
+            </div>
+          </div>
+        )}
+        <div ref={streamEndRef} />
+      </div>
+
+      {/* Suggestions */}
+      {actualMessages.length === 0 && animState === "open" && !autoAnimate && samplePrompts.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-5 pb-4 bg-surface shrink-0">
+          {samplePrompts.map((prompt, idx) => (
+            <button
+              key={idx}
+              onClick={(e) => ask(e, prompt)}
+              disabled={send.isPending}
+              className="text-left bg-panel hover:bg-accent/10 hover:text-accent hover:border-accent/30 border border-border rounded-full px-4 py-2 text-[12.5px] text-fg transition-all disabled:opacity-50"
+            >
+              {prompt}
+            </button>
+          ))}
         </div>
+      )}
 
-        {/* Right Side: Interactive Chat Display */}
-        <div className="lg:col-span-8 flex flex-col justify-between p-5 bg-surface">
-          <div className="ae-stream flex-1 max-h-[380px] overflow-y-auto pr-2 flex flex-col gap-3">
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12 text-muted">
-                <MessageSquare className="h-7 w-7 mb-2 text-faint" strokeWidth={1.8} />
-                <b className="text-sm font-[700] text-fg">Try it out</b>
-                <p className="text-xs max-w-xs mt-1">
-                  Type a question below or click a quick prompt to test real visitor experience.
-                </p>
-              </div>
-            )}
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={
-                  m.role === "user"
-                    ? "ml-auto max-w-[80%] rounded-2xl rounded-tr-xs bg-accent px-4 py-2.5 text-xs font-[600] text-white shadow-sm"
-                    : "mr-auto max-w-[88%] rounded-2xl rounded-tl-xs bg-panel border border-border/80 px-4 py-3 text-xs text-fg shadow-sm"
-                }
-              >
-                {m.role === "assistant" ? (
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-[800] uppercase tracking-wider text-accent">Zeva AI</span>
-                      {m.limitReached ? (
-                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9.5px] font-[750] text-amber-500">
-                          Quota Exceeded
-                        </span>
-                      ) : m.isGuardrail ? (
-                        <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[9.5px] font-[750] text-warn">
-                          Handed off
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="text-[13px] leading-relaxed text-fg">{m.text}</p>
-                    {m.sources && m.sources.length > 0 && (
-                      <div className="mt-2.5 flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
-                        {m.sources.map((s, i) => (
-                          <span
-                            key={i}
-                            className="rounded-r1 border border-border/80 bg-surface px-2 py-0.5 font-mono text-[10px] font-[600] text-muted flex items-center gap-1"
-                          >
-                            <FileText className="h-3 w-3 shrink-0" />
-                            {s.file} <b className="text-good">{s.match}% match</b>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  m.text
-                )}
-              </div>
-            ))}
-            {send.isPending && (
-              <div className="flex items-center gap-2 text-xs font-[600] text-accent animate-pulse">
-                <span className="h-2 w-2 rounded-full bg-accent" />
-                Searching documents & generating answer...
-              </div>
-            )}
-            <div ref={streamEndRef} />
-          </div>
-
-          {/* Input Box */}
-          <form onSubmit={ask} className="mt-4 flex gap-2 pt-3 border-t border-border/60">
+      {/* Composer Input */}
+      {!autoAnimate && (
+        <div className="p-4 bg-surface border-t border-border shrink-0">
+          <form onSubmit={ask} className="relative max-w-4xl mx-auto">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about your documents…"
+              placeholder="Message your agent..."
               disabled={send.isPending}
-              className="flex-1 rounded-r1 border border-border bg-panel px-4 py-2.5 text-xs text-fg outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className="w-full rounded-2xl border border-border bg-panel pl-5 pr-14 py-3.5 text-[14px] text-fg outline-none focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 transition-all disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={send.isPending || !input.trim()}
-              className="cursor-pointer rounded-r1 bg-accent px-5 py-2.5 text-xs font-[750] text-white shadow-md shadow-accent/20 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!input.trim() || send.isPending}
+              className="absolute right-2 top-2 bottom-2 aspect-square rounded-xl bg-accent text-white flex items-center justify-center disabled:opacity-50 disabled:bg-muted hover:bg-accent-strong transition-colors"
             >
-              Ask bot
+              <SendHorizonal className="h-4 w-4" />
             </button>
           </form>
         </div>
-      </div>
+      )}
     </div>
   );
 }
-

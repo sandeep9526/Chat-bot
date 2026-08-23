@@ -5,6 +5,7 @@ import type { AdminLead } from "@/lib/adminApi";
 import { useDeleteLead } from "@/hooks/useAdmin";
 import { LEAD_SCORE_STYLE } from "@/lib/leadScore";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Users, X, FileSpreadsheet, CheckCircle2, Copy } from "lucide-react";
 
 function toCsv(leads: AdminLead[]): string {
   const head = ["name", "email", "phone", "message", "date"];
@@ -114,33 +115,88 @@ export function LeadsTable({ leads }: { leads: AdminLead[] }) {
       </div>
 
       {showSheetsModal && (
-        <div className="border-b border-border bg-panel p-5 text-[13px]">
-          <div className="flex items-center justify-between mb-2">
-            <b className="text-fg font-[700]">Google Sheets real-time sync setup</b>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setShowSheetsModal(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative flex w-full max-w-2xl flex-col items-center overflow-hidden rounded-2xl border border-border bg-surface p-8 shadow-2xl animate-in zoom-in-95 fade-in duration-300">
             <button
-              type="button"
-              className="text-xs text-muted hover:text-fg font-[600]"
               onClick={() => setShowSheetsModal(false)}
+              className="absolute right-4 top-4 rounded-full p-1.5 text-muted hover:bg-panel hover:text-fg transition-colors"
             >
-              Close
+              <X className="h-4 w-4" />
             </button>
-          </div>
-          <ol className="list-decimal pl-5 text-muted space-y-1.5 text-[12.5px]">
-            <li>Open your Google Sheet → Go to <b>Extensions &gt; Apps Script</b>.</li>
-            <li>Paste the Google Apps Script code snippet below and click <b>Deploy &gt; New Deployment</b>.</li>
-            <li>Choose type <b>Web app</b> → Execute as <b>Me</b> → Who has access <b>Anyone</b>.</li>
-            <li>Copy the Web App URL and paste it into Studio under <b>Channels &amp; Integrations &gt; Google Sheets Sync</b>.</li>
-          </ol>
-          <div className="mt-3 relative">
-            <pre className="p-3 bg-surface border border-border rounded-r1 font-mono text-[11px] overflow-x-auto text-fg">
-              {appsScriptCode}
-            </pre>
+
+            <div className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
+              <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/20" style={{ animationDuration: '3s' }} />
+              <FileSpreadsheet className="h-10 w-10 text-emerald-500" />
+            </div>
+
+            <h2 className="mb-2 text-center text-xl font-bold tracking-tight text-fg">
+              Connect Google Sheets
+            </h2>
+
+            <p className="mb-6 text-center text-[13.5px] leading-relaxed text-muted">
+              Sync your captured leads directly to a Google Spreadsheet in real-time using our Apps Script integration.
+            </p>
+
+            <div className="w-full space-y-4">
+              <div className="flex items-start gap-3 w-full">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-[750] text-white shadow-sm mt-0.5">
+                  1
+                </div>
+                <div className="min-w-0 flex-1">
+                  <b className="block text-[13px] text-fg">Create an Apps Script</b>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-muted">Open your spreadsheet, click <b className="text-fg">Extensions &gt; Apps Script</b>, and paste this code:</p>
+                  
+                  <div className="mt-3 w-full overflow-hidden rounded-xl border border-zinc-800 bg-[#0d1117] shadow-xl">
+                    <div className="flex items-center justify-between border-b border-zinc-800 bg-[#161b22] px-4 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2.5 w-2.5 rounded-full bg-[#FF5F56]" />
+                        <div className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E]" />
+                        <div className="h-2.5 w-2.5 rounded-full bg-[#27C93F]" />
+                        <span className="ml-2 font-mono text-[10px] font-medium text-zinc-400">Code.gs</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={copyScript}
+                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-[600] text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                      >
+                        {copied ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                        {copied ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <div className="relative w-full overflow-x-auto">
+                      <pre className="p-4 font-mono text-[11.5px] leading-[1.6] text-zinc-300 max-h-[220px] min-w-max">
+                        {appsScriptCode}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 w-full">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-[750] text-white shadow-sm mt-0.5">
+                  2
+                </div>
+                <div className="min-w-0 flex-1">
+                  <b className="block text-[13px] text-fg">Deploy & Connect</b>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-muted">
+                    Click <b className="text-fg">Deploy &gt; New Deployment</b>. Set type to <b className="text-fg">Web app</b>, execute as <b className="text-fg">Me</b>, and access to <b className="text-fg">Anyone</b>. Copy the resulting URL.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <button
-              type="button"
-              onClick={copyScript}
-              className="absolute top-2 right-2 px-2.5 py-1 text-[11px] font-[600] rounded-r1 bg-accent text-white hover:opacity-90 transition-opacity"
+              onClick={() => setShowSheetsModal(false)}
+              className="mt-8 flex h-11 w-full items-center justify-center rounded-xl bg-panel border border-border px-6 text-[14px] font-[650] text-fg transition-all hover:bg-surface active:scale-[0.98]"
             >
-              {copied ? "Copied" : "Copy code"}
+              Close instructions
             </button>
           </div>
         </div>
@@ -162,21 +218,27 @@ export function LeadsTable({ leads }: { leads: AdminLead[] }) {
           <tbody>
             {filteredLeads.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-muted">
-                  No leads found. Test the agent in Studio or widget to capture your first lead!
+                <td colSpan={7} className="px-5 py-12">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent">
+                      <Users className="h-6 w-6" />
+                    </div>
+                    <h4 className="text-[14px] font-[700] text-fg">No leads found</h4>
+                    <p className="mt-1 max-w-[250px] text-[13px] text-muted">Test your agent in Studio or the widget to capture your first lead!</p>
+                  </div>
                 </td>
               </tr>
             )}
             {filteredLeads.map((l) => (
-              <tr key={l.id} className="border-t border-border/60 hover:bg-panel/40 transition-colors">
-                <td className="px-5 py-3 font-mono text-[11.5px] font-[650] text-accent">{l.bot_id || "—"}</td>
-                <td className="px-5 py-3 font-[650] text-fg">{l.name}</td>
-                <td className="px-5 py-3 text-muted">{l.email}</td>
-                <td className="px-5 py-3 text-muted">{l.phone || "—"}</td>
-                <td className="px-5 py-3 font-mono text-[11.5px] text-faint">
-                  {l.created_at?.slice(0, 16)}
+              <tr key={l.id} className="group border-t border-border/60 hover:bg-panel/60 transition-all hover:shadow-[inset_2px_0_0_var(--accent)]">
+                <td className="px-5 py-3.5 font-mono text-[11.5px] font-[650] text-accent/80 group-hover:text-accent transition-colors">{l.bot_id || "—"}</td>
+                <td className="px-5 py-3.5 font-[650] text-fg">{l.name}</td>
+                <td className="px-5 py-3.5 text-muted">{l.email}</td>
+                <td className="px-5 py-3.5 text-muted">{l.phone || "—"}</td>
+                <td className="px-5 py-3.5 text-[12px] font-[500] text-faint">
+                  {l.created_at ? new Date(l.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : "—"}
                 </td>
-                <td className="px-5 py-3">
+                <td className="px-5 py-3.5">
                   <span
                     className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-[750] uppercase ${
                       LEAD_SCORE_STYLE[l.score] ?? LEAD_SCORE_STYLE.cold

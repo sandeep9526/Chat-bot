@@ -58,6 +58,13 @@ export interface AdminLead {
   created_at: string;
 }
 
+export interface PlaygroundSession {
+  id: string;
+  title: string;
+  messages: any[]; // Or PlaygroundMsg[] if imported, but any is safe here
+  updated_at: string;
+}
+
 export interface Handoff {
   id: number;
   bot_id: string;
@@ -114,9 +121,13 @@ export interface AdminStats {
 }
 
 function base(): string {
-  if (!API_URL) throw new Error("NEXT_PUBLIC_API_URL set nahi hai");
+  if (!API_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
   return API_URL;
 }
+
+/** Shown whenever a request can't reach the backend at all — kept in one
+ *  place so a wording fix doesn't need a find-and-replace across the file. */
+const NETWORK_ERROR_MESSAGE = "We can't connect right now. Check your internet connection and try again.";
 
 
 
@@ -147,9 +158,7 @@ async function getJson<T>(path: string): Promise<T> {
   try {
     res = await fetch(`${base()}${path}`, { headers });
   } catch {
-    throw new Error(
-      "Backend server unreachable — make sure it is running on " + base()
-    );
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
@@ -218,7 +227,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
@@ -291,7 +300,7 @@ export async function deleteLead(leadId: number): Promise<void> {
   try {
     res = await fetch(`${base()}/leads/${leadId}`, { method: "DELETE", headers: authHeaders });
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Delete failed (${res.status})`;
@@ -341,10 +350,7 @@ export async function createBot(
     });
   } catch (err) {
     console.error("[adminApi] createBot fetch failed:", err);
-    throw new Error(
-      "Backend server unreachable — make sure it is running on " + base() +
-      (err instanceof TypeError ? " (" + err.message + ")" : "")
-    );
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
@@ -370,7 +376,7 @@ export async function setBotPaused(botId: string, paused: boolean): Promise<void
       body: JSON.stringify({ botId, paused }),
     });
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
@@ -394,7 +400,7 @@ export async function deleteBot(botId: string): Promise<void> {
       headers: authHeaders,
     });
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Delete failed (${res.status})`;
@@ -422,9 +428,9 @@ export async function ingestDoc(
       body: JSON.stringify({ botId, filename, text }),
     });
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
-  if (!res.ok) throw new Error(`Ingest failed (${res.status})`);
+  if (!res.ok) throw new Error("We couldn't process that text — try again in a moment.");
   return (await res.json()) as { chunks: number; files: number };
 }
 
@@ -458,7 +464,7 @@ export async function uploadKnowledgeFile(
       body: form,
     });
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
   if (!res.ok) {
     let detail = `Upload failed (${res.status})`;
@@ -496,9 +502,9 @@ export async function deleteDocFile(botId: string, filename: string): Promise<vo
       },
     );
   } catch {
-    throw new Error("Backend server unreachable — make sure it is running on " + base());
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
-  if (!res.ok) throw new Error(`Failed to delete document (${res.status})`);
+  if (!res.ok) throw new Error("We couldn't delete that document — try again in a moment.");
 }
 
 export async function executeSubjectErasure(targetIdentifier: string): Promise<{ ok: boolean; status: string; purged: { leads: number; chats: number } }> {
@@ -508,7 +514,7 @@ export async function executeSubjectErasure(targetIdentifier: string): Promise<{
     headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({ target_identifier: targetIdentifier }),
   });
-  if (!res.ok) throw new Error("Failed to process subject erasure request");
+  if (!res.ok) throw new Error("We couldn't delete this person's data — try again in a moment.");
   return res.json();
 }
 
@@ -550,3 +556,49 @@ export async function sendLiveChatMessage(sessionId: string, text: string, sende
   await postJson(`/api/live-chat/${encodeURIComponent(sessionId)}/message`, { text, sender });
 }
 
+// ============================================================================
+// Playground Sessions API
+// ============================================================================
+
+export async function fetchPlaygroundSessions(botId: string): Promise<PlaygroundSession[]> {
+  return (await getJson<{ sessions: PlaygroundSession[] }>(`/admin/playground-sessions?botId=${encodeURIComponent(botId)}`)).sessions;
+}
+
+export async function upsertPlaygroundSession(
+  botId: string, 
+  id: string, 
+  title: string, 
+  messages: any[]
+): Promise<void> {
+  const token = await getJwtToken();
+  const url = `${API_URL}/admin/playground-sessions?botId=${encodeURIComponent(botId)}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ id, title, messages }),
+  });
+
+  if (!res.ok) {
+    let errText = await res.text();
+    throw new Error(`Failed to save playground session: ${errText}`);
+  }
+}
+
+export async function deletePlaygroundSession(botId: string, sessionId: string): Promise<void> {
+  const token = await getJwtToken();
+  const url = `${API_URL}/admin/playground-sessions/${encodeURIComponent(sessionId)}?botId=${encodeURIComponent(botId)}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    let errText = await res.text();
+    throw new Error(`Failed to delete playground session: ${errText}`);
+  }
+}

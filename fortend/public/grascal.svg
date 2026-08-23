@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 160" width="100%" height="100%">
+  <!-- Light Background Container -->
+  <rect width="100%" height="100%" rx="15" fill="#F8FAFC" />
+  
+  <g transform="translate(35, 35)">
+    <!-- Left Black Fold -->
+    <path d="M45 0 L0 25 L0 75 L45 100 L45 72 L22 58 L22 42 L45 28 Z" fill="#000000"/>
+    <!-- Right Gray Fold -->
+    <path d="M45 0 L90 25 L90 75 L45 100 L45 72 L68 58 L68 42 L45 28 Z" fill="#64748B"/>
+    
+    <!-- Typography -->
+    <text x="110" y="65" font-family="Arial, sans-serif" font-weight="bold" font-size="65" letter-spacing="-1.5">
+      <tspan fill="#000000">ochre</tspan><tspan fill="#000000">shift</tspan>
+    </text>
+  </g>
+</svg>
