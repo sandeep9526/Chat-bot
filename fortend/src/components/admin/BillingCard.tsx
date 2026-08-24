@@ -318,7 +318,7 @@ export function BillingCard() {
             <div className="text-[13px] text-blue-500/90 leading-relaxed">
               The <strong>{PLAN_INFO[fallbackPlan].label}</strong> checkout isn't live yet.{" "}
               <a
-                href={`mailto:support@zeva.app?subject=Upgrade%20to%20${encodeURIComponent(PLAN_INFO[fallbackPlan].label)}`}
+                href={`mailto:support@ochreshift.com?subject=Upgrade%20to%20${encodeURIComponent(PLAN_INFO[fallbackPlan].label)}`}
                 className="font-[700] hover:underline"
               >
                 Contact us

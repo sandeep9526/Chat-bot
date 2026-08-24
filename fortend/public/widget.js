@@ -1,13 +1,13 @@
 /**
- * Zeva Chat Widget — Embeddable Loader
+ * OchreShift Chat Widget — Embeddable Loader
  * =====================================================================
  * Drop this on any website:
  *
  *   <script
- *     src="https://cdn.zeva.app/widget.js"
- *     data-bot-id="zeva-ai"
- *     data-api-url="https://api.your-zeva-deployment.com"
- *     data-name="Zeva AI"
+ *     src="https://cdn.ochreshift.app/widget.js"
+ *     data-bot-id="ochreshift-ai"
+ *     data-api-url="https://api.your-ochreshift-deployment.com"
+ *     data-name="OchreShift AI"
  *     data-accent="#4f46e5"
  *     data-surface="auto"
  *     data-corners="soft"
@@ -29,7 +29,7 @@
  * CDN or a static host (e.g. this Next.js app's /public folder), which is
  * almost never the same origin as the FastAPI backend. If we inferred the
  * API host from `src`, a client pasting
- * `<script src="https://cdn.zeva.app/widget.js">` would silently send every
+ * `<script src="https://cdn.ochreshift.app/widget.js">` would silently send every
  * /chat and /lead request to the CDN instead of the API — a broken widget
  * with no clear error. Instead: `data-api-url` is authoritative (this is
  * exactly what the Studio embed snippet emits — see src/lib/embed.ts),
@@ -83,8 +83,8 @@
   var HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
   // ---- data-* attribute contract (see WIDGET.md) ---------------------------
-  var BOT_ID = getAttr("data-bot-id", "zeva-ai");
-  var DEFAULT_API_URL = "https://api.zeva.app"; // documented placeholder — see comment block above
+  var BOT_ID = getAttr("data-bot-id", "ochreshift-ai");
+  var DEFAULT_API_URL = "https://api.ochreshift.app"; // documented placeholder — see comment block above
   var API_URL = getAttr("data-api-url", DEFAULT_API_URL).replace(/\/+$/, "");
 
   var NAME_EXPLICIT = hasAttr("data-name");
@@ -176,7 +176,7 @@
 
   var SESSION_ID = (function () {
     try {
-      var k = "zeva_sess_" + BOT_ID;
+      var k = "ochreshift_sess_" + BOT_ID;
       var s = localStorage.getItem(k);
       if (!s) {
         s = "sess_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
@@ -193,7 +193,7 @@
   // tabs or outlives the browsing session. Only message text/metadata is kept
   // — never lead-form field values, so no PII sits in storage longer than a
   // single form submission.
-  var HISTORY_KEY = "zeva_hist_" + BOT_ID;
+  var HISTORY_KEY = "ochreshift_hist_" + BOT_ID;
   var MAX_HISTORY = 24;
 
   function loadHistory() {
@@ -226,12 +226,12 @@
           if (msg.sender === "agent" || msg.sender === "system") {
             addAssistantMessage({ text: msg.text, sources: [], isGuardrail: false });
           }
-        } catch (err) {}
+        } catch (err) { }
       };
       liveWs.onclose = function () {
         setTimeout(connectLiveChat, 5000);
       };
-    } catch (err) {}
+    } catch (err) { }
   }
 
   // DOM refs (populated in mount())
@@ -241,7 +241,7 @@
     try {
       whenBodyReady(mount);
     } catch (e) {
-      if (window.console && console.error) console.error("[Zeva Widget] failed to initialize", e);
+      if (window.console && console.error) console.error("[OchreShift Widget] failed to initialize", e);
     }
   }
 
@@ -267,13 +267,13 @@
 
   // =======================================================================
   // CSS (fully static — dynamic values are applied as CSS custom props /
-  // data-* attributes on .zeva-anchor at runtime, never interpolated here)
+  // data-* attributes on .ochreshift-anchor at runtime, never interpolated here)
   // =======================================================================
   function buildCss() {
     return (
       ":host{all:initial;}" +
-      ".zeva-anchor,.zeva-anchor *,.zeva-anchor *::before,.zeva-anchor *::after{box-sizing:border-box;}" +
-      ".zeva-anchor{" +
+      ".ochreshift-anchor,.ochreshift-anchor *,.ochreshift-anchor *::before,.ochreshift-anchor *::after{box-sizing:border-box;}" +
+      ".ochreshift-anchor{" +
       "all:initial;position:fixed;z-index:2147483000;display:flex;gap:0;" +
       "width:min(430px, calc(100vw - 48px));" +
       "font-family:var(--font-family, var(--ui-stack));-webkit-font-smoothing:antialiased;" +
@@ -285,152 +285,152 @@
       "--mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;" +
       "--r1:11px;--r2:14px;--r3:22px;" +
       "}" +
-      ".zeva-anchor.zeva-gap{gap:12px;}" +
-      ".zeva-anchor[data-theme='dark']{--surface:#0f172a;--glass:rgba(15,23,42,.72);--panel:rgba(2,6,23,.5);--paper:#131a2b;--paper-rule:#22304b;--text:#eef2f9;--muted:#93a1b8;--faint:#5c6c86;--border:#1e293b;--ring:#1e293b;--shadow:0 34px 80px -24px rgba(0,0,0,.75),0 10px 30px -14px rgba(0,0,0,.6);}" +
-      ".zeva-anchor[data-corners='sharp']{--r1:5px;--r2:7px;--r3:10px;}" +
-      ".zeva-anchor[data-corners='round']{--r1:16px;--r2:20px;--r3:28px;}" +
-      ".zeva-anchor[data-font='rounded']{--font-family:ui-rounded,'SF Pro Rounded','Hiragino Maru Gothic ProN','Quicksand',system-ui,sans-serif;}" +
-      ".zeva-anchor[data-font='serif']{--font-family:'Iowan Old Style','Palatino Linotype',Georgia,'Times New Roman',serif;}" +
-      ".zeva-anchor[data-font='mono']{--font-family:var(--mono);}" +
+      ".ochreshift-anchor.ochreshift-gap{gap:12px;}" +
+      ".ochreshift-anchor[data-theme='dark']{--surface:#0f172a;--glass:rgba(15,23,42,.72);--panel:rgba(2,6,23,.5);--paper:#131a2b;--paper-rule:#22304b;--text:#eef2f9;--muted:#93a1b8;--faint:#5c6c86;--border:#1e293b;--ring:#1e293b;--shadow:0 34px 80px -24px rgba(0,0,0,.75),0 10px 30px -14px rgba(0,0,0,.6);}" +
+      ".ochreshift-anchor[data-corners='sharp']{--r1:5px;--r2:7px;--r3:10px;}" +
+      ".ochreshift-anchor[data-corners='round']{--r1:16px;--r2:20px;--r3:28px;}" +
+      ".ochreshift-anchor[data-font='rounded']{--font-family:ui-rounded,'SF Pro Rounded','Hiragino Maru Gothic ProN','Quicksand',system-ui,sans-serif;}" +
+      ".ochreshift-anchor[data-font='serif']{--font-family:'Iowan Old Style','Palatino Linotype',Georgia,'Times New Roman',serif;}" +
+      ".ochreshift-anchor[data-font='mono']{--font-family:var(--mono);}" +
       // Launcher
-      ".zeva-launcher{all:unset;box-sizing:border-box;position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:14px;font-weight:650;box-shadow:var(--shadow);transition:transform .1s ease-out;}" +
-      ".zeva-launcher:hover{transform:translateY(-1px);}" +
-      ".zeva-launcher:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}" +
-      ".zeva-launcher.zeva-variant-pill{border-radius:999px;padding:11px 16px 11px 12px;}" +
-      ".zeva-launcher.zeva-variant-bubble{width:58px;height:58px;padding:0;justify-content:center;border-radius:999px;}" +
-      ".zeva-launcher.zeva-variant-bar{width:100%;justify-content:flex-start;border-radius:var(--r2);padding:11px 16px 11px 12px;}" +
-      ".zeva-launcher.zeva-glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}" +
-      ".zeva-launcher.zeva-solid{background:var(--surface);}" +
-      ".zeva-launcher.zeva-variant-bubble{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;border-color:transparent;}" +
-      ".zeva-launcher.zeva-breathe{animation:zeva-breathe 4.5s ease-in-out infinite;}" +
-      ".zeva-launcher.zeva-unavailable{opacity:.7;}" +
-      ".zeva-launcher-icon{display:grid;place-items:center;flex-shrink:0;overflow:hidden;border-radius:999px;width:25px;height:25px;}" +
-      ".zeva-variant-bubble .zeva-launcher-icon{width:30px;height:30px;}" +
-      ".zeva-launcher-icon.zeva-orb{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;}" +
-      ".zeva-launcher-icon img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
-      ".zeva-launcher-icon.zeva-orb img{border-radius:50%;}" +
-      ".zeva-launcher-icon svg{width:14px;height:14px;}" +
-      ".zeva-variant-bubble .zeva-launcher-icon svg{width:26px;height:26px;color:#fff;}" +
-      ".zeva-launcher-label{line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}" +
-      ".zeva-launcher-kbd{border:1px solid var(--border);border-radius:6px;padding:1px 6px;font-family:var(--mono);font-size:11px;color:var(--faint);}" +
-      ".zeva-launcher-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#f59e0b;border:2px solid var(--surface);}" +
-      ".zeva-draggable .zeva-launcher{cursor:grab;}" +
-      ".zeva-anchor.zeva-dragging{transition:none !important;}" +
-      ".zeva-anchor.zeva-dragging .zeva-launcher{cursor:grabbing;}" +
+      ".ochreshift-launcher{all:unset;box-sizing:border-box;position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:14px;font-weight:650;box-shadow:var(--shadow);transition:transform .1s ease-out;}" +
+      ".ochreshift-launcher:hover{transform:translateY(-1px);}" +
+      ".ochreshift-launcher:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}" +
+      ".ochreshift-launcher.ochreshift-variant-pill{border-radius:999px;padding:11px 16px 11px 12px;}" +
+      ".ochreshift-launcher.ochreshift-variant-bubble{width:58px;height:58px;padding:0;justify-content:center;border-radius:999px;}" +
+      ".ochreshift-launcher.ochreshift-variant-bar{width:100%;justify-content:flex-start;border-radius:var(--r2);padding:11px 16px 11px 12px;}" +
+      ".ochreshift-launcher.ochreshift-glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}" +
+      ".ochreshift-launcher.ochreshift-solid{background:var(--surface);}" +
+      ".ochreshift-launcher.ochreshift-variant-bubble{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;border-color:transparent;}" +
+      ".ochreshift-launcher.ochreshift-breathe{animation:ochreshift-breathe 4.5s ease-in-out infinite;}" +
+      ".ochreshift-launcher.ochreshift-unavailable{opacity:.7;}" +
+      ".ochreshift-launcher-icon{display:grid;place-items:center;flex-shrink:0;overflow:hidden;border-radius:999px;width:25px;height:25px;}" +
+      ".ochreshift-variant-bubble .ochreshift-launcher-icon{width:30px;height:30px;}" +
+      ".ochreshift-launcher-icon.ochreshift-orb{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;}" +
+      ".ochreshift-launcher-icon img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
+      ".ochreshift-launcher-icon.ochreshift-orb img{border-radius:50%;}" +
+      ".ochreshift-launcher-icon svg{width:14px;height:14px;}" +
+      ".ochreshift-variant-bubble .ochreshift-launcher-icon svg{width:26px;height:26px;color:#fff;}" +
+      ".ochreshift-launcher-label{line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}" +
+      ".ochreshift-launcher-kbd{border:1px solid var(--border);border-radius:6px;padding:1px 6px;font-family:var(--mono);font-size:11px;color:var(--faint);}" +
+      ".ochreshift-launcher-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#f59e0b;border:2px solid var(--surface);}" +
+      ".ochreshift-draggable .ochreshift-launcher{cursor:grab;}" +
+      ".ochreshift-anchor.ochreshift-dragging{transition:none !important;}" +
+      ".ochreshift-anchor.ochreshift-dragging .ochreshift-launcher{cursor:grabbing;}" +
       // Panel
-      ".zeva-panel{display:flex;flex-direction:column;overflow:hidden;width:100%;border-radius:var(--r3);border-width:0;box-shadow:var(--shadow);background:var(--surface);color:var(--text);transform-origin:var(--panel-origin, bottom right);transition:opacity .3s ease-out,transform .3s ease-out;opacity:0;transform:scale(.94) translateY(14px);pointer-events:none;height:0;max-height:0;}" +
-      ".zeva-panel.zeva-glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);}" +
-      ".zeva-panel.zeva-open{opacity:1;transform:scale(1) translateY(0);pointer-events:auto;height:560px;max-height:calc(100vh - 150px);border-width:1px;border-style:solid;border-color:var(--border);}" +
-      ".zeva-header{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}" +
-      ".zeva-header-avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:0 0 0 4px var(--accent-soft);}" +
-      ".zeva-header-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
-      ".zeva-header-name{flex:1;min-width:0;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
-      ".zeva-header-close{all:unset;box-sizing:border-box;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);}" +
-      ".zeva-header-close:hover{background:var(--ring);color:var(--text);}" +
-      ".zeva-header-close:focus-visible{outline:2px solid var(--accent);}" +
-      ".zeva-header-close svg{width:16px;height:16px;}" +
+      ".ochreshift-panel{display:flex;flex-direction:column;overflow:hidden;width:100%;border-radius:var(--r3);border-width:0;box-shadow:var(--shadow);background:var(--surface);color:var(--text);transform-origin:var(--panel-origin, bottom right);transition:opacity .3s ease-out,transform .3s ease-out;opacity:0;transform:scale(.94) translateY(14px);pointer-events:none;height:0;max-height:0;}" +
+      ".ochreshift-panel.ochreshift-glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);}" +
+      ".ochreshift-panel.ochreshift-open{opacity:1;transform:scale(1) translateY(0);pointer-events:auto;height:560px;max-height:calc(100vh - 150px);border-width:1px;border-style:solid;border-color:var(--border);}" +
+      ".ochreshift-header{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}" +
+      ".ochreshift-header-avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:0 0 0 4px var(--accent-soft);}" +
+      ".ochreshift-header-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
+      ".ochreshift-header-name{flex:1;min-width:0;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
+      ".ochreshift-header-close{all:unset;box-sizing:border-box;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);}" +
+      ".ochreshift-header-close:hover{background:var(--ring);color:var(--text);}" +
+      ".ochreshift-header-close:focus-visible{outline:2px solid var(--accent);}" +
+      ".ochreshift-header-close svg{width:16px;height:16px;}" +
       // Screen-reader-only live region (announces completed assistant replies)
-      ".zeva-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}" +
+      ".ochreshift-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}" +
       // Composer
-      ".zeva-composer{position:relative;margin:12px;flex-shrink:0;}" +
-      ".zeva-composer-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--accent);display:grid;place-items:center;pointer-events:none;}" +
-      ".zeva-composer-icon svg{width:16px;height:16px;}" +
-      ".zeva-input{width:100%;border:1px solid var(--border);border-radius:var(--r2);background:var(--surface);color:var(--text);padding:12px 44px 12px 38px;font-size:14px;font-family:inherit;outline:none;}" +
-      ".zeva-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-ring);}" +
-      ".zeva-input:disabled{opacity:.6;cursor:not-allowed;}" +
-      ".zeva-send{all:unset;box-sizing:border-box;position:absolute;right:7px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:var(--r1);display:grid;place-items:center;background:var(--accent);color:#fff;cursor:pointer;}" +
-      ".zeva-send:disabled{opacity:.35;cursor:not-allowed;}" +
-      ".zeva-send:focus-visible{outline:2px solid var(--accent-ring);}" +
-      ".zeva-send svg{width:16px;height:16px;}" +
+      ".ochreshift-composer{position:relative;margin:12px;flex-shrink:0;}" +
+      ".ochreshift-composer-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--accent);display:grid;place-items:center;pointer-events:none;}" +
+      ".ochreshift-composer-icon svg{width:16px;height:16px;}" +
+      ".ochreshift-input{width:100%;border:1px solid var(--border);border-radius:var(--r2);background:var(--surface);color:var(--text);padding:12px 44px 12px 38px;font-size:14px;font-family:inherit;outline:none;}" +
+      ".ochreshift-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-ring);}" +
+      ".ochreshift-input:disabled{opacity:.6;cursor:not-allowed;}" +
+      ".ochreshift-send{all:unset;box-sizing:border-box;position:absolute;right:7px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:var(--r1);display:grid;place-items:center;background:var(--accent);color:#fff;cursor:pointer;}" +
+      ".ochreshift-send:disabled{opacity:.35;cursor:not-allowed;}" +
+      ".ochreshift-send:focus-visible{outline:2px solid var(--accent-ring);}" +
+      ".ochreshift-send svg{width:16px;height:16px;}" +
       // Stream
-      ".zeva-stream{flex:1;overflow-y:auto;padding:2px 14px 14px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}" +
-      ".zeva-stream::-webkit-scrollbar{width:5px;}" +
-      ".zeva-stream::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}" +
-      ".zeva-welcome{font-size:13px;line-height:1.5;color:var(--muted);margin:4px 2px 12px;}" +
-      ".zeva-unavailable{margin:0 2px;padding:12px 14px;border-radius:var(--r2);border:1px dashed var(--border);background:var(--panel);font-size:12.5px;line-height:1.5;color:var(--muted);}" +
-      ".zeva-chips{display:flex;flex-direction:column;gap:7px;}" +
-      ".zeva-chip{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--r1);background:var(--surface);padding:9px 11px;font-size:13px;color:var(--text);cursor:pointer;transition:border-color .1s,transform .1s;}" +
-      ".zeva-chip:hover{border-color:var(--accent);transform:translateX(2px);}" +
-      ".zeva-chip:focus-visible{outline:2px solid var(--accent);}" +
-      ".zeva-chip svg{width:14px;height:14px;flex-shrink:0;color:var(--accent);}" +
-      ".zeva-chip-text{flex:1;text-align:left;}" +
-      ".zeva-chip-kbd{border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-family:var(--mono);font-size:10px;color:var(--faint);}" +
+      ".ochreshift-stream{flex:1;overflow-y:auto;padding:2px 14px 14px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}" +
+      ".ochreshift-stream::-webkit-scrollbar{width:5px;}" +
+      ".ochreshift-stream::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}" +
+      ".ochreshift-welcome{font-size:13px;line-height:1.5;color:var(--muted);margin:4px 2px 12px;}" +
+      ".ochreshift-unavailable{margin:0 2px;padding:12px 14px;border-radius:var(--r2);border:1px dashed var(--border);background:var(--panel);font-size:12.5px;line-height:1.5;color:var(--muted);}" +
+      ".ochreshift-chips{display:flex;flex-direction:column;gap:7px;}" +
+      ".ochreshift-chip{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--r1);background:var(--surface);padding:9px 11px;font-size:13px;color:var(--text);cursor:pointer;transition:border-color .1s,transform .1s;}" +
+      ".ochreshift-chip:hover{border-color:var(--accent);transform:translateX(2px);}" +
+      ".ochreshift-chip:focus-visible{outline:2px solid var(--accent);}" +
+      ".ochreshift-chip svg{width:14px;height:14px;flex-shrink:0;color:var(--accent);}" +
+      ".ochreshift-chip-text{flex:1;text-align:left;}" +
+      ".ochreshift-chip-kbd{border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-family:var(--mono);font-size:10px;color:var(--faint);}" +
       // Messages
-      ".zeva-msg-user{align-self:flex-end;max-width:85%;background:var(--accent);color:#fff;border-radius:var(--r1);border-bottom-right-radius:5px;padding:8px 12px;font-size:13px;font-weight:500;line-height:1.5;white-space:pre-wrap;word-break:break-word;}" +
-      ".zeva-msg-assistant{display:flex;flex-direction:column;}" +
-      ".zeva-msg-assistant-head{display:flex;align-items:flex-start;gap:9px;}" +
-      ".zeva-msg-assistant-head>svg{width:16px;height:16px;margin-top:3px;flex-shrink:0;color:var(--accent);}" +
-      ".zeva-msg-assistant-text{font-size:15px;font-weight:500;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word;}" +
-      ".zeva-guardrail{margin-top:12px;display:flex;align-items:center;gap:10px;border:1px dashed var(--border);border-radius:var(--r2);padding:10px 12px;font-size:12.5px;color:var(--muted);}" +
-      ".zeva-guardrail svg{width:16px;height:16px;color:#f59e0b;flex-shrink:0;}" +
-      ".zeva-connector{position:relative;margin:8px 0 8px 7px;width:2px;height:16px;background:linear-gradient(var(--accent),transparent);}" +
-      ".zeva-connector::after{content:'';position:absolute;bottom:0;left:-2px;width:6px;height:6px;border-radius:50%;background:var(--accent);}" +
+      ".ochreshift-msg-user{align-self:flex-end;max-width:85%;background:var(--accent);color:#fff;border-radius:var(--r1);border-bottom-right-radius:5px;padding:8px 12px;font-size:13px;font-weight:500;line-height:1.5;white-space:pre-wrap;word-break:break-word;}" +
+      ".ochreshift-msg-assistant{display:flex;flex-direction:column;}" +
+      ".ochreshift-msg-assistant-head{display:flex;align-items:flex-start;gap:9px;}" +
+      ".ochreshift-msg-assistant-head>svg{width:16px;height:16px;margin-top:3px;flex-shrink:0;color:var(--accent);}" +
+      ".ochreshift-msg-assistant-text{font-size:15px;font-weight:500;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word;}" +
+      ".ochreshift-guardrail{margin-top:12px;display:flex;align-items:center;gap:10px;border:1px dashed var(--border);border-radius:var(--r2);padding:10px 12px;font-size:12.5px;color:var(--muted);}" +
+      ".ochreshift-guardrail svg{width:16px;height:16px;color:#f59e0b;flex-shrink:0;}" +
+      ".ochreshift-connector{position:relative;margin:8px 0 8px 7px;width:2px;height:16px;background:linear-gradient(var(--accent),transparent);}" +
+      ".ochreshift-connector::after{content:'';position:absolute;bottom:0;left:-2px;width:6px;height:6px;border-radius:50%;background:var(--accent);}" +
       // Scan indicator
-      ".zeva-scan{display:flex;flex-direction:column;gap:8px;}" +
-      ".zeva-scan-label{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--muted);}" +
-      ".zeva-scan-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:zeva-blink 1s infinite;}" +
-      ".zeva-scan-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--ring),var(--accent-soft),var(--ring));background-size:200% 100%;animation:zeva-sweep 1.1s linear infinite;}" +
-      ".zeva-scan-bar.zeva-w1{width:92%;}" +
-      ".zeva-scan-bar.zeva-w2{width:74%;animation-delay:.15s;}" +
-      ".zeva-scan-bar.zeva-w3{width:84%;animation-delay:.3s;}" +
+      ".ochreshift-scan{display:flex;flex-direction:column;gap:8px;}" +
+      ".ochreshift-scan-label{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--muted);}" +
+      ".ochreshift-scan-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:ochreshift-blink 1s infinite;}" +
+      ".ochreshift-scan-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--ring),var(--accent-soft),var(--ring));background-size:200% 100%;animation:ochreshift-sweep 1.1s linear infinite;}" +
+      ".ochreshift-scan-bar.ochreshift-w1{width:92%;}" +
+      ".ochreshift-scan-bar.ochreshift-w2{width:74%;animation-delay:.15s;}" +
+      ".ochreshift-scan-bar.ochreshift-w3{width:84%;animation-delay:.3s;}" +
       // Proof card
-      ".zeva-proof-wrap{margin-top:8px;}" +
-      ".zeva-proof{border-radius:var(--r2);border:1px solid var(--paper-rule);background:var(--paper);overflow:hidden;transform-origin:top;transition:opacity .35s ease-out,transform .35s ease-out;opacity:0;transform:translateY(-6px) scaleY(.8);}" +
-      ".zeva-proof.zeva-revealed{opacity:1;transform:translateY(0) scaleY(1);}" +
-      ".zeva-proof-meta{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--paper-rule);padding:8px 11px;}" +
-      ".zeva-proof-file{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}" +
-      ".zeva-proof-file svg{width:13px;height:13px;color:var(--accent);flex-shrink:0;}" +
-      ".zeva-proof-match{margin-left:auto;display:flex;align-items:center;gap:7px;flex-shrink:0;}" +
-      ".zeva-proof-bar{width:44px;height:5px;border-radius:3px;background:var(--ring);overflow:hidden;}" +
-      ".zeva-proof-bar-fill{display:block;height:100%;width:0%;background:var(--good);transition:width .6s ease-out .2s;}" +
-      ".zeva-proof.zeva-revealed .zeva-proof-bar-fill{width:var(--match,0%);}" +
-      ".zeva-proof-pct{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--good);white-space:nowrap;}" +
-      ".zeva-proof-snip{padding:11px 12px;font-size:12.5px;line-height:1.7;color:var(--muted);background-image:repeating-linear-gradient(var(--paper) 0 27px, var(--paper-rule) 27px 28px);}" +
-      ".zeva-proof-snip mark{background:var(--accent-soft);color:var(--text);border-radius:3px;padding:1px 3px;font-weight:600;}" +
+      ".ochreshift-proof-wrap{margin-top:8px;}" +
+      ".ochreshift-proof{border-radius:var(--r2);border:1px solid var(--paper-rule);background:var(--paper);overflow:hidden;transform-origin:top;transition:opacity .35s ease-out,transform .35s ease-out;opacity:0;transform:translateY(-6px) scaleY(.8);}" +
+      ".ochreshift-proof.ochreshift-revealed{opacity:1;transform:translateY(0) scaleY(1);}" +
+      ".ochreshift-proof-meta{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--paper-rule);padding:8px 11px;}" +
+      ".ochreshift-proof-file{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}" +
+      ".ochreshift-proof-file svg{width:13px;height:13px;color:var(--accent);flex-shrink:0;}" +
+      ".ochreshift-proof-match{margin-left:auto;display:flex;align-items:center;gap:7px;flex-shrink:0;}" +
+      ".ochreshift-proof-bar{width:44px;height:5px;border-radius:3px;background:var(--ring);overflow:hidden;}" +
+      ".ochreshift-proof-bar-fill{display:block;height:100%;width:0%;background:var(--good);transition:width .6s ease-out .2s;}" +
+      ".ochreshift-proof.ochreshift-revealed .ochreshift-proof-bar-fill{width:var(--match,0%);}" +
+      ".ochreshift-proof-pct{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--good);white-space:nowrap;}" +
+      ".ochreshift-proof-snip{padding:11px 12px;font-size:12.5px;line-height:1.7;color:var(--muted);background-image:repeating-linear-gradient(var(--paper) 0 27px, var(--paper-rule) 27px 28px);}" +
+      ".ochreshift-proof-snip mark{background:var(--accent-soft);color:var(--text);border-radius:3px;padding:1px 3px;font-weight:600;}" +
       // Lead affordance + ticket
-      ".zeva-lead-btn{all:unset;box-sizing:border-box;margin-top:12px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:var(--r1);background:var(--panel);padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;}" +
-      ".zeva-lead-btn:hover{border-color:var(--accent);}" +
-      ".zeva-lead-btn:focus-visible{outline:2px solid var(--accent);}" +
-      ".zeva-lead-btn svg{width:14px;height:14px;color:var(--accent);}" +
-      ".zeva-ticket-wrap{margin-top:12px;}" +
-      ".zeva-ticket{position:relative;border-radius:var(--r1);border:1px solid var(--paper-rule);background:var(--paper);padding:16px;box-shadow:0 10px 26px -12px rgba(30,41,90,.35);transition:transform .45s ease-out,opacity .45s ease-out;}" +
-      ".zeva-ticket.zeva-sent{transform:translateY(-8px) rotate(-1deg);}" +
-      ".zeva-ticket.zeva-gone{transform:translateY(30px) scale(.9);opacity:0;}" +
-      ".zeva-ticket-stamp{position:absolute;right:12px;top:12px;transform:rotate(9deg);border:2px solid var(--accent);border-radius:6px;padding:3px 7px;font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--accent);opacity:.85;}" +
-      ".zeva-ticket-title{font-family:var(--mono);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);margin:0;padding-right:70px;}" +
-      ".zeva-ticket-sub{margin:4px 0 12px;font-size:13.5px;font-weight:650;color:var(--text);}" +
-      ".zeva-ticket-fields{display:flex;flex-direction:column;gap:8px;}" +
-      ".zeva-ticket-input{width:100%;border:0;border-bottom:1.5px dashed var(--paper-rule);background:transparent;padding:7px 2px;font-size:13.5px;font-family:inherit;color:var(--text);outline:none;}" +
-      ".zeva-ticket-input:focus{border-bottom-color:var(--accent);}" +
-      ".zeva-ticket-submit{all:unset;box-sizing:border-box;display:block;width:100%;margin-top:12px;border-radius:var(--r1);padding:11px;text-align:center;font-size:13.5px;font-weight:700;color:#fff;background:var(--accent);cursor:pointer;}" +
-      ".zeva-ticket-submit:disabled{opacity:.4;cursor:not-allowed;}" +
-      ".zeva-ticket-submit:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}" +
-      ".zeva-ticket-error{margin-top:10px;padding:9px 10px;border-radius:var(--r1);border:1px dashed #ef4444;background:rgba(239,68,68,.08);font-size:12px;line-height:1.5;color:var(--text);}" +
-      ".zeva-ticket-error b{display:block;margin-bottom:3px;}" +
-      ".zeva-ticket-retry{all:unset;box-sizing:border-box;font-weight:700;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:12px;}" +
-      ".zeva-ticket-retry:focus-visible{outline:2px solid var(--accent);}" +
-      ".zeva-stub{margin-top:12px;display:flex;align-items:center;gap:10px;border-radius:var(--r2);padding:12px 14px;font-size:13px;border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.12);}" +
-      ".zeva-stub-check{width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;display:grid;place-items:center;flex-shrink:0;}" +
-      ".zeva-stub-check svg{width:14px;height:14px;}" +
-      ".zeva-stub-name{display:block;margin-top:2px;font-size:11.5px;color:var(--muted);}" +
+      ".ochreshift-lead-btn{all:unset;box-sizing:border-box;margin-top:12px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:var(--r1);background:var(--panel);padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;}" +
+      ".ochreshift-lead-btn:hover{border-color:var(--accent);}" +
+      ".ochreshift-lead-btn:focus-visible{outline:2px solid var(--accent);}" +
+      ".ochreshift-lead-btn svg{width:14px;height:14px;color:var(--accent);}" +
+      ".ochreshift-ticket-wrap{margin-top:12px;}" +
+      ".ochreshift-ticket{position:relative;border-radius:var(--r1);border:1px solid var(--paper-rule);background:var(--paper);padding:16px;box-shadow:0 10px 26px -12px rgba(30,41,90,.35);transition:transform .45s ease-out,opacity .45s ease-out;}" +
+      ".ochreshift-ticket.ochreshift-sent{transform:translateY(-8px) rotate(-1deg);}" +
+      ".ochreshift-ticket.ochreshift-gone{transform:translateY(30px) scale(.9);opacity:0;}" +
+      ".ochreshift-ticket-stamp{position:absolute;right:12px;top:12px;transform:rotate(9deg);border:2px solid var(--accent);border-radius:6px;padding:3px 7px;font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--accent);opacity:.85;}" +
+      ".ochreshift-ticket-title{font-family:var(--mono);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);margin:0;padding-right:70px;}" +
+      ".ochreshift-ticket-sub{margin:4px 0 12px;font-size:13.5px;font-weight:650;color:var(--text);}" +
+      ".ochreshift-ticket-fields{display:flex;flex-direction:column;gap:8px;}" +
+      ".ochreshift-ticket-input{width:100%;border:0;border-bottom:1.5px dashed var(--paper-rule);background:transparent;padding:7px 2px;font-size:13.5px;font-family:inherit;color:var(--text);outline:none;}" +
+      ".ochreshift-ticket-input:focus{border-bottom-color:var(--accent);}" +
+      ".ochreshift-ticket-submit{all:unset;box-sizing:border-box;display:block;width:100%;margin-top:12px;border-radius:var(--r1);padding:11px;text-align:center;font-size:13.5px;font-weight:700;color:#fff;background:var(--accent);cursor:pointer;}" +
+      ".ochreshift-ticket-submit:disabled{opacity:.4;cursor:not-allowed;}" +
+      ".ochreshift-ticket-submit:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}" +
+      ".ochreshift-ticket-error{margin-top:10px;padding:9px 10px;border-radius:var(--r1);border:1px dashed #ef4444;background:rgba(239,68,68,.08);font-size:12px;line-height:1.5;color:var(--text);}" +
+      ".ochreshift-ticket-error b{display:block;margin-bottom:3px;}" +
+      ".ochreshift-ticket-retry{all:unset;box-sizing:border-box;font-weight:700;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:12px;}" +
+      ".ochreshift-ticket-retry:focus-visible{outline:2px solid var(--accent);}" +
+      ".ochreshift-stub{margin-top:12px;display:flex;align-items:center;gap:10px;border-radius:var(--r2);padding:12px 14px;font-size:13px;border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.12);}" +
+      ".ochreshift-stub-check{width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;display:grid;place-items:center;flex-shrink:0;}" +
+      ".ochreshift-stub-check svg{width:14px;height:14px;}" +
+      ".ochreshift-stub-name{display:block;margin-top:2px;font-size:11.5px;color:var(--muted);}" +
       // Footer
-      ".zeva-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding:9px 14px;flex-shrink:0;font-size:10.5px;color:var(--faint);}" +
-      ".zeva-footer-left{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;}" +
-      ".zeva-footer-left>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
-      ".zeva-footer-left svg{width:12px;height:12px;color:var(--good);flex-shrink:0;}" +
-      ".zeva-footer-brand{flex-shrink:0;}" +
-      ".zeva-footer-brand b{color:var(--muted);font-weight:700;}" +
+      ".ochreshift-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding:9px 14px;flex-shrink:0;font-size:10.5px;color:var(--faint);}" +
+      ".ochreshift-footer-left{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;}" +
+      ".ochreshift-footer-left>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
+      ".ochreshift-footer-left svg{width:12px;height:12px;color:var(--good);flex-shrink:0;}" +
+      ".ochreshift-footer-brand{flex-shrink:0;}" +
+      ".ochreshift-footer-brand b{color:var(--muted);font-weight:700;}" +
       // Keyframes
-      "@keyframes zeva-breathe{0%,100%{box-shadow:var(--shadow),0 0 0 0 var(--accent-soft);}50%{box-shadow:var(--shadow),0 0 0 9px transparent;}}" +
-      "@keyframes zeva-blink{0%,100%{opacity:1;}50%{opacity:.25;}}" +
-      "@keyframes zeva-sweep{0%{background-position:200% 0;}100%{background-position:-200% 0;}}" +
-      "@media (prefers-reduced-motion: reduce){.zeva-anchor,.zeva-anchor *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}}" +
+      "@keyframes ochreshift-breathe{0%,100%{box-shadow:var(--shadow),0 0 0 0 var(--accent-soft);}50%{box-shadow:var(--shadow),0 0 0 9px transparent;}}" +
+      "@keyframes ochreshift-blink{0%,100%{opacity:1;}50%{opacity:.25;}}" +
+      "@keyframes ochreshift-sweep{0%{background-position:200% 0;}100%{background-position:-200% 0;}}" +
+      "@media (prefers-reduced-motion: reduce){.ochreshift-anchor,.ochreshift-anchor *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}}" +
       // Mobile: panel goes near-fullscreen; launcher stays put.
       "@media (max-width: 480px){" +
-      ".zeva-panel.zeva-open{position:fixed;inset:8px;width:auto;height:auto;max-height:none;border-radius:var(--r3);z-index:2147483001;}" +
+      ".ochreshift-panel.ochreshift-open{position:fixed;inset:8px;width:auto;height:auto;max-height:none;border-radius:var(--r3);z-index:2147483001;}" +
       "}" +
       "@media (max-width: 340px){" +
-      ".zeva-panel.zeva-open{inset:0;border-radius:0;}" +
+      ".ochreshift-panel.ochreshift-open{inset:0;border-radius:0;}" +
       "}"
     );
   }
@@ -514,7 +514,7 @@
       if (!drag.moved && Math.hypot(dx, dy) < 6) return;
       if (!drag.moved) {
         drag.moved = true;
-        anchorEl.classList.add("zeva-dragging");
+        anchorEl.classList.add("ochreshift-dragging");
       }
       var vw = window.innerWidth, vh = window.innerHeight;
       var rect = anchorEl.getBoundingClientRect();
@@ -529,7 +529,7 @@
     function onPointerUp() {
       document.removeEventListener("pointermove", onPointerMove);
       var wasDrag = drag && drag.moved;
-      anchorEl.classList.remove("zeva-dragging");
+      anchorEl.classList.remove("ochreshift-dragging");
 
       if (wasDrag) {
         // Snap to nearest corner from the final drop position.
@@ -560,7 +560,7 @@
   }
 
   function loadGoogleFont(name) {
-    var id = "zeva-widget-google-font";
+    var id = "ochreshift-widget-google-font";
     var link = document.getElementById(id);
     var href = "https://fonts.googleapis.com/css2?family=" + encodeURIComponent(name).replace(/%20/g, "+") + ":wght@400;500;600;700&display=swap";
     if (!link) {
@@ -573,7 +573,7 @@
   }
 
   function loadCustomFont(family, url) {
-    var id = "zeva-widget-custom-font";
+    var id = "ochreshift-widget-custom-font";
     var styleTag = document.getElementById(id);
     if (!styleTag) {
       styleTag = document.createElement("style");
@@ -584,9 +584,9 @@
     var src = String(url).replace(/"/g, "");
     var fmt = /\.woff2(\?|$)/i.test(src) ? "woff2"
       : /\.woff(\?|$)/i.test(src) ? "woff"
-      : /\.otf(\?|$)/i.test(src) ? "opentype"
-      : /\.ttf(\?|$)/i.test(src) ? "truetype"
-      : "woff2";
+        : /\.otf(\?|$)/i.test(src) ? "opentype"
+          : /\.ttf(\?|$)/i.test(src) ? "truetype"
+            : "woff2";
     styleTag.textContent = '@font-face{font-family:"' + fam + '";src:url("' + src + '") format("' + fmt + '");font-weight:100 900;font-display:swap;}';
   }
 
@@ -615,20 +615,20 @@
   // =======================================================================
   function buildLauncherHtml() {
     var variant = ["pill", "bubble", "bar"].indexOf(RAW.launcher) >= 0 ? RAW.launcher : "pill";
-    var glassClass = variant === "bubble" ? "" : RAW.glass ? "zeva-glass" : "zeva-solid";
+    var glassClass = variant === "bubble" ? "" : RAW.glass ? "ochreshift-glass" : "ochreshift-solid";
     var label = state.configStatus === "error" ? "Chat unavailable" : "Ask " + state.name;
     var launcherIcon = RAW.logo
-      ? '<span class="zeva-launcher-icon' + (variant === "bubble" ? "" : " zeva-orb") + '"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></span>'
-      : '<span class="zeva-launcher-icon' + (variant === "bubble" ? "" : " zeva-orb") + '">' + ICON_SPARK + "</span>";
+      ? '<span class="ochreshift-launcher-icon' + (variant === "bubble" ? "" : " ochreshift-orb") + '"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></span>'
+      : '<span class="ochreshift-launcher-icon' + (variant === "bubble" ? "" : " ochreshift-orb") + '">' + ICON_SPARK + "</span>";
     var html =
-      '<button type="button" class="zeva-launcher zeva-variant-' + variant + " " + glassClass +
-      (state.configStatus !== "error" ? " zeva-breathe" : "") +
-      '" aria-label="' + escapeHtml(label) + '" id="zeva-launcher-btn">' +
+      '<button type="button" class="ochreshift-launcher ochreshift-variant-' + variant + " " + glassClass +
+      (state.configStatus !== "error" ? " ochreshift-breathe" : "") +
+      '" aria-label="' + escapeHtml(label) + '" id="ochreshift-launcher-btn">' +
       launcherIcon;
     if (variant !== "bubble") {
       html +=
-        '<span class="zeva-launcher-label" id="zeva-launcher-label">' + escapeHtml(label) + "</span>" +
-        '<span class="zeva-launcher-kbd" title="Press / to open chat">/</span>';
+        '<span class="ochreshift-launcher-label" id="ochreshift-launcher-label">' + escapeHtml(label) + "</span>" +
+        '<span class="ochreshift-launcher-kbd" title="Press / to open chat">/</span>';
     }
     html += "</button>";
     return html;
@@ -641,25 +641,25 @@
     // only if the server actually allows it. Prevents a free-tier embed from
     // simply setting data-whitelabel="on" itself to remove branding for free.
     var refParam = RAW.botId ? "?ref=" + RAW.botId + "&utm_source=widget_watermark" : "";
-    var brandRow = '<span class="zeva-footer-brand" id="zeva-footer-brand">Powered by <b><a href="https://zeva.app' + refParam + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">Zeva</a></b></span>';
+    var brandRow = '<span class="ochreshift-footer-brand" id="ochreshift-footer-brand">Powered by <b><a href="https://ochreshift.app' + refParam + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">OchreShift</a></b></span>';
     var headerAvatar = RAW.logo
-      ? '<div class="zeva-header-avatar"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></div>'
-      : '<div class="zeva-header-avatar"></div>';
+      ? '<div class="ochreshift-header-avatar"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></div>'
+      : '<div class="ochreshift-header-avatar"></div>';
     return (
-      '<div class="zeva-header">' +
+      '<div class="ochreshift-header">' +
       headerAvatar +
-      '<div class="zeva-header-name" id="zeva-header-name"></div>' +
-      '<button type="button" class="zeva-header-close" id="zeva-close-btn" aria-label="Close">' + ICON_CLOSE + "</button>" +
+      '<div class="ochreshift-header-name" id="ochreshift-header-name"></div>' +
+      '<button type="button" class="ochreshift-header-close" id="ochreshift-close-btn" aria-label="Close">' + ICON_CLOSE + "</button>" +
       "</div>" +
-      '<form class="zeva-composer" id="zeva-composer-form" autocomplete="off">' +
-      '<span class="zeva-composer-icon">' + ICON_SPARK + "</span>" +
-      '<input class="zeva-input" id="zeva-input" type="text" placeholder="" />' +
-      '<button type="submit" class="zeva-send" id="zeva-send-btn" aria-label="Ask" disabled>' + ICON_ARROW + "</button>" +
+      '<form class="ochreshift-composer" id="ochreshift-composer-form" autocomplete="off">' +
+      '<span class="ochreshift-composer-icon">' + ICON_SPARK + "</span>" +
+      '<input class="ochreshift-input" id="ochreshift-input" type="text" placeholder="" />' +
+      '<button type="submit" class="ochreshift-send" id="ochreshift-send-btn" aria-label="Ask" disabled>' + ICON_ARROW + "</button>" +
       "</form>" +
-      '<div class="zeva-sr-only" id="zeva-live-region" aria-live="polite" aria-atomic="true"></div>' +
-      '<div class="zeva-stream" id="zeva-stream"></div>' +
-      '<div class="zeva-footer">' +
-      '<span class="zeva-footer-left" id="zeva-footer-left">' + ICON_CHECK + "<span>Grounded in your documents</span></span>" +
+      '<div class="ochreshift-sr-only" id="ochreshift-live-region" aria-live="polite" aria-atomic="true"></div>' +
+      '<div class="ochreshift-stream" id="ochreshift-stream"></div>' +
+      '<div class="ochreshift-footer">' +
+      '<span class="ochreshift-footer-left" id="ochreshift-footer-left">' + ICON_CHECK + "<span>Grounded in your documents</span></span>" +
       brandRow +
       "</div>"
     );
@@ -670,14 +670,14 @@
   // =======================================================================
   function mount() {
     hostEl = document.createElement("div");
-    hostEl.id = "zeva-widget-root-" + BOT_ID.replace(/[^a-zA-Z0-9_-]/g, "");
+    hostEl.id = "ochreshift-widget-root-" + BOT_ID.replace(/[^a-zA-Z0-9_-]/g, "");
     document.body.appendChild(hostEl);
 
     if (typeof hostEl.attachShadow !== "function") {
       // No Shadow DOM support — bail rather than inject unscoped styles that
       // could clash with (or be broken by) the host page.
       if (window.console && console.warn) {
-        console.warn("[Zeva Widget] Shadow DOM is not supported in this browser; widget disabled.");
+        console.warn("[OchreShift Widget] Shadow DOM is not supported in this browser; widget disabled.");
       }
       return;
     }
@@ -689,7 +689,7 @@
     shadow.appendChild(styleTag);
 
     anchorEl = document.createElement("div");
-    anchorEl.className = "zeva-anchor" + (RAW.draggable ? " zeva-draggable" : "");
+    anchorEl.className = "ochreshift-anchor" + (RAW.draggable ? " ochreshift-draggable" : "");
     shadow.appendChild(anchorEl);
 
     applyTheme();
@@ -698,8 +698,8 @@
     applyFont();
 
     panelEl = document.createElement("div");
-    panelEl.className = "zeva-panel" + (RAW.glass ? " zeva-glass" : "");
-    panelEl.id = "zeva-panel";
+    panelEl.className = "ochreshift-panel" + (RAW.glass ? " ochreshift-glass" : "");
+    panelEl.id = "ochreshift-panel";
     panelEl.setAttribute("role", "dialog");
     panelEl.setAttribute("aria-label", "Ask " + state.name);
     panelEl.setAttribute("aria-hidden", "true");
@@ -711,12 +711,12 @@
     launcherWrapEl.innerHTML = buildLauncherHtml();
     anchorEl.appendChild(launcherWrapEl);
 
-    streamEl = shadow.getElementById("zeva-stream");
+    streamEl = shadow.getElementById("ochreshift-stream");
 
-    var closeBtn = shadow.getElementById("zeva-close-btn");
+    var closeBtn = shadow.getElementById("ochreshift-close-btn");
     if (closeBtn) closeBtn.addEventListener("click", closePanel);
 
-    var launcherBtn = shadow.getElementById("zeva-launcher-btn");
+    var launcherBtn = shadow.getElementById("ochreshift-launcher-btn");
     if (launcherBtn) launcherBtn.addEventListener("click", openPanel);
     if (RAW.draggable && launcherBtn) setupDrag(launcherBtn);
 
@@ -727,7 +727,7 @@
       if (e.key === "Escape") {
         e.stopPropagation();
         closePanel();
-        var btn = shadow.getElementById("zeva-launcher-btn");
+        var btn = shadow.getElementById("ochreshift-launcher-btn");
         if (btn) btn.focus();
         return;
       }
@@ -745,15 +745,15 @@
       openPanel();
     });
 
-    var input = shadow.getElementById("zeva-input");
-    var sendBtn = shadow.getElementById("zeva-send-btn");
+    var input = shadow.getElementById("ochreshift-input");
+    var sendBtn = shadow.getElementById("ochreshift-send-btn");
     if (input) {
       input.addEventListener("input", function () {
         if (sendBtn) sendBtn.disabled = !input.value.trim() || state.isScanning || state.configStatus === "error";
       });
     }
 
-    var form = shadow.getElementById("zeva-composer-form");
+    var form = shadow.getElementById("ochreshift-composer-form");
     if (form) {
       form.addEventListener("submit", function (e) {
         e.preventDefault();
@@ -768,10 +768,10 @@
     // Consent notice — when data-consent="on", show a disclaimer before chat
     if (RAW.consent) {
       var consentBar = document.createElement("div");
-      consentBar.id = "zeva-consent-bar";
+      consentBar.id = "ochreshift-consent-bar";
       consentBar.style.cssText = "padding:10px 14px;font-size:12px;color:#666;text-align:center;border-top:1px solid #eee;background:#fafafa;";
       consentBar.innerHTML = 'This automated assistant uses AI processing. By continuing, you consent to our data terms and analytics storage.';
-      var composerWrap = shadow.querySelector(".zeva-composer-wrap") || shadow.getElementById("zeva-composer-form");
+      var composerWrap = shadow.querySelector(".ochreshift-composer-wrap") || shadow.getElementById("ochreshift-composer-form");
       if (composerWrap && composerWrap.parentNode) {
         composerWrap.parentNode.insertBefore(consentBar, composerWrap);
       }
@@ -807,23 +807,23 @@
   function openPanel() {
     if (state.isOpen) return;
     state.isOpen = true;
-    panelEl.classList.add("zeva-open");
+    panelEl.classList.add("ochreshift-open");
     panelEl.setAttribute("aria-hidden", "false");
     panelEl.removeAttribute("inert");
     launcherWrapEl.style.display = "none";
-    anchorEl.classList.add("zeva-gap");
-    var input = shadow.getElementById("zeva-input");
+    anchorEl.classList.add("ochreshift-gap");
+    var input = shadow.getElementById("ochreshift-input");
     if (input && !input.disabled) setTimeout(function () { input.focus(); }, 30);
   }
 
   function closePanel() {
     if (!state.isOpen) return;
     state.isOpen = false;
-    panelEl.classList.remove("zeva-open");
+    panelEl.classList.remove("ochreshift-open");
     panelEl.setAttribute("aria-hidden", "true");
     panelEl.setAttribute("inert", "");
     launcherWrapEl.style.display = "";
-    anchorEl.classList.remove("zeva-gap");
+    anchorEl.classList.remove("ochreshift-gap");
   }
 
   var FOCUSABLE_SEL =
@@ -850,7 +850,7 @@
 
   /** Announce a completed assistant reply to screen readers once (not word-by-word during the typewriter animation). */
   function announceToScreenReader(text) {
-    var region = shadow && shadow.getElementById("zeva-live-region");
+    var region = shadow && shadow.getElementById("ochreshift-live-region");
     if (!region || !text) return;
     region.textContent = "";
     setTimeout(function () { region.textContent = text; }, 50);
@@ -861,10 +861,10 @@
   // resolves — see fetchConfig()).
   // =======================================================================
   function refreshBranding() {
-    var headerName = shadow.getElementById("zeva-header-name");
+    var headerName = shadow.getElementById("ochreshift-header-name");
     if (headerName) headerName.textContent = state.name;
 
-    var input = shadow.getElementById("zeva-input");
+    var input = shadow.getElementById("ochreshift-input");
     if (input) {
       var placeholder = state.configStatus === "error" ? "Chat is currently unavailable" : "Ask anything about " + state.name + "…";
       input.setAttribute("placeholder", placeholder);
@@ -872,9 +872,9 @@
     }
 
     var label = state.configStatus === "error" ? "Chat unavailable" : "Ask " + state.name;
-    var launcherLabelEl = shadow.getElementById("zeva-launcher-label");
+    var launcherLabelEl = shadow.getElementById("ochreshift-launcher-label");
     if (launcherLabelEl) launcherLabelEl.textContent = label;
-    var launcherBtn = shadow.getElementById("zeva-launcher-btn");
+    var launcherBtn = shadow.getElementById("ochreshift-launcher-btn");
     if (launcherBtn) launcherBtn.setAttribute("aria-label", label);
 
     if (panelEl) panelEl.setAttribute("aria-label", "Ask " + state.name);
@@ -884,7 +884,7 @@
   function refreshLogo() {
     if (!RAW.logo) return;
     // Header avatar
-    var avatarEl = shadow.querySelector(".zeva-header-avatar");
+    var avatarEl = shadow.querySelector(".ochreshift-header-avatar");
     if (avatarEl && !avatarEl.querySelector("img")) {
       var img = document.createElement("img");
       img.src = RAW.logo;
@@ -893,7 +893,7 @@
       avatarEl.appendChild(img);
     }
     // Launcher icon
-    var launcherIcon = shadow.querySelector(".zeva-launcher-icon");
+    var launcherIcon = shadow.querySelector(".ochreshift-launcher-icon");
     if (launcherIcon && !launcherIcon.querySelector("img")) {
       var img2 = document.createElement("img");
       img2.src = RAW.logo;
@@ -905,7 +905,7 @@
 
   /** Re-render the entire launcher (used when launcher style changes from config). */
   function refreshLauncher() {
-    var old = shadow.getElementById("zeva-launcher-btn");
+    var old = shadow.getElementById("ochreshift-launcher-btn");
     if (!old) return;
     var tmp = document.createElement("div");
     tmp.innerHTML = buildLauncherHtml();
@@ -923,8 +923,8 @@
     if (styleTag) {
       var css = styleTag.textContent;
       // Inject or update font-family override at the end
-      var marker = "/* @zeva-font-override */";
-      var override = marker + "\n.zeva-panel,.zeva-launcher{font-family:\"" + family + "\",sans-serif !important;}";
+      var marker = "/* @ochreshift-font-override */";
+      var override = marker + "\n.ochreshift-panel,.ochreshift-launcher{font-family:\"" + family + "\",sans-serif !important;}";
       if (css.indexOf(marker) >= 0) {
         styleTag.textContent = css.replace(new RegExp(marker[0] + ".*?" + marker.slice(-1) + "[\\s\\S]*$"), override);
       } else {
@@ -934,53 +934,53 @@
   }
 
   function refreshLauncherAvailability() {
-    var btn = shadow.getElementById("zeva-launcher-btn");
+    var btn = shadow.getElementById("ochreshift-launcher-btn");
     if (!btn) return;
     if (state.configStatus === "error") {
-      btn.classList.remove("zeva-breathe");
-      btn.classList.add("zeva-unavailable");
-      if (!shadow.getElementById("zeva-launcher-dot")) {
+      btn.classList.remove("ochreshift-breathe");
+      btn.classList.add("ochreshift-unavailable");
+      if (!shadow.getElementById("ochreshift-launcher-dot")) {
         var dot = document.createElement("span");
-        dot.className = "zeva-launcher-dot";
-        dot.id = "zeva-launcher-dot";
+        dot.className = "ochreshift-launcher-dot";
+        dot.id = "ochreshift-launcher-dot";
         dot.title = "Chat unavailable";
         btn.appendChild(dot);
       }
-      var footerLeft = shadow.getElementById("zeva-footer-left");
+      var footerLeft = shadow.getElementById("ochreshift-footer-left");
       if (footerLeft) footerLeft.style.display = "none";
     }
   }
 
   function renderEmptyState() {
     var el = document.createElement("div");
-    el.id = "zeva-empty";
+    el.id = "ochreshift-empty";
 
     var p = document.createElement("p");
-    p.className = "zeva-welcome";
+    p.className = "ochreshift-welcome";
     p.textContent = state.welcome;
     el.appendChild(p);
 
     if (state.configStatus === "error") {
       var warn = document.createElement("div");
-      warn.className = "zeva-unavailable";
+      warn.className = "ochreshift-unavailable";
       warn.textContent = state.configErrorMessage || "This chat is temporarily unavailable. Please check back soon.";
       el.appendChild(warn);
     } else if (state.suggestions && state.suggestions.length) {
       var chips = document.createElement("div");
-      chips.className = "zeva-chips";
+      chips.className = "ochreshift-chips";
       state.suggestions.forEach(function (raw) {
         var q = String(raw || "").trim();
         if (!q) return;
         var btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "zeva-chip";
+        btn.className = "ochreshift-chip";
         btn.innerHTML = ICON_SPARK;
         var span = document.createElement("span");
-        span.className = "zeva-chip-text";
+        span.className = "ochreshift-chip-text";
         span.textContent = q;
         btn.appendChild(span);
         var kbd = document.createElement("span");
-        kbd.className = "zeva-chip-kbd";
+        kbd.className = "ochreshift-chip-kbd";
         kbd.textContent = "↵";
         btn.appendChild(kbd);
         btn.addEventListener("click", function () { ask(q); });
@@ -993,14 +993,14 @@
   }
 
   function refreshEmptyStateIfUntouched() {
-    var existing = shadow.getElementById("zeva-empty");
+    var existing = shadow.getElementById("ochreshift-empty");
     if (!existing) return; // user already sent a message — don't disturb history
     existing.remove();
     renderEmptyState();
   }
 
   function removeEmptyState() {
-    var el = shadow.getElementById("zeva-empty");
+    var el = shadow.getElementById("ochreshift-empty");
     if (el) el.remove();
   }
 
@@ -1112,13 +1112,13 @@
       }
       // Whitelabel: server-authoritative
       if (RAW.whitelabel && cfg.whitelabelAllowed) {
-        var brandEl = shadow.getElementById("zeva-footer-brand");
+        var brandEl = shadow.getElementById("ochreshift-footer-brand");
         if (brandEl) brandEl.style.display = "none";
       }
     } else {
       // No design blob — still apply whitelabel if both sides agree
       if (RAW.whitelabel && cfg.whitelabelAllowed) {
-        var brandEl2 = shadow.getElementById("zeva-footer-brand");
+        var brandEl2 = shadow.getElementById("ochreshift-footer-brand");
         if (brandEl2) brandEl2.style.display = "none";
       }
     }
@@ -1135,8 +1135,8 @@
     refreshLauncherAvailability();
     refreshEmptyStateIfUntouched();
 
-    var input = shadow.getElementById("zeva-input");
-    var sendBtn = shadow.getElementById("zeva-send-btn");
+    var input = shadow.getElementById("ochreshift-input");
+    var sendBtn = shadow.getElementById("ochreshift-send-btn");
     if (input) input.disabled = true;
     if (sendBtn) sendBtn.disabled = true;
   }
@@ -1146,8 +1146,8 @@
   // =======================================================================
   function setScanning(on) {
     state.isScanning = on;
-    var input = shadow.getElementById("zeva-input");
-    var sendBtn = shadow.getElementById("zeva-send-btn");
+    var input = shadow.getElementById("ochreshift-input");
+    var sendBtn = shadow.getElementById("ochreshift-send-btn");
     var unavailable = state.configStatus === "error";
     if (input) input.disabled = on || unavailable;
     if (sendBtn) sendBtn.disabled = on || unavailable || !(input && input.value.trim());
@@ -1158,19 +1158,19 @@
   function appendScanIndicator() {
     removeScanIndicator();
     var el = document.createElement("div");
-    el.className = "zeva-scan";
-    el.id = "zeva-scan-indicator";
+    el.className = "ochreshift-scan";
+    el.id = "ochreshift-scan-indicator";
     el.innerHTML =
-      '<div class="zeva-scan-label"><span class="zeva-scan-dot"></span>searching your knowledge…</div>' +
-      '<div class="zeva-scan-bar zeva-w1"></div>' +
-      '<div class="zeva-scan-bar zeva-w2"></div>' +
-      '<div class="zeva-scan-bar zeva-w3"></div>';
+      '<div class="ochreshift-scan-label"><span class="ochreshift-scan-dot"></span>searching your knowledge…</div>' +
+      '<div class="ochreshift-scan-bar ochreshift-w1"></div>' +
+      '<div class="ochreshift-scan-bar ochreshift-w2"></div>' +
+      '<div class="ochreshift-scan-bar ochreshift-w3"></div>';
     streamEl.appendChild(el);
     scrollToBottom();
   }
 
   function removeScanIndicator() {
-    var el = shadow.getElementById("zeva-scan-indicator");
+    var el = shadow.getElementById("ochreshift-scan-indicator");
     if (el) el.remove();
   }
 
@@ -1197,7 +1197,7 @@
   function addUserMessage(text, isRestore) {
     removeEmptyState();
     var el = document.createElement("div");
-    el.className = "zeva-msg-user";
+    el.className = "ochreshift-msg-user";
     el.textContent = text;
     streamEl.appendChild(el);
     scrollToBottom();
@@ -1217,18 +1217,18 @@
 
   function buildProofCard(src) {
     var wrap = document.createElement("div");
-    wrap.className = "zeva-proof-wrap";
+    wrap.className = "ochreshift-proof-wrap";
     var match = typeof src.match === "number" ? src.match : parseInt(src.match, 10) || 0;
 
     var card = document.createElement("div");
-    card.className = "zeva-proof";
+    card.className = "ochreshift-proof";
     card.style.setProperty("--match", match + "%");
 
     var meta = document.createElement("div");
-    meta.className = "zeva-proof-meta";
+    meta.className = "ochreshift-proof-meta";
 
     var fileSpan = document.createElement("span");
-    fileSpan.className = "zeva-proof-file";
+    fileSpan.className = "ochreshift-proof-file";
     fileSpan.innerHTML = ICON_FILE;
     var fileNameSpan = document.createElement("span");
     fileNameSpan.textContent = src.file || "document";
@@ -1236,10 +1236,10 @@
     meta.appendChild(fileSpan);
 
     var matchWrap = document.createElement("span");
-    matchWrap.className = "zeva-proof-match";
-    matchWrap.innerHTML = '<span class="zeva-proof-bar"><span class="zeva-proof-bar-fill"></span></span>';
+    matchWrap.className = "ochreshift-proof-match";
+    matchWrap.innerHTML = '<span class="ochreshift-proof-bar"><span class="ochreshift-proof-bar-fill"></span></span>';
     var pct = document.createElement("span");
-    pct.className = "zeva-proof-pct";
+    pct.className = "ochreshift-proof-pct";
     pct.textContent = match + "% match";
     matchWrap.appendChild(pct);
     meta.appendChild(matchWrap);
@@ -1247,7 +1247,7 @@
     card.appendChild(meta);
 
     var snip = document.createElement("div");
-    snip.className = "zeva-proof-snip";
+    snip.className = "ochreshift-proof-snip";
     appendHighlighted(snip, src.snip || "", src.highlight || "");
     card.appendChild(snip);
 
@@ -1257,15 +1257,15 @@
 
   function buildLeadTicket(onDone) {
     var el = document.createElement("div");
-    el.className = "zeva-ticket-wrap";
+    el.className = "ochreshift-ticket-wrap";
     el.innerHTML =
-      '<div class="zeva-ticket" id="zt-card">' +
-      '<span class="zeva-ticket-stamp">WARM LEAD</span>' +
-      '<h4 class="zeva-ticket-title">' + escapeHtml(state.name) + " · handoff</h4>" +
-      '<div class="zeva-ticket-sub">Leave your details and the team will reach out.</div>' +
-      '<div class="zeva-ticket-fields" id="zt-fields"></div>' +
-      '<button type="button" class="zeva-ticket-submit" id="zt-submit" disabled>Hand me to the team →</button>' +
-      '<div class="zeva-ticket-error" id="zt-error" hidden></div>' +
+      '<div class="ochreshift-ticket" id="zt-card">' +
+      '<span class="ochreshift-ticket-stamp">WARM LEAD</span>' +
+      '<h4 class="ochreshift-ticket-title">' + escapeHtml(state.name) + " · handoff</h4>" +
+      '<div class="ochreshift-ticket-sub">Leave your details and the team will reach out.</div>' +
+      '<div class="ochreshift-ticket-fields" id="zt-fields"></div>' +
+      '<button type="button" class="ochreshift-ticket-submit" id="zt-submit" disabled>Hand me to the team →</button>' +
+      '<div class="ochreshift-ticket-error" id="zt-error" hidden></div>' +
       "</div>";
 
     var card = el.querySelector("#zt-card");
@@ -1299,7 +1299,7 @@
       var inputEl;
       if (f.type === "dropdown" && Array.isArray(f.options) && f.options.length > 0) {
         inputEl = document.createElement("select");
-        inputEl.className = "zeva-ticket-input";
+        inputEl.className = "ochreshift-ticket-input";
         var defaultOpt = document.createElement("option");
         defaultOpt.value = "";
         defaultOpt.textContent = "-- Select " + f.label + " --";
@@ -1312,12 +1312,12 @@
         }
       } else if (f.type === "textarea") {
         inputEl = document.createElement("textarea");
-        inputEl.className = "zeva-ticket-input";
+        inputEl.className = "ochreshift-ticket-input";
         inputEl.rows = 2;
         inputEl.placeholder = f.label + (f.required ? "" : " (optional)");
       } else {
         inputEl = document.createElement("input");
-        inputEl.className = "zeva-ticket-input";
+        inputEl.className = "ochreshift-ticket-input";
         inputEl.type = f.type || "text";
         inputEl.placeholder = f.label + (f.required ? "" : " (optional)");
       }
@@ -1351,7 +1351,7 @@
       errorEl.appendChild(span);
       var retryBtn = document.createElement("button");
       retryBtn.type = "button";
-      retryBtn.className = "zeva-ticket-retry";
+      retryBtn.className = "ochreshift-ticket-retry";
       retryBtn.textContent = "Try again";
       retryBtn.addEventListener("click", submitLead);
       errorEl.appendChild(retryBtn);
@@ -1398,12 +1398,12 @@
           if (!res.ok) throw new Error("Lead submit failed (" + res.status + ")");
           var reduce = prefersReducedMotion();
           phase = "sent";
-          card.classList.add("zeva-sent");
+          card.classList.add("ochreshift-sent");
           submitBtn.textContent = "Sent ✓";
           setTimeout(function () {
             phase = "gone";
-            card.classList.remove("zeva-sent");
-            card.classList.add("zeva-gone");
+            card.classList.remove("ochreshift-sent");
+            card.classList.add("ochreshift-gone");
             setTimeout(function () { onDone(leadName); }, reduce ? 0 : 420);
           }, reduce ? 0 : 640);
         })
@@ -1421,9 +1421,9 @@
 
   function buildLeadStub(name) {
     var el = document.createElement("div");
-    el.className = "zeva-stub";
-    el.innerHTML = '<span class="zeva-stub-check">' + ICON_CHECK_BOLD + "</span>" + "<div><b>Handed to the team.</b><small class=\"zeva-stub-name\"></small></div>";
-    el.querySelector(".zeva-stub-name").textContent = (name || "This visitor") + " — marked a warm lead.";
+    el.className = "ochreshift-stub";
+    el.innerHTML = '<span class="ochreshift-stub-check">' + ICON_CHECK_BOLD + "</span>" + "<div><b>Handed to the team.</b><small class=\"ochreshift-stub-name\"></small></div>";
+    el.querySelector(".ochreshift-stub-name").textContent = (name || "This visitor") + " — marked a warm lead.";
     return el;
   }
 
@@ -1432,13 +1432,13 @@
     removeEmptyState();
 
     var wrap = document.createElement("div");
-    wrap.className = "zeva-msg-assistant";
+    wrap.className = "ochreshift-msg-assistant";
 
     var head = document.createElement("div");
-    head.className = "zeva-msg-assistant-head";
+    head.className = "ochreshift-msg-assistant-head";
     head.innerHTML = ICON_CHECK;
     var textSpan = document.createElement("span");
-    textSpan.className = "zeva-msg-assistant-text";
+    textSpan.className = "ochreshift-msg-assistant-text";
     head.appendChild(textSpan);
     wrap.appendChild(head);
 
@@ -1453,12 +1453,12 @@
     // now, so offering the form would just collect details that go nowhere.
     if (payload.limitReached) {
       var la = document.createElement("div");
-      la.className = "zeva-unavailable";
+      la.className = "ochreshift-unavailable";
       la.textContent = payload.text;
       wrap.appendChild(la);
     } else if (payload.isGuardrail) {
       var g = document.createElement("div");
-      g.className = "zeva-guardrail";
+      g.className = "ochreshift-guardrail";
       g.innerHTML = ICON_WARNING;
       var gt = document.createElement("span");
       gt.textContent = "No matching source — routing you to a human.";
@@ -1467,7 +1467,7 @@
     }
 
     if (showProof) {
-      wrap.appendChild(Object.assign(document.createElement("div"), { className: "zeva-connector" }));
+      wrap.appendChild(Object.assign(document.createElement("div"), { className: "ochreshift-connector" }));
       payload.sources.forEach(function (src) { wrap.appendChild(buildProofCard(src)); });
     }
 
@@ -1493,7 +1493,7 @@
     } else if (hasSource) {
       var leadBtn = document.createElement("button");
       leadBtn.type = "button";
-      leadBtn.className = "zeva-lead-btn";
+      leadBtn.className = "ochreshift-lead-btn";
       leadBtn.innerHTML = ICON_USERPLUS + "<span>Book / leave my details</span>";
       leadBtn.addEventListener("click", mountTicket);
       slot.appendChild(leadBtn);
@@ -1501,7 +1501,7 @@
 
     // Feedback buttons (thumbs up/down) for hallucination diagnostics
     var feedbackWrap = document.createElement("div");
-    feedbackWrap.className = "zeva-feedback-wrap";
+    feedbackWrap.className = "ochreshift-feedback-wrap";
     feedbackWrap.style.cssText = "display:flex;gap:6px;margin-top:6px;padding-left:25px;";
 
     var thumbUp = document.createElement("button");
@@ -1537,8 +1537,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ botId: BOT_ID, score: score, answer: answerText }),
-        }).catch(function () {});
-      } catch (e) {}
+        }).catch(function () { });
+      } catch (e) { }
     }
 
     streamEl.appendChild(wrap);
@@ -1566,8 +1566,8 @@
 
     if (showProof) {
       setTimeout(function () {
-        var cards = wrap.querySelectorAll(".zeva-proof");
-        for (var i = 0; i < cards.length; i++) cards[i].classList.add("zeva-revealed");
+        var cards = wrap.querySelectorAll(".ochreshift-proof");
+        for (var i = 0; i < cards.length; i++) cards[i].classList.add("ochreshift-revealed");
       }, 50);
     }
   }

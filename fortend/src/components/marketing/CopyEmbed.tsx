@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 
 const SNIPPET = `<script
-  src="https://cdn.zeva.app/widget.js"
-  data-bot-id="zeva-ai"
+  src="https://cdn.ochreshift.app/widget.js"
+  data-bot-id="ochreshift-ai"
   data-accent="#4f46e5"
   data-corners="soft"
   data-launcher="pill"

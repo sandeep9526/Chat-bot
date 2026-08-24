@@ -5,7 +5,7 @@ import { BOT_ID } from "./defaults";
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 /** CDN host for widget.js — falls back to app URL if CDN not provisioned */
-const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.zeva.app";
+const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.ochreshift.app";
 
 function api_url(): string {
   if (typeof window === "undefined") return RAW_API_URL;
