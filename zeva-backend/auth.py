@@ -20,7 +20,13 @@ BETTER_AUTH_BASE_URL = os.getenv("BETTER_AUTH_BASE_URL", "http://localhost:3000"
 # endpoint in a threadpool, and returns the decoded user — use it directly.
 # Do NOT call `.fetch_token()` yourself: it's a *sync* method, so `await`-ing
 # it raises TypeError, which previously got swallowed into a false 401.
-better_auth = BetterAuth(BETTER_AUTH_BASE_URL)
+# We spoof a realistic browser User-Agent because PyJWT's default (Python-urllib)
+# gets instantly blocked (403 Forbidden) by Cloudflare's Bot Fight Mode when
+# trying to fetch the JWKS keys from the frontend, resulting in a 401 Unauthorized.
+better_auth = BetterAuth(
+    BETTER_AUTH_BASE_URL,
+    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
+)
 
 # Dependency type for routes that require authentication
 CurrentUser = Annotated[User, Depends(better_auth)]
