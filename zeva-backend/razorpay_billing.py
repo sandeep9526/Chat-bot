@@ -30,6 +30,8 @@ subscription_id returned by create_subscription() below — see
 BillingCard.tsx, not something this backend module does.
 """
 
+from __future__ import annotations
+
 import datetime
 import hashlib
 import hmac
