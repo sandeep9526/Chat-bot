@@ -13,11 +13,21 @@ WORKDIR /app
 # Copy installed deps from builder
 COPY --from=builder /install /usr/local
 
-# Copy application code
-COPY . .
-
 # Non-root user for security
 RUN addgroup --system zeva && adduser --system --ingroup zeva zeva
+
+# Copy application code with proper ownership
+COPY --chown=zeva:zeva . .
+
+# Create a dedicated, writable directory for persistent data (documents and ChromaDB)
+RUN mkdir -p /data && chown -R zeva:zeva /data
+
+# Point the app to use the writable /data directory
+ENV ZEVA_DOCS_DIR=/data/documents
+ENV CHROMA_DB_DIR=/data/chroma_db
+# Tell HuggingFace to use a writable cache directory
+ENV HF_HOME=/data/hf_cache
+
 USER zeva
 
 EXPOSE 8000
