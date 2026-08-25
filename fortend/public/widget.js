@@ -248,18 +248,26 @@
   // =======================================================================
   // Icons (inline SVG strings — no external icon font/CDN)
   // =======================================================================
+  var ICON_LOGO =
+    '<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="16,2 3.88,9 3.88,23 16,30 16,22.4 10.8,19.4 10.8,11 16,8" fill="#FFB800"/><polygon points="16,2 16,8 21.2,11 21.2,19.4 16,22.4 16,30 28.12,23 28.12,9" fill="currentColor"/></svg>';
+  var ICON_LOGO_FULL =
+    '<svg viewBox="0 0 168 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:12px;width:auto;opacity:0.8;margin-left:6px;"><polygon points="16,2 3.88,9 3.88,23 16,30 16,22.4 10.8,19.4 10.8,11 16,8" fill="#FFB800"/><polygon points="16,2 16,8 21.2,11 21.2,19.4 16,22.4 16,30 28.12,23 28.12,9" fill="currentColor"/><text x="38" y="23" style="font-family:\'Space Grotesk\', system-ui, sans-serif" font-weight="800" font-size="22" letter-spacing="-0.02em"><tspan fill="#FFB800">ochre</tspan><tspan fill="currentColor">shift</tspan></text></svg>';
+  var ICON_MORE =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>';
+  var ICON_ROTATE =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
   var ICON_SPARK =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="3.4"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="3.4"/></svg>';
   var ICON_CLOSE =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
   var ICON_CHECK =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   var ICON_ARROW =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>';
   var ICON_WARNING =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   var ICON_FILE =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>';
   var ICON_USERPLUS =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6M19 8v6"/></svg>';
   var ICON_CHECK_BOLD =
@@ -307,10 +315,11 @@
       ".ochreshift-launcher-icon{display:grid;place-items:center;flex-shrink:0;overflow:hidden;border-radius:999px;width:25px;height:25px;}" +
       ".ochreshift-variant-bubble .ochreshift-launcher-icon{width:30px;height:30px;}" +
       ".ochreshift-launcher-icon.ochreshift-orb{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;}" +
+      ".ochreshift-launcher-icon.ochreshift-custom{background:var(--surface);padding:2px;}" +
       ".ochreshift-launcher-icon img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
       ".ochreshift-launcher-icon.ochreshift-orb img{border-radius:50%;}" +
       ".ochreshift-launcher-icon svg{width:14px;height:14px;}" +
-      ".ochreshift-variant-bubble .ochreshift-launcher-icon svg{width:26px;height:26px;color:#fff;}" +
+      ".ochreshift-variant-bubble .ochreshift-launcher-icon svg{width:26px;height:26px;color:var(--on-accent);}" +
       ".ochreshift-launcher-label{line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}" +
       ".ochreshift-launcher-kbd{border:1px solid var(--border);border-radius:6px;padding:1px 6px;font-family:var(--mono);font-size:11px;color:var(--faint);}" +
       ".ochreshift-launcher-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#f59e0b;border:2px solid var(--surface);}" +
@@ -319,48 +328,54 @@
       ".ochreshift-anchor.ochreshift-dragging .ochreshift-launcher{cursor:grabbing;}" +
       // Panel
       ".ochreshift-panel{display:flex;flex-direction:column;overflow:hidden;width:100%;border-radius:var(--r3);border-width:0;box-shadow:var(--shadow);background:var(--surface);color:var(--text);transform-origin:var(--panel-origin, bottom right);transition:opacity .3s ease-out,transform .3s ease-out;opacity:0;transform:scale(.94) translateY(14px);pointer-events:none;height:0;max-height:0;}" +
-      ".ochreshift-panel.ochreshift-glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);}" +
+      ".ochreshift-panel.ochreshift-glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);}" +
       ".ochreshift-panel.ochreshift-open{opacity:1;transform:scale(1) translateY(0);pointer-events:auto;height:560px;max-height:calc(100vh - 150px);border-width:1px;border-style:solid;border-color:var(--border);}" +
+      // Header — clean bg with Online indicator
       ".ochreshift-header{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}" +
-      ".ochreshift-header-avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:0 0 0 4px var(--accent-soft);}" +
+      ".ochreshift-header-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.05);border:1px solid var(--border);display:grid;place-items:center;padding:4px;}" +
+      ".ochreshift-header-avatar.ochreshift-custom{width:26px;height:26px;padding:2px;box-shadow:0 0 0 4px var(--accent-soft);}" +
       ".ochreshift-header-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}" +
-      ".ochreshift-header-name{flex:1;min-width:0;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
-      ".ochreshift-header-close{all:unset;box-sizing:border-box;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);}" +
-      ".ochreshift-header-close:hover{background:var(--ring);color:var(--text);}" +
-      ".ochreshift-header-close:focus-visible{outline:2px solid var(--accent);}" +
-      ".ochreshift-header-close svg{width:16px;height:16px;}" +
+      ".ochreshift-header-avatar svg{width:100%;height:100%;color:var(--text);}" +
+      ".ochreshift-header-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}" +
+      ".ochreshift-header-name{font-size:14px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}" +
+      ".ochreshift-header-status{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11.5px;font-weight:500;color:var(--muted);}" +
+      ".ochreshift-header-status-dot{width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 8px rgba(16,185,129,0.4);}" +
+      ".ochreshift-header-actions{display:flex;align-items:center;gap:2px;}" +
+      ".ochreshift-header-btn{all:unset;box-sizing:border-box;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);transition:background .15s,color .15s;}" +
+      ".ochreshift-header-btn:hover{background:var(--ring);color:var(--text);}" +
+      ".ochreshift-header-btn:focus-visible{outline:2px solid var(--accent);}" +
+      ".ochreshift-header-btn svg{width:16px;height:16px;}" +
       // Screen-reader-only live region (announces completed assistant replies)
       ".ochreshift-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}" +
-      // Composer
-      ".ochreshift-composer{position:relative;margin:12px;flex-shrink:0;}" +
-      ".ochreshift-composer-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--accent);display:grid;place-items:center;pointer-events:none;}" +
-      ".ochreshift-composer-icon svg{width:16px;height:16px;}" +
-      ".ochreshift-input{width:100%;border:1px solid var(--border);border-radius:var(--r2);background:var(--surface);color:var(--text);padding:12px 44px 12px 38px;font-size:14px;font-family:inherit;outline:none;}" +
-      ".ochreshift-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-ring);}" +
+      // Composer — clean input without spark icon, panel bg
+      ".ochreshift-composer{position:relative;margin:8px 12px 12px;flex-shrink:0;}" +
+      ".ochreshift-input{width:100%;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);padding:14px 56px 14px 16px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;}" +
+      ".ochreshift-input:hover{border-color:var(--muted);}" +
+      ".ochreshift-input:focus{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}" +
       ".ochreshift-input:disabled{opacity:.6;cursor:not-allowed;}" +
-      ".ochreshift-send{all:unset;box-sizing:border-box;position:absolute;right:7px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:var(--r1);display:grid;place-items:center;background:var(--accent);color:#fff;cursor:pointer;}" +
-      ".ochreshift-send:disabled{opacity:.35;cursor:not-allowed;}" +
+      ".ochreshift-input::placeholder{color:var(--muted);}" +
+      ".ochreshift-send{all:unset;box-sizing:border-box;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--accent);color:#fff;cursor:pointer;transition:transform .15s;}" +
+      ".ochreshift-send:hover{transform:translateY(-50%) scale(1.05);}" +
+      ".ochreshift-send:disabled{opacity:.35;cursor:not-allowed;transform:translateY(-50%);}" +
       ".ochreshift-send:focus-visible{outline:2px solid var(--accent-ring);}" +
-      ".ochreshift-send svg{width:16px;height:16px;}" +
+      ".ochreshift-send svg{width:18px;height:18px;stroke-width:2.5px;}" +
       // Stream
       ".ochreshift-stream{flex:1;overflow-y:auto;padding:2px 14px 14px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}" +
       ".ochreshift-stream::-webkit-scrollbar{width:5px;}" +
       ".ochreshift-stream::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}" +
       ".ochreshift-welcome{font-size:13px;line-height:1.5;color:var(--muted);margin:4px 2px 12px;}" +
       ".ochreshift-unavailable{margin:0 2px;padding:12px 14px;border-radius:var(--r2);border:1px dashed var(--border);background:var(--panel);font-size:12.5px;line-height:1.5;color:var(--muted);}" +
-      ".ochreshift-chips{display:flex;flex-direction:column;gap:7px;}" +
-      ".ochreshift-chip{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--r1);background:var(--surface);padding:9px 11px;font-size:13px;color:var(--text);cursor:pointer;transition:border-color .1s,transform .1s;}" +
-      ".ochreshift-chip:hover{border-color:var(--accent);transform:translateX(2px);}" +
+      // Suggestion chips — pill-shaped wrap layout
+      ".ochreshift-chips{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 12px;}" +
+      ".ochreshift-chip{all:unset;box-sizing:border-box;display:flex;align-items:center;border:1px solid var(--border);border-radius:999px;background:transparent;padding:6px 14px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s;}" +
+      ".ochreshift-chip:hover{border-color:var(--accent);color:var(--text);}" +
       ".ochreshift-chip:focus-visible{outline:2px solid var(--accent);}" +
-      ".ochreshift-chip svg{width:14px;height:14px;flex-shrink:0;color:var(--accent);}" +
-      ".ochreshift-chip-text{flex:1;text-align:left;}" +
-      ".ochreshift-chip-kbd{border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-family:var(--mono);font-size:10px;color:var(--faint);}" +
-      // Messages
-      ".ochreshift-msg-user{align-self:flex-end;max-width:85%;background:var(--accent);color:#fff;border-radius:var(--r1);border-bottom-right-radius:5px;padding:8px 12px;font-size:13px;font-weight:500;line-height:1.5;white-space:pre-wrap;word-break:break-word;}" +
-      ".ochreshift-msg-assistant{display:flex;flex-direction:column;}" +
-      ".ochreshift-msg-assistant-head{display:flex;align-items:flex-start;gap:9px;}" +
-      ".ochreshift-msg-assistant-head>svg{width:16px;height:16px;margin-top:3px;flex-shrink:0;color:var(--accent);}" +
-      ".ochreshift-msg-assistant-text{font-size:15px;font-weight:500;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word;}" +
+      // Messages — user bubbles use panel bg with border; AI uses avatar layout
+      ".ochreshift-msg-user{align-self:flex-end;max-width:85%;background:var(--panel);color:var(--text);border-radius:12px;border-bottom-right-radius:4px;padding:10px 16px;font-size:14px;font-weight:500;line-height:1.5;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:pre-wrap;word-break:break-word;}" +
+      ".ochreshift-msg-assistant{position:relative;padding-left:38px;}" +
+      ".ochreshift-msg-assistant-head{position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;padding:4px;box-shadow:0 1px 2px rgba(0,0,0,.05);}" +
+      ".ochreshift-msg-assistant-head>svg{width:100%;height:100%;color:var(--text);}" +
+      ".ochreshift-msg-assistant-text{padding-top:2px;font-size:15px;font-weight:500;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word;}" +
       ".ochreshift-guardrail{margin-top:12px;display:flex;align-items:center;gap:10px;border:1px dashed var(--border);border-radius:var(--r2);padding:10px 12px;font-size:12.5px;color:var(--muted);}" +
       ".ochreshift-guardrail svg{width:16px;height:16px;color:#f59e0b;flex-shrink:0;}" +
       ".ochreshift-connector{position:relative;margin:8px 0 8px 7px;width:2px;height:16px;background:linear-gradient(var(--accent),transparent);}" +
@@ -418,8 +433,9 @@
       ".ochreshift-footer-left{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;}" +
       ".ochreshift-footer-left>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
       ".ochreshift-footer-left svg{width:12px;height:12px;color:var(--good);flex-shrink:0;}" +
-      ".ochreshift-footer-brand{flex-shrink:0;}" +
-      ".ochreshift-footer-brand b{color:var(--muted);font-weight:700;}" +
+      ".ochreshift-footer-brand{display:flex;align-items:center;flex-shrink:0;text-decoration:none;color:var(--faint);}" +
+      ".ochreshift-footer-brand:hover{color:var(--muted);}" +
+      ".ochreshift-footer-brand svg{transition:opacity .15s;}" +
       // Keyframes
       "@keyframes ochreshift-breathe{0%,100%{box-shadow:var(--shadow),0 0 0 0 var(--accent-soft);}50%{box-shadow:var(--shadow),0 0 0 9px transparent;}}" +
       "@keyframes ochreshift-blink{0%,100%{opacity:1;}50%{opacity:.25;}}" +
@@ -617,9 +633,13 @@
     var variant = ["pill", "bubble", "bar"].indexOf(RAW.launcher) >= 0 ? RAW.launcher : "pill";
     var glassClass = variant === "bubble" ? "" : RAW.glass ? "ochreshift-glass" : "ochreshift-solid";
     var label = state.configStatus === "error" ? "Chat unavailable" : "Ask " + state.name;
+    var launcherIconClass = "ochreshift-launcher-icon";
+    if (variant !== "bubble") launcherIconClass += " ochreshift-orb";
+    if (RAW.logo) launcherIconClass += " ochreshift-custom";
+
     var launcherIcon = RAW.logo
-      ? '<span class="ochreshift-launcher-icon' + (variant === "bubble" ? "" : " ochreshift-orb") + '"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></span>'
-      : '<span class="ochreshift-launcher-icon' + (variant === "bubble" ? "" : " ochreshift-orb") + '">' + ICON_SPARK + "</span>";
+      ? '<span class="' + launcherIconClass + '"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></span>'
+      : '<span class="' + launcherIconClass + '">' + ICON_LOGO + "</span>";
     var html =
       '<button type="button" class="ochreshift-launcher ochreshift-variant-' + variant + " " + glassClass +
       (state.configStatus !== "error" ? " ochreshift-breathe" : "") +
@@ -641,25 +661,32 @@
     // only if the server actually allows it. Prevents a free-tier embed from
     // simply setting data-whitelabel="on" itself to remove branding for free.
     var refParam = RAW.botId ? "?ref=" + RAW.botId + "&utm_source=widget_watermark" : "";
-    var brandRow = '<span class="ochreshift-footer-brand" id="ochreshift-footer-brand">Powered by <b><a href="https://ochreshift.app' + refParam + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">OchreShift</a></b></span>';
+    var brandRow = '<a href="https://ochreshift.app' + refParam + '" target="_blank" rel="noopener" class="ochreshift-footer-brand" id="ochreshift-footer-brand">Powered by ' + ICON_LOGO_FULL + '</a>';
+    var headerAvatarClass = RAW.logo ? "ochreshift-header-avatar ochreshift-custom" : "ochreshift-header-avatar";
     var headerAvatar = RAW.logo
-      ? '<div class="ochreshift-header-avatar"><img src="' + escapeHtml(RAW.logo) + '" alt="" /></div>'
-      : '<div class="ochreshift-header-avatar"></div>';
+      ? '<img src="' + escapeHtml(RAW.logo) + '" alt="" />'
+      : ICON_LOGO;
     return (
       '<div class="ochreshift-header">' +
-      headerAvatar +
+      '<div class="' + headerAvatarClass + '">' + headerAvatar + '</div>' +
+      '<div class="ochreshift-header-info">' +
       '<div class="ochreshift-header-name" id="ochreshift-header-name"></div>' +
-      '<button type="button" class="ochreshift-header-close" id="ochreshift-close-btn" aria-label="Close">' + ICON_CLOSE + "</button>" +
+      '<div class="ochreshift-header-status"><span class="ochreshift-header-status-dot"></span>Online</div>' +
+      '</div>' +
+      '<div class="ochreshift-header-actions">' +
+      '<button type="button" class="ochreshift-header-btn" id="ochreshift-refresh-btn" aria-label="Clear chat" title="Clear chat" style="display:none;">' + ICON_ROTATE + "</button>" +
+      '<button type="button" class="ochreshift-header-btn" aria-label="More options">' + ICON_MORE + "</button>" +
+      '<button type="button" class="ochreshift-header-btn" id="ochreshift-close-btn" aria-label="Close">' + ICON_CLOSE + "</button>" +
+      '</div>' +
       "</div>" +
       '<form class="ochreshift-composer" id="ochreshift-composer-form" autocomplete="off">' +
-      '<span class="ochreshift-composer-icon">' + ICON_SPARK + "</span>" +
-      '<input class="ochreshift-input" id="ochreshift-input" type="text" placeholder="" />' +
+      '<input class="ochreshift-input" id="ochreshift-input" type="text" placeholder="Ask anything..." />' +
       '<button type="submit" class="ochreshift-send" id="ochreshift-send-btn" aria-label="Ask" disabled>' + ICON_ARROW + "</button>" +
       "</form>" +
       '<div class="ochreshift-sr-only" id="ochreshift-live-region" aria-live="polite" aria-atomic="true"></div>' +
       '<div class="ochreshift-stream" id="ochreshift-stream"></div>' +
       '<div class="ochreshift-footer">' +
-      '<span class="ochreshift-footer-left" id="ochreshift-footer-left">' + ICON_CHECK + "<span>Grounded in your documents</span></span>" +
+      '<span class="ochreshift-footer-left" id="ochreshift-footer-left">' + ICON_CHECK + '<span id="ochreshift-footer-status">Answers from ' + escapeHtml(state.name || "the assistant") + '’s own info</span></span>' +
       brandRow +
       "</div>"
     );
@@ -715,6 +742,14 @@
 
     var closeBtn = shadow.getElementById("ochreshift-close-btn");
     if (closeBtn) closeBtn.addEventListener("click", closePanel);
+
+    var refreshBtn = shadow.getElementById("ochreshift-refresh-btn");
+    if (refreshBtn) refreshBtn.addEventListener("click", function () {
+      // Clear history and reset stream
+      try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
+      if (streamEl) { streamEl.innerHTML = ""; renderEmptyState(); }
+      refreshBtn.style.display = "none";
+    });
 
     var launcherBtn = shadow.getElementById("ochreshift-launcher-btn");
     if (launcherBtn) launcherBtn.addEventListener("click", openPanel);
@@ -871,13 +906,23 @@
       input.setAttribute("aria-label", placeholder);
     }
 
-    var label = state.configStatus === "error" ? "Chat unavailable" : "Ask " + state.name;
+    var label = state.configStatus === "error" ? "Chat unavailable" : (state.name ? "Ask " + state.name : "Chat with us");
     var launcherLabelEl = shadow.getElementById("ochreshift-launcher-label");
     if (launcherLabelEl) launcherLabelEl.textContent = label;
+
+    refreshFooter();
+
     var launcherBtn = shadow.getElementById("ochreshift-launcher-btn");
     if (launcherBtn) launcherBtn.setAttribute("aria-label", label);
 
     if (panelEl) panelEl.setAttribute("aria-label", "Ask " + state.name);
+  }
+
+  function refreshFooter() {
+    var footerStatusEl = shadow.getElementById("ochreshift-footer-status");
+    if (footerStatusEl) {
+      footerStatusEl.textContent = state.configStatus === "error" ? "Chat unavailable" : ("Answers from " + (state.name || "the assistant") + "’s own info");
+    }
   }
 
   /** Update logo in header + launcher after /config loads with a saved logo. */
@@ -886,6 +931,7 @@
     // Header avatar
     var avatarEl = shadow.querySelector(".ochreshift-header-avatar");
     if (avatarEl && !avatarEl.querySelector("img")) {
+      avatarEl.className += " ochreshift-custom";
       var img = document.createElement("img");
       img.src = RAW.logo;
       img.alt = "";
@@ -894,7 +940,8 @@
     }
     // Launcher icon
     var launcherIcon = shadow.querySelector(".ochreshift-launcher-icon");
-    if (launcherIcon && !launcherIcon.querySelector("img")) {
+    if (launcherIcon) {
+      launcherIcon.className += " ochreshift-custom";
       var img2 = document.createElement("img");
       img2.src = RAW.logo;
       img2.alt = "";
@@ -1109,6 +1156,35 @@
       // Sources toggle
       if (!hasAttr("data-sources") && typeof design.sources === "boolean") {
         RAW.sources = design.sources;
+      }
+      // Panel background colour
+      if (design.panelBg) {
+        anchorEl.style.setProperty("--panel-bg", design.panelBg);
+        panelEl.style.background = "var(--panel-bg)";
+      }
+      // Position (anchor corner)
+      if (!hasAttr("data-position") && design.position) {
+        RAW.position = design.position;
+        applyPlacement();
+      }
+      // Offsets
+      if (!hasAttr("data-offset-x") && typeof design.offX === "number") {
+        RAW.offsetX = design.offX;
+        applyPlacement();
+      }
+      if (!hasAttr("data-offset-y") && typeof design.offY === "number") {
+        RAW.offsetY = design.offY;
+        applyPlacement();
+      }
+      // Custom launcher label
+      if (design.label) {
+        var launcherLabelEl = shadow.getElementById("ochreshift-launcher-label");
+        if (launcherLabelEl) launcherLabelEl.textContent = design.label;
+      }
+      // Brand toggle (separate from whitelabel)
+      if (typeof design.brand === "boolean" && !design.brand) {
+        var brandEl0 = shadow.getElementById("ochreshift-footer-brand");
+        if (brandEl0) brandEl0.style.display = "none";
       }
       // Whitelabel: server-authoritative
       if (RAW.whitelabel && cfg.whitelabelAllowed) {
@@ -1436,11 +1512,13 @@
 
     var head = document.createElement("div");
     head.className = "ochreshift-msg-assistant-head";
-    head.innerHTML = ICON_CHECK;
-    var textSpan = document.createElement("span");
-    textSpan.className = "ochreshift-msg-assistant-text";
-    head.appendChild(textSpan);
+    // For AI bubbles, we can stick to ICON_LOGO matching the React design which strictly uses OchreshiftLogo for system messages
+    head.innerHTML = ICON_LOGO;
     wrap.appendChild(head);
+
+    var textSpan = document.createElement("div");
+    textSpan.className = "ochreshift-msg-assistant-text";
+    wrap.appendChild(textSpan);
 
     var hasSource = payload.sources && payload.sources.length > 0;
     var showProof = RAW.sources && hasSource;
@@ -1497,48 +1575,6 @@
       leadBtn.innerHTML = ICON_USERPLUS + "<span>Book / leave my details</span>";
       leadBtn.addEventListener("click", mountTicket);
       slot.appendChild(leadBtn);
-    }
-
-    // Feedback buttons (thumbs up/down) for hallucination diagnostics
-    var feedbackWrap = document.createElement("div");
-    feedbackWrap.className = "ochreshift-feedback-wrap";
-    feedbackWrap.style.cssText = "display:flex;gap:6px;margin-top:6px;padding-left:25px;";
-
-    var thumbUp = document.createElement("button");
-    thumbUp.type = "button";
-    thumbUp.title = "Helpful";
-    thumbUp.style.cssText = "background:none;border:1px solid #ddd;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;color:#888;transition:all .15s;";
-    thumbUp.innerHTML = "&#128077;";
-    thumbUp.addEventListener("click", function () {
-      thumbUp.style.background = "#dcfce7"; thumbUp.style.borderColor = "#22c55e"; thumbUp.style.color = "#16a34a";
-      thumbDown.style.opacity = "0.4";
-      sendFeedback(1, payload.text);
-    });
-
-    var thumbDown = document.createElement("button");
-    thumbDown.type = "button";
-    thumbDown.title = "Not helpful";
-    thumbDown.style.cssText = "background:none;border:1px solid #ddd;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;color:#888;transition:all .15s;";
-    thumbDown.innerHTML = "&#128078;";
-    thumbDown.addEventListener("click", function () {
-      thumbDown.style.background = "#fee2e2"; thumbDown.style.borderColor = "#ef4444"; thumbDown.style.color = "#dc2626";
-      thumbUp.style.opacity = "0.4";
-      sendFeedback(-1, payload.text);
-    });
-
-    feedbackWrap.appendChild(thumbUp);
-    feedbackWrap.appendChild(thumbDown);
-    wrap.appendChild(feedbackWrap);
-
-    function sendFeedback(score, answerText) {
-      try {
-        var apiUrl = RAW.apiUrl || "";
-        fetch(apiUrl + "/chat/feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ botId: BOT_ID, score: score, answer: answerText }),
-        }).catch(function () { });
-      } catch (e) { }
     }
 
     streamEl.appendChild(wrap);
