@@ -26,7 +26,7 @@ export function FinalCTA() {
               <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
                 <Link
                   href="/sign-up"
-                  className="w-full sm:w-auto bg-accent text-white font-[600] px-8 py-4 text-[16px] rounded-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full sm:w-auto bg-accent text-[#08111F] font-[600] px-8 py-4 text-[16px] rounded-md hover:bg-accent-strong transition-colors flex items-center justify-center gap-2 shadow-lg"
                 >
                   Start free
                 </Link>
@@ -39,8 +39,12 @@ export function FinalCTA() {
                 </Link>
               </div>
 
-              <p className="text-[13px] text-muted mt-8 font-[500] flex items-center justify-center gap-3 tracking-wide">
-                14-day free trial <span className="w-1.5 h-1.5 rounded-full bg-muted" /> Setup in minutes
+              <p className="text-[13px] text-muted mt-8 font-[500] flex flex-wrap items-center justify-center gap-x-3 gap-y-2 tracking-wide">
+                <span>14-day free trial</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-muted" aria-hidden />
+                <span>No credit card required</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-muted" aria-hidden />
+                <span>Cancel anytime</span>
               </p>
             </div>
           </div>

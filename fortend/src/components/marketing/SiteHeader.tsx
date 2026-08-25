@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,12 +9,25 @@ import { ThemeToggle } from "./ThemeToggle";
 
 const NAV_LINKS = [
   { href: "#features", label: "Features" },
-  { href: "#use-cases", label: "Use cases" },
   { href: "#how-it-works", label: "How it works" },
+  { href: "#use-cases", label: "Use cases" },
+  { href: "#pricing", label: "Pricing" },
 ];
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      el.setAttribute("data-scrolled", String(window.scrollY > 8));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -28,7 +41,10 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="w-full bg-surface border-b border-border relative z-50 font-sans">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 w-full bg-surface/85 backdrop-blur-md border-b border-border nav-shell font-sans"
+    >
       <div className="max-w-[1240px] mx-auto px-6 sm:px-9 py-4 flex justify-between items-center">
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0 z-50">
@@ -56,7 +72,7 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/sign-up"
-            className="bg-accent text-surface font-[600] text-sm rounded-md px-5 py-2.5 hover:bg-accent-strong transition-colors flex items-center gap-1.5"
+            className="bg-accent text-[#08111F] font-[600] text-sm rounded-md px-5 py-2.5 hover:bg-accent-strong transition-colors flex items-center gap-1.5"
           >
             Start free
           </Link>
@@ -105,7 +121,7 @@ export function SiteHeader() {
               <Link
                 href="/sign-up"
                 onClick={() => setOpen(false)}
-                className="bg-accent text-surface text-center font-[600] text-[15px] rounded-md px-6 py-3 transition-colors hover:bg-accent-strong flex items-center justify-center gap-1"
+                className="bg-accent text-[#08111F] text-center font-[600] text-[15px] rounded-md px-6 py-3 transition-colors hover:bg-accent-strong flex items-center justify-center gap-1"
               >
                 Start free
               </Link>

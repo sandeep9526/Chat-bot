@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { Hero } from "@/components/marketing/Hero";
+import { ProofBar } from "@/components/marketing/ProofBar";
 import { ProblemSection } from "@/components/marketing/ProblemSection";
 import { ProductMechanism } from "@/components/marketing/ProductMechanism";
 import { GroundedAnswers } from "@/components/marketing/GroundedAnswers";
-import { KnowledgeBase } from "@/components/marketing/KnowledgeBase";
 import { LeadQualification } from "@/components/marketing/LeadQualification";
 import { HumanTakeover } from "@/components/marketing/HumanTakeover";
 import { UseCases } from "@/components/marketing/UseCases";
 import { TrustSection } from "@/components/marketing/TrustSection";
 import { InstallationSpeed } from "@/components/marketing/InstallationSpeed";
+import { Testimonials } from "@/components/marketing/Testimonials";
+import { Pricing } from "@/components/marketing/Pricing";
+import { FAQ } from "@/components/marketing/FAQ";
 import { FinalCTA } from "@/components/marketing/FinalCTA";
 import { Footer } from "@/components/marketing/Footer";
 import { SmoothScroll } from "@/components/marketing/SmoothScroll";
@@ -27,6 +31,9 @@ export const metadata: Metadata = {
   },
 };
 
+const WIDGET_BOT_ID = process.env.NEXT_PUBLIC_SITE_WIDGET_BOT_ID;
+const WIDGET_API_URL = process.env.NEXT_PUBLIC_SITE_WIDGET_API_URL;
+
 export default function Home() {
   return (
     <>
@@ -35,19 +42,41 @@ export default function Home() {
         <SiteHeader />
         <main>
           <Hero />
+          <ProofBar />
           <ProblemSection />
           <ProductMechanism />
           <GroundedAnswers />
-          <KnowledgeBase />
           <LeadQualification />
           <HumanTakeover />
           <UseCases />
           <TrustSection />
           <InstallationSpeed />
+          <Testimonials />
+          <Pricing />
+          <FAQ />
           <FinalCTA />
         </main>
         <Footer />
       </SmoothScroll>
+
+      {/* Dogfooding: when configured, our own AI agent runs on this very page —
+          proof, demo, and lead capture in one. */}
+      {WIDGET_BOT_ID && (
+        <Script
+          src="/widget.js"
+          strategy="lazyOnload"
+          data-bot-id={WIDGET_BOT_ID}
+          {...(WIDGET_API_URL ? { "data-api-url": WIDGET_API_URL } : {})}
+          data-name="OchreShift AI"
+          data-accent="#F5A900"
+          data-surface="auto"
+          data-corners="soft"
+          data-launcher="pill"
+          data-position="bottom-right"
+          data-glass="on"
+          data-sources="on"
+        />
+      )}
     </>
   );
 }

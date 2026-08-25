@@ -32,11 +32,12 @@ export function Footer() {
           <p className="text-[15px] text-muted mb-8 leading-relaxed">
             OchreShift answers customer questions, detects buying intent, and captures qualified leads for your business 24/7.
           </p>
-          <div className="flex gap-4 mb-8">
-            <div className="w-8 h-8 rounded-full bg-white/5 border border-border" />
-            <div className="w-8 h-8 rounded-full bg-white/5 border border-border" />
-            <div className="w-8 h-8 rounded-full bg-white/5 border border-border" />
-          </div>
+          <a
+            href="mailto:hello@ochreshift.com"
+            className="mb-8 inline-flex items-center gap-2 text-[14px] font-[500] text-muted hover:text-accent transition-colors"
+          >
+            hello@ochreshift.com
+          </a>
           <p className="text-[14px] text-slate-500">
             © {new Date().getFullYear()} Ochreshift. All rights reserved.
           </p>

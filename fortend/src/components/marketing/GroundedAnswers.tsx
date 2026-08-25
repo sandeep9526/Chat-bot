@@ -5,7 +5,7 @@ import { SectionHead } from "./SectionHead";
 
 export function GroundedAnswers() {
   return (
-    <section className="py-24 bg-bg font-sans">
+    <section id="features" className="py-24 bg-bg scroll-mt-20 font-sans">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           
@@ -14,10 +14,10 @@ export function GroundedAnswers() {
                <div className="bg-surface rounded-2xl p-8 shadow-2xl border border-border flex flex-col gap-6 w-full">
                   {/* AI Answer Extract */}
                   <div className="flex flex-col gap-3">
-                    <span className="text-[13px] text-slate-500 uppercase tracking-widest font-[700]">AI Answer Generated</span>
-                    <div className="bg-panel border border-border text-fg text-[16px] md:text-[18px] px-5 py-4 md:px-6 md:py-5 rounded-lg shadow-sm">
-                      "Yes, our corporate catering packages include a dedicated gluten-free platter upon request at no additional charge."
-                    </div>
+                    <span className="text-[13px] text-faint uppercase tracking-widest font-[700]">AI Answer Generated</span>
+                      <div className="bg-panel border border-border text-fg text-[16px] md:text-[18px] px-5 py-4 md:px-6 md:py-5 rounded-lg shadow-sm">
+                        &ldquo;Yes, our corporate catering packages include a dedicated gluten-free platter upon request at no additional charge.&rdquo;
+                      </div>
                   </div>
                   
                   {/* Arrow Down */}
@@ -27,7 +27,7 @@ export function GroundedAnswers() {
                   
                   {/* Source Document File */}
                   <div className="flex flex-col gap-3 items-center">
-                    <span className="text-[13px] text-slate-500 uppercase tracking-widest font-[700]">Source Document</span>
+                    <span className="text-[13px] text-faint uppercase tracking-widest font-[700]">Source Document</span>
                     <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 w-fit">
                       <CheckCircle2 size={16} className="text-emerald-500" />
                       <span className="text-[14px] font-[600] text-emerald-500">
@@ -43,10 +43,10 @@ export function GroundedAnswers() {
                   
                   {/* Matched Text Extract */}
                   <div className="flex flex-col gap-3">
-                    <span className="text-[13px] text-slate-500 uppercase tracking-widest font-[700]">Matched Information</span>
-                    <div className="bg-white/5 border border-border text-muted text-[15px] md:text-[16px] px-5 py-4 md:px-6 md:py-5 rounded-lg shadow-inner font-mono relative overflow-hidden leading-relaxed">
+                    <span className="text-[13px] text-faint uppercase tracking-widest font-[700]">Matched Information</span>
+                    <div className="bg-panel border border-border text-muted text-[15px] md:text-[16px] px-5 py-4 md:px-6 md:py-5 rounded-lg shadow-inner font-mono relative overflow-hidden leading-relaxed">
                       <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500/50" />
-                      "...All corporate tier 2 and tier 3 packages come with complimentary dietary accommodations. <span className="bg-emerald-500/20 text-emerald-300 rounded px-1.5 py-0.5 font-bold">A dedicated gluten-free platter is included upon request at no additional charge.</span> Please provide 48 hours notice..."
+                      &ldquo;...All corporate tier 2 and tier 3 packages come with complimentary dietary accommodations. <span className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 rounded px-1.5 py-0.5 font-bold">A dedicated gluten-free platter is included upon request at no additional charge.</span> Please provide 48 hours notice&rdquo;
                     </div>
                   </div>
                </div>

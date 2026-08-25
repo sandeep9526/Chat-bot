@@ -1,6 +1,7 @@
 import { Reveal } from "./Reveal";
 import { Container } from "./Container";
 import { Flame, Target, Thermometer, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { SectionHead } from "./SectionHead";
 
 export function LeadQualification() {
@@ -68,15 +69,18 @@ export function LeadQualification() {
                   </div>
 
                   <div className="bg-bg rounded-xl p-5 border border-border mb-8">
-                    <span className="text-[13px] font-[700] text-slate-500 uppercase tracking-widest mb-3 block">AI Summary</span>
+                    <span className="text-[13px] font-[700] text-faint uppercase tracking-widest mb-3 block">AI Summary</span>
                     <p className="text-[16px] text-muted leading-relaxed">
                       Needs emergency service tomorrow and asked about pricing. High intent.
                     </p>
                   </div>
 
-                  <button className="w-full bg-white text-black font-[700] text-[16px] py-4 rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                  <Link
+                    href="/demo"
+                    className="w-full bg-fg text-bg font-[700] text-[16px] py-4 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                  >
                     View conversation <ArrowRight size={18} />
-                  </button>
+                  </Link>
                 </div>
               </div>
             </Reveal>
