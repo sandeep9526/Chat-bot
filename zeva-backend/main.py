@@ -1093,16 +1093,24 @@ async def ingest_file(
             mime = file.content_type or "image/png"
             text = extract_image_text(data, mime)
         else:
-            text = extract.extract_document_text(filename, data)
+            text = await run_in_threadpool(extract.extract_document_text, filename, data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"File extraction failed: {str(e)}")
 
     # Save the *extracted* text as a .txt doc and re-index (reuses the same
     # chunk+embed path as pasted text). save_and_ingest re-validates it as text.
     try:
-        result = save_and_ingest(botId, filename, text)
+        result = await run_in_threadpool(save_and_ingest, botId, filename, text)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database ingestion failed: {str(e)}")
     return {"ok": True, "filename": filename, "chars": len(text), **result}
 
 
