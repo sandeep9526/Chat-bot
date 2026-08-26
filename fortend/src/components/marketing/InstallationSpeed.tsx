@@ -39,7 +39,7 @@ const KNOWLEDGE_INPUTS = [
 
 export function InstallationSpeed() {
   return (
-    <section className="py-24 bg-bg border-t border-border font-sans">
+    <div className="font-sans pt-8">
       <Container>
         <SectionHead
           align="center"
@@ -150,6 +150,6 @@ export function InstallationSpeed() {
           </div>
         </Reveal>
       </Container>
-    </section>
+    </div>
   );
 }

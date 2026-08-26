@@ -59,7 +59,7 @@ const PHASES: Phase[] = [
 
 export function ProductMechanism() {
   return (
-    <section id="how-it-works" className="py-24 bg-bg scroll-mt-20 relative overflow-hidden font-sans">
+    <div className="relative overflow-hidden font-sans pt-8">
       <Container>
         <SectionHead
           align="center"
@@ -121,6 +121,6 @@ export function ProductMechanism() {
           ))}
         </div>
       </Container>
-    </section>
+    </div>
   );
 }

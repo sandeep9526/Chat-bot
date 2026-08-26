@@ -5,7 +5,7 @@ import { SectionHead } from "./SectionHead";
 
 export function HumanTakeover() {
   return (
-    <section className="py-24 bg-bg border-t border-border font-sans overflow-hidden">
+    <div className="font-sans overflow-hidden pt-8">
       <Container>
         <div className="flex flex-col items-center">
           
@@ -133,6 +133,6 @@ export function HumanTakeover() {
           
         </div>
       </Container>
-    </section>
+    </div>
   );
 }

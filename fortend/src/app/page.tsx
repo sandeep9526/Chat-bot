@@ -4,13 +4,9 @@ import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { Hero } from "@/components/marketing/Hero";
 import { ProofBar } from "@/components/marketing/ProofBar";
 import { ProblemSection } from "@/components/marketing/ProblemSection";
-import { ProductMechanism } from "@/components/marketing/ProductMechanism";
-import { GroundedAnswers } from "@/components/marketing/GroundedAnswers";
-import { LeadQualification } from "@/components/marketing/LeadQualification";
-import { HumanTakeover } from "@/components/marketing/HumanTakeover";
+import { FeatureTabs } from "@/components/marketing/FeatureTabs";
 import { UseCases } from "@/components/marketing/UseCases";
 import { TrustSection } from "@/components/marketing/TrustSection";
-import { InstallationSpeed } from "@/components/marketing/InstallationSpeed";
 import { Testimonials } from "@/components/marketing/Testimonials";
 import { Pricing } from "@/components/marketing/Pricing";
 import { FAQ } from "@/components/marketing/FAQ";
@@ -23,6 +19,8 @@ export const metadata: Metadata = {
   title: "OchreShift · AI Lead Capture for Service Businesses",
   description:
     "OchreShift is an AI lead capture platform that answers customer questions instantly using your business knowledge, qualifies leads, and alerts your team when a human is needed.",
+  keywords: ["AI lead capture", "service businesses", "chatbot", "customer support automation", "lead generation"],
+  robots: { index: true, follow: true },
   openGraph: {
     title: "OchreShift · AI Lead Capture for Service Businesses",
     description:
@@ -44,13 +42,9 @@ export default function Home() {
           <Hero />
           <ProofBar />
           <ProblemSection />
-          <ProductMechanism />
-          <GroundedAnswers />
-          <LeadQualification />
-          <HumanTakeover />
+          <FeatureTabs />
           <UseCases />
           <TrustSection />
-          <InstallationSpeed />
           <Testimonials />
           <Pricing />
           <FAQ />

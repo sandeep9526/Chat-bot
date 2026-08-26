@@ -5,7 +5,7 @@ import { SectionHead } from "./SectionHead";
 
 export function GroundedAnswers() {
   return (
-    <section id="features" className="py-24 bg-bg scroll-mt-20 font-sans">
+    <div className="font-sans pt-8">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           
@@ -78,6 +78,6 @@ export function GroundedAnswers() {
           
         </div>
       </Container>
-    </section>
+    </div>
   );
 }

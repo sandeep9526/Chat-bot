@@ -6,7 +6,7 @@ import { SectionHead } from "./SectionHead";
 
 export function LeadQualification() {
   return (
-    <section className="py-24 bg-bg border-t border-border font-sans overflow-hidden">
+    <div className="font-sans overflow-hidden pt-8">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
@@ -88,6 +88,6 @@ export function LeadQualification() {
 
         </div>
       </Container>
-    </section>
+    </div>
   );
 }
