@@ -114,6 +114,10 @@ export const auth = betterAuth({
         console.error("Failed sending password reset email via backend:", err);
       }
     },
+  },
+
+  // Email verification setup
+  emailVerification: {
     sendVerificationEmail: async ({ user, url, token }: { user: any; url: string; token: string }) => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";

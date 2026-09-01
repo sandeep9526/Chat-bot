@@ -264,6 +264,16 @@ function mockChat(req: ChatRequest): ChatResponse {
  * - MOCK mode (no API_URL): resolves against the local demo knowledge base.
  */
 export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
+  if (req.botId === "preview") {
+    await wait(scanDelayMs());
+    return {
+      answer: `I'm still learning! Save me to start chatting. (You asked: "${req.message}")`,
+      sources: [],
+      isGuardrail: false,
+      limitReached: false,
+    };
+  }
+
   if (API_URL) {
     const data = (await fetchJson(`${base()}/chat`, {
       message: req.message,
@@ -296,6 +306,11 @@ export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
  * - MOCK mode: resolve optimistically.
  */
 export async function submitLead(payload: LeadPayload): Promise<LeadResponse> {
+  if (payload.botId === "preview") {
+    await wait(800);
+    return { success: true, message: "Lead captured! (Preview Mode)" };
+  }
+
   if (API_URL) {
     return (await fetchJson(`${base()}/lead`, payload, 15_000)) as LeadResponse;
   }

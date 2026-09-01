@@ -11,6 +11,7 @@ import { SectionHeader } from "@/components/panel/AppShell";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { CreationChoiceModal } from "./CreationChoiceModal";
 import { AdvancedCreateModal } from "./AdvancedCreateModal";
+import { EditBotModal } from "./EditBotModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 export interface BotInitial {
@@ -69,7 +70,7 @@ interface BotsSectionProps {
   activeBotId: string;
   maxBots?: number;
   onSelect: (id: string) => void;
-  onBotCreated?: () => void;
+  onBotUpdated?: (id: string) => void;
   onOpenInstall: (id: string) => void;
   onOpenStudio?: (id: string) => void;
 }
@@ -79,7 +80,7 @@ export function BotsSection({
   activeBotId,
   maxBots,
   onSelect,
-  onBotCreated,
+  onBotUpdated,
   onOpenInstall,
   onOpenStudio,
 }: BotsSectionProps) {
@@ -95,13 +96,13 @@ export function BotsSection({
   useEffect(() => {
     const handleOpen = () => setModal({ mode: "choice" });
     window.addEventListener("zeva:open-bot-modal", handleOpen);
-    
+
     // Auto-resume onboarding draft if the user reloaded the page mid-onboarding
     try {
       if (localStorage.getItem("zeva-onboarding-draft") && !autoOpenConsumed) {
         setModal({ mode: "wizard" });
       }
-    } catch {}
+    } catch { }
 
     return () => window.removeEventListener("zeva:open-bot-modal", handleOpen);
   }, []);
@@ -212,135 +213,136 @@ export function BotsSection({
           </div>
         </div>
       ) : (
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {bots.map((bot) => {
-          const status = statusOf(bot);
-          const isActive = bot.bot_id === activeBotId;
-          const busy = busyId === bot.bot_id;
-          return (
-            <div
-              key={bot.bot_id}
-              data-tour="bot-card"
-              className={cn(
-                "group flex flex-col rounded-r2 border bg-surface p-6 shadow-card transition-all duration-200 hover:-translate-y-[3px] hover:shadow-card-hover",
-                isActive
-                  ? "border-accent/40 ring-2 ring-accent/20 bg-gradient-to-b from-accent/5 via-surface to-surface"
-                  : "border-border/80 hover:border-accent/30",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-r1 text-[15px] font-[800] text-white shadow-md shadow-accent/20 transition-transform group-hover:scale-105"
-                    style={{ background: `linear-gradient(135deg, ${bot.accent}, var(--accent-strong))` }}
-                  >
-                    {bot.name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-[15px] font-[800] tracking-tight text-fg">{bot.name}</span>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {bots.map((bot) => {
+            const status = statusOf(bot);
+            const isActive = bot.bot_id === activeBotId;
+            const busy = busyId === bot.bot_id;
+            return (
+              <div
+                key={bot.bot_id}
+                data-tour="bot-card"
+                className={cn(
+                  "group flex flex-col rounded-r2 border p-6 shadow-card transition-all duration-300 hover:-translate-y-[3px] hover:shadow-card-hover bg-gradient-to-br",
+                  isActive
+                    ? "border-accent/40 ring-2 ring-accent/20 from-accent/5 to-surface"
+                    : "border-border/80 hover:border-accent/30 from-surface to-panel/50",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3 relative">
+                  <div className="absolute -inset-6 bg-gradient-to-b from-white/50 to-transparent dark:from-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-t-r2" />
+                  <div className="flex min-w-0 items-center gap-3 relative z-10">
+                    <span
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[15px] font-[800] text-white shadow-md shadow-accent/20 transition-transform group-hover:scale-105 ring-1 ring-white/20"
+                      style={{ background: `linear-gradient(135deg, ${bot.accent}, var(--accent-strong))` }}
+                    >
+                      {bot.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-[15px] font-[800] tracking-tight text-fg">{bot.name}</span>
+                      </div>
+                      <div className="truncate font-mono text-[11px] font-[600] text-faint">ID: {bot.bot_id}</div>
                     </div>
-                    <div className="truncate font-mono text-[11px] font-[600] text-faint">ID: {bot.bot_id}</div>
                   </div>
-                </div>
-                <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-[750]", status.cls)}>
-                  {status.label}
-                </span>
-              </div>
-
-              {isActive && (
-                <div className="mt-3.5 inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-3 py-0.5 text-[10.5px] font-[750] text-accent">
-                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                  Selected
-                </div>
-              )}
-
-              {/* actions */}
-              <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(bot.bot_id)}
-                    disabled={isActive}
-                    className={cn(
-                      "flex-1 rounded-r1 px-3 py-2 text-[12.5px] font-[700] transition-all cursor-pointer",
-                      isActive
-                        ? "cursor-default bg-panel text-faint border border-border/50"
-                        : "border border-border bg-surface text-fg hover:border-accent hover:text-accent shadow-sm",
-                    )}
-                  >
-                    {isActive ? "Selected" : "Select"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onOpenStudio) {
-                        onOpenStudio(bot.bot_id);
-                      } else {
-                        onSelect(bot.bot_id);
-                      }
-                    }}
-                    className="flex-1 rounded-r1 border border-border bg-surface px-3 py-2 text-center text-[12.5px] font-[700] text-fg hover:border-accent hover:text-accent shadow-sm cursor-pointer"
-                  >
-                    Studio
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOpenInstall(bot.bot_id)}
-                    className="flex-1 rounded-r1 border border-border bg-surface px-3 py-2 text-[12.5px] font-[700] text-fg hover:border-accent hover:text-accent shadow-sm cursor-pointer"
-                  >
-                    Snippet
-                  </button>
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-[750]", status.cls)}>
+                    {status.label}
+                  </span>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setModal({ mode: "edit", bot })}
-                    className="inline-flex items-center gap-1.5 text-[12px] font-[650] text-muted hover:text-fg cursor-pointer"
-                  >
-                    <PencilIcon /> Edit
-                  </button>
-                  <div className="flex items-center gap-3">
+                {isActive && (
+                  <div className="mt-3.5 inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-3 py-0.5 text-[10.5px] font-[750] text-accent">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                    Selected
+                  </div>
+                )}
+
+                {/* actions */}
+                <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => togglePause(bot)}
-                      disabled={busy || bot.suspended}
-                      title={bot.suspended ? "Suspended by the platform — contact support." : undefined}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-[650] text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      onClick={() => onSelect(bot.bot_id)}
+                      disabled={isActive}
+                      className={cn(
+                        "flex-1 rounded-lg px-3 py-2 text-[12.5px] font-[650] transition-all cursor-pointer relative overflow-hidden",
+                        isActive
+                          ? "cursor-default bg-panel text-faint border border-border/50"
+                          : "border border-border/80 bg-surface text-fg hover:border-accent hover:text-accent shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)]",
+                      )}
                     >
-                      {bot.paused ? <PlayIcon /> : <PauseIcon />}
-                      {bot.paused ? "Resume" : "Pause"}
+                      {isActive ? "Selected" : "Select"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmDelete(bot)}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-[650] text-muted hover:text-bad cursor-pointer"
+                      onClick={() => {
+                        if (onOpenStudio) {
+                          onOpenStudio(bot.bot_id);
+                        } else {
+                          onSelect(bot.bot_id);
+                        }
+                      }}
+                      className="flex-1 rounded-lg border border-border/80 bg-surface px-3 py-2 text-center text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] cursor-pointer transition-all"
                     >
-                      <TrashIcon /> Delete
+                      Studio
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenInstall(bot.bot_id)}
+                      className="flex-1 rounded-lg border border-border/80 bg-surface px-3 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] cursor-pointer transition-all"
+                    >
+                      Snippet
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setModal({ mode: "edit", bot })}
+                      className="inline-flex items-center gap-1.5 text-[12px] font-[650] text-muted hover:text-fg cursor-pointer"
+                    >
+                      <PencilIcon /> Edit
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => togglePause(bot)}
+                        disabled={busy || bot.suspended}
+                        title={bot.suspended ? "Suspended by the platform — contact support." : undefined}
+                        className="inline-flex items-center gap-1.5 text-[12px] font-[650] text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      >
+                        {bot.paused ? <PlayIcon /> : <PauseIcon />}
+                        {bot.paused ? "Resume" : "Pause"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(bot)}
+                        className="inline-flex items-center gap-1.5 text-[12px] font-[650] text-muted hover:text-bad cursor-pointer"
+                      >
+                        <TrashIcon /> Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
 
-        {/* Add-bot tile */}
-        {!atLimit && (
-          <button
-            type="button"
-            onClick={() => setModal({ mode: "choice" })}
-            className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-r2 border border-dashed border-border bg-surface/40 p-5 text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full border border-current">
-              <Plus className="h-5 w-5" />
-            </span>
-            <span className="text-[13px] font-[650]">New agent</span>
-          </button>
-        )}
-      </div>
+          {/* Add-bot tile */}
+          {!atLimit && (
+            <button
+              type="button"
+              onClick={() => setModal({ mode: "choice" })}
+              className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-r2 border border-dashed border-border bg-surface/40 p-5 text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              <span className="grid h-10 w-10 place-items-center rounded-full border border-current">
+                <Plus className="h-5 w-5" />
+              </span>
+              <span className="text-[13px] font-[650]">New agent</span>
+            </button>
+          )}
+        </div>
       )}
 
       {modal?.mode === "choice" && (
@@ -357,8 +359,19 @@ export function BotsSection({
           onSaved={(id) => {
             queryClient.invalidateQueries({ queryKey: ["admin", "bots"] });
             setModal(null);
-            onBotCreated?.();
-            onSelect(id);
+            if (onBotUpdated) onBotUpdated(id);
+          }}
+        />
+      )}
+
+      {modal?.mode === "edit" && modal.bot && (
+        <EditBotModal
+          bot={modal.bot}
+          onClose={() => setModal(null)}
+          onSaved={(id) => {
+            queryClient.invalidateQueries({ queryKey: ["admin", "bots"] });
+            setModal(null);
+            if (onBotUpdated) onBotUpdated(id);
           }}
         />
       )}
@@ -378,8 +391,7 @@ export function BotsSection({
               setPendingConfig(null);
               autoOpenConsumed = true;
             }
-            onBotCreated?.();
-            onSelect(id);
+            if (onBotUpdated) onBotUpdated(id);
           }}
         />
       )}

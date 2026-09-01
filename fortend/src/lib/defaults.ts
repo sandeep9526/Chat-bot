@@ -18,7 +18,7 @@ export const DEFAULTS: ZevaConfig = {
   anchor: "bottom-right",
   offX: 24,
   offY: 24,
-  glass: true,
+  glass: false,
   sources: true,
   brand: true,
   fontSrc: "preset",

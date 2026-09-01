@@ -9,6 +9,7 @@ import base64
 import os
 import re
 import time
+import asyncio
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
@@ -90,11 +91,26 @@ sentry_sdk.init(
 db.init_db()
 
 
+async def keep_alive():
+    """Ping own health endpoint every 14 mins to prevent Render from sleeping."""
+    while True:
+        await asyncio.sleep(14 * 60)
+        # Try to use RENDER_EXTERNAL_URL if deployed, otherwise fallback to localhost
+        url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000").rstrip("/")
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get(f"{url}/health", timeout=10.0)
+                print(f"[keep_alive] Pinged {url}/health successfully")
+        except Exception as e:
+            print(f"[keep_alive] Failed to ping {url}/health: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Open the DB pool at startup and close cleanly on shutdown."""
     print("[lifespan] Server starting — DB pool initialised.")
+    ping_task = asyncio.create_task(keep_alive())
     yield
+    ping_task.cancel()
     db.close_pool()
     print("[lifespan] Server shutting down — DB pool closed.")
 
@@ -1235,7 +1251,7 @@ def check_domain(bot_id: str, origin: str | None) -> dict:
 # ---- Security (Phase 06): rate limit + input validation --------------------
 # Har (bot + IP) par prati-minute limit — warna koi spam karke OpenRouter bill
 # uda de. (In-memory; multi-server par Redis chahiye — DEPLOY-SECURITY.md me note.)
-RATE_LIMIT_PER_MIN = 20
+RATE_LIMIT_PER_MIN = 120
 MAX_MESSAGE_LEN = 1000
 _hits: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT_MAX_KEYS = 50000  # Evict oldest entries when dict exceeds this size

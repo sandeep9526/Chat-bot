@@ -8,6 +8,8 @@
 # ── Python / backend ─────────────────────────────────────
 zeva-backend/venv/
 **/venv/
+zeva-backend/.venv/
+**/.venv/
 **/__pycache__/
 *.pyc
 

@@ -11,9 +11,9 @@ import { DEFAULTS } from "@/lib/defaults";
 
 const WIDGET_SRC = "https://www.ochreshift.app/widget.js";
 
-type PlatformKey = "html" | "wordpress" | "shopify" | "react" | "vue" | "angular";
+export type PlatformKey = "html" | "wordpress" | "shopify" | "react" | "vue" | "angular";
 
-const PLATFORMS: { key: PlatformKey; label: string; icon: React.ReactNode; color: string }[] = [
+export const PLATFORMS: { key: PlatformKey; label: string; icon: React.ReactNode; color: string }[] = [
   {
     key: "html",
     label: "HTML",
@@ -52,7 +52,7 @@ const PLATFORMS: { key: PlatformKey; label: string; icon: React.ReactNode; color
   },
 ];
 
-const WHERE_TO_PASTE: Record<PlatformKey, string[]> = {
+export const WHERE_TO_PASTE: Record<PlatformKey, string[]> = {
   html: [
     "Open your site's main HTML file.",
     "Paste the snippet just before the closing </body> tag.",
@@ -187,7 +187,7 @@ function angularSnippet(bot: AdminBot): string {
   ].join("\n");
 }
 
-const SNIPPET_BUILDERS: Record<PlatformKey, (bot: AdminBot) => string> = {
+export const SNIPPET_BUILDERS: Record<PlatformKey, (bot: AdminBot) => string> = {
   html: scriptSnippet,
   wordpress: scriptSnippet,
   shopify: scriptSnippet,
@@ -196,7 +196,7 @@ const SNIPPET_BUILDERS: Record<PlatformKey, (bot: AdminBot) => string> = {
   angular: angularSnippet,
 };
 
-const FILE_LABEL: Record<PlatformKey, string> = {
+export const FILE_LABEL: Record<PlatformKey, string> = {
   html: "index.html",
   wordpress: "footer.php",
   shopify: "theme.liquid",
@@ -211,7 +211,7 @@ function esc(s: string): string {
 }
 
 // Syntax highlighting for the snippet code box
-const highlightSnippet = (code: string) => {
+export const highlightSnippet = (code: string) => {
   return code
     .split("\n")
     .map((line, i) => {
@@ -219,15 +219,15 @@ const highlightSnippet = (code: string) => {
       let h = esc(line);
       // 2. Apply highlighting on the escaped text
       h = h
-        .replace(/(&lt;\/?script.*?&gt;)/g, '<span class="text-blue-400">$1</span>')           // <script> / </script>
-        .replace(/(&lt;Script)/g, '<span class="text-blue-400">$1</span>')                     // <Script (JSX)
-        .replace(/(\/?&gt;)/g, '<span class="text-blue-400">$1</span>')                        // /> or >
-        .replace(/("[^"]*")/g, '<span class="text-emerald-400">$1</span>')                     // strings
-        .replace(/(data-[\w-]+)=/g, '<span class="text-purple-400">$1</span>=')                // data-* attrs
-        .replace(/(strategy|src|async)=/g, '<span class="text-purple-400">$1</span>=')         // other attrs
-        .replace(/(\/\/.*)/g, '<span class="text-gray-500">$1</span>')                        // JS comments
-        .replace(/(import |from |const |if |return )/g, '<span class="text-blue-400">$1</span>') // keywords
-        .replace(/(\.setAttribute|\.createElement|\.getElementById|\.appendChild|\.mount)/g, '<span class="text-yellow-300">$1</span>'); // methods
+        .replace(/(&lt;\/?script.*?&gt;)/g, "<span class='text-blue-400'>$1</span>")           // <script> / </script>
+        .replace(/(&lt;Script)/g, "<span class='text-blue-400'>$1</span>")                     // <Script (JSX)
+        .replace(/(\/?&gt;)/g, "<span class='text-blue-400'>$1</span>")                        // /> or >
+        .replace(/("[^"]*")/g, "<span class='text-emerald-400'>$1</span>")                     // strings
+        .replace(/(data-[\w-]+)=/g, "<span class='text-purple-400'>$1</span>=")                // data-* attrs
+        .replace(/(strategy|src|async)=/g, "<span class='text-purple-400'>$1</span>=")         // other attrs
+        .replace(/(\/\/.*)/g, "<span class='text-gray-500'>$1</span>")                        // JS comments
+        .replace(/(import |from |const |if |return )/g, "<span class='text-blue-400'>$1</span>") // keywords
+        .replace(/(\.setAttribute|\.createElement|\.getElementById|\.appendChild|\.mount)/g, "<span class='text-yellow-300'>$1</span>"); // methods
       return <div key={i} dangerouslySetInnerHTML={{ __html: h || " " }} />;
     });
 };
@@ -320,7 +320,7 @@ export function InstallCard({ bot }: { bot: AdminBot }) {
 
         {/* Right Column: IDE Snippet Window */}
         <div className="lg:col-span-7 flex flex-col h-full">
-          <div className="sticky top-[100px] rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-[#0F111A]">
+          <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-[#0F111A]">
 
             {/* Window Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-[#1A1D27] border-b border-white/5">
@@ -356,7 +356,7 @@ export function InstallCard({ bot }: { bot: AdminBot }) {
 
             {/* Window Body (Code) */}
             <div className="relative group">
-              <pre className="p-6 overflow-x-auto min-h-[300px]">
+              <pre className="p-6 overflow-auto min-h-[300px] max-h-[450px] custom-scrollbar">
                 <code className="font-mono text-[13px] leading-[1.7] text-[#A6ACCD]">
                   {highlightSnippet(snippet)}
                 </code>

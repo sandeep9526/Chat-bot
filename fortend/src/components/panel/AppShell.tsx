@@ -54,6 +54,12 @@ export function AppShell({
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    if (!searchOpen) {
+      setSearchQuery("");
+    }
+  }, [searchOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();

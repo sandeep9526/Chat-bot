@@ -20,7 +20,233 @@ import { ZevaWidget } from "@/components/widget/ZevaWidget";
 import { LeadFormBuilder } from "@/components/admin/LeadFormBuilder";
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
 
-export function Studio({ botId = "", hideBanner = false }: { botId?: string, hideBanner?: boolean }) {
+function StudioControlsContent({ store, cfg, botId, hideBanner, ingesting, handleIngestUrl, reopenTimerRef }: any) {
+  return (
+    <>
+      {/* Website URL group */}
+      {!hideBanner && (
+        <ControlGroup title="Your website" icon={<Globe className="h-[13px] w-[13px]" />}>
+          <div>
+            <FieldLabel label="Website URL" />
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                  <input
+                    className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 pl-9 pr-3 font-mono text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
+                    placeholder="https://example.com"
+                    value={store.websiteUrl}
+                    onChange={(e) => store.setWebsiteUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleIngestUrl();
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleIngestUrl()}
+                  disabled={ingesting || !store.websiteUrl.trim()}
+                  className="group relative shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-[700] text-white hover:bg-accent-strong transition-all disabled:opacity-50 overflow-hidden shadow-sm"
+                >
+                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+                  {ingesting ? "Scraping..." : (<><Sparkles className="h-4 w-4" /> Connect</>)}
+                </button>
+              </div>
+              <p className="ml-1 text-[11.5px] text-muted">Paste your URL to automatically teach the AI about your business.</p>
+            </div>
+          </div>
+        </ControlGroup>
+      )}
+
+      {/* Brand group */}
+      <ControlGroup title="Brand" icon={<Palette className="h-[13px] w-[13px]" />} defaultOpen={hideBanner}>
+        <div>
+          <FieldLabel
+            label="Accent color"
+            value={cfg.accent.toLowerCase()}
+          />
+          <ColorField value={cfg.accent} onChange={store.setAccent} />
+        </div>
+        <div className="mt-4">
+          <FieldLabel label="Logo" />
+          <LogoField value={cfg.logo} onChange={store.setLogo} />
+        </div>
+        <div className="mt-4">
+          <FieldLabel label="Surface" />
+          <Segmented
+            value={cfg.surface}
+            options={[
+              { label: "Auto", value: "auto" },
+              { label: "Light", value: "light" },
+              { label: "Dark", value: "dark" },
+            ]}
+            onChange={store.setSurface}
+          />
+        </div>
+        <div className="mt-4">
+          <FieldLabel
+            label="Panel background"
+            value={cfg.panelBg || "theme"}
+          />
+          <PanelBgField value={cfg.panelBg} onChange={store.setPanelBg} />
+        </div>
+      </ControlGroup>
+
+      {/* Shape & type group */}
+      <ControlGroup title="Shape & type" icon={<Type className="h-[13px] w-[13px]" />}>
+        <div>
+          <FieldLabel label="Corners" />
+          <Segmented
+            value={cfg.corners}
+            options={[
+              { label: "Sharp", value: "sharp" },
+              { label: "Soft", value: "soft" },
+              { label: "Round", value: "round" },
+            ]}
+            onChange={store.setCorners}
+          />
+        </div>
+        <div className="mt-4">
+          <FontField
+            fontSrc={cfg.fontSrc}
+            presetFont={cfg.font}
+            gFont={cfg.gFont}
+            cFam={cfg.cFam}
+            cUrl={cfg.cUrl}
+            onFontSrcChange={store.setFontSrc}
+            onPresetFontChange={store.setPresetFont}
+            onGoogleFontChange={store.setGoogleFont}
+            onCustomFontChange={store.setCustomFont}
+          />
+        </div>
+        <div className="mt-4">
+          <Switch
+            checked={cfg.glass}
+            onCheckedChange={store.toggleGlass}
+            label="Frosted glass"
+            description="translucent, blurred panel"
+          />
+        </div>
+      </ControlGroup>
+
+      {/* Launcher & position group */}
+      <ControlGroup title="Launcher & position" icon={<MousePointerClick className="h-[13px] w-[13px]" />}>
+        <div>
+          <FieldLabel label="Launcher style" />
+          <Segmented
+            value={cfg.launcher}
+            options={[
+              { label: "Pill", value: "pill" },
+              { label: "Bubble", value: "bubble" },
+              { label: "Bar", value: "bar" },
+            ]}
+            onChange={(v) => {
+              store.setLauncher(v as any);
+              store.setOpen(false);
+              if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current);
+              reopenTimerRef.current = setTimeout(() => store.setOpen(true), 2000);
+            }}
+          />
+        </div>
+        <div className="mt-4">
+          <PlacementMap
+            anchor={cfg.anchor}
+            offX={cfg.offX}
+            offY={cfg.offY}
+            onChange={(anchor) => {
+              store.setAnchor(anchor);
+              store.setOpen(false);
+              if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current);
+              reopenTimerRef.current = setTimeout(() => store.setOpen(true), 2000);
+            }}
+          />
+          <p className="mt-2 text-[11.5px] text-faint leading-[1.45]">
+            <b className="text-muted">Or drag it:</b> grab the launcher
+            button in the preview and drop it anywhere {"\u2014"} the position
+            saves into your embed code.
+          </p>
+        </div>
+      </ControlGroup>
+
+      {/* Content group */}
+      <ControlGroup title="Content" icon={<MessageSquare className="h-[13px] w-[13px]" />}>
+        <div>
+          <FieldLabel label="Assistant name" />
+          <input
+            className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
+            value={cfg.name}
+            onChange={(e) => store.setName(e.target.value)}
+          />
+        </div>
+        <div className="mt-4">
+          <FieldLabel label="Header subtitle" />
+          <input
+            className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
+            value={cfg.subtitle}
+            onChange={(e) => store.setSubtitle(e.target.value)}
+          />
+        </div>
+        <div className="mt-4">
+          <FieldLabel label="Launcher label" />
+          <input
+            className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
+            value={cfg.label}
+            onChange={(e) => store.setLabel(e.target.value)}
+          />
+        </div>
+        <div className="mt-4">
+          <FieldLabel label="Welcome line" />
+          <input
+            className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
+            value={cfg.welcome}
+            onChange={(e) => store.setWelcome(e.target.value)}
+          />
+        </div>
+        <div className="mt-4">
+          <FieldLabel
+            label="Suggested questions"
+            value={`${cfg.suggestions.filter((q: string) => q.trim()).length} chips`}
+          />
+          <textarea
+            className="w-full resize-y border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] leading-[1.6] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted min-h-[100px]"
+            rows={4}
+            value={cfg.suggestions.join("\n")}
+            onChange={(e) => store.setSuggestions(e.target.value.split("\n"))}
+          />
+          <p className="mt-1.5 text-[11.5px] text-muted">One question per line.</p>
+        </div>
+      </ControlGroup>
+
+      {/* Trust & white-label group */}
+      <ControlGroup title="Trust & white-label" icon={<ShieldCheckIcon className="h-[13px] w-[13px]" />}>
+        <Switch
+          checked={cfg.sources}
+          onCheckedChange={store.toggleSources}
+          label="Show sources"
+          description="the proof card under answers"
+        />
+        <div className="mt-4">
+          <Switch
+            checked={cfg.brand}
+            onCheckedChange={store.toggleBrand}
+            label={"\u201cPowered by ochreshift\u201d"}
+            description="turn off to white-label"
+          />
+        </div>
+      </ControlGroup>
+
+      {/* Lead capture group */}
+      <ControlGroup title="Lead capture form" icon={<Contact className="h-[13px] w-[13px]" />}>
+        <LeadFormBuilder botId={botId} />
+      </ControlGroup>
+    </>
+  );
+}
+
+export function Studio({ botId = "", hideBanner = false, controlsOnly = false }: { botId?: string, hideBanner?: boolean, controlsOnly?: boolean }) {
 
   const store = useZevaStore();
   const cfg = store.config;
@@ -28,6 +254,7 @@ export function Studio({ botId = "", hideBanner = false }: { botId?: string, hid
   const chat = useZevaChat();
   const isScanning = store.isQuestionProcessing || chat.isScanning;
   const [ingesting, setIngesting] = useState(false);
+  const [isFallback, setIsFallback] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null);
   const [templateStatus, setTemplateStatus] = useState<string | null>(null);
   // Preview stage the widget/font/theme scope to — keeps Surface/corners/font
@@ -107,6 +334,40 @@ export function Studio({ botId = "", hideBanner = false }: { botId?: string, hid
     }
   };
 
+  // In controlsOnly mode, render just the raw controls — no wrapper, grid, or preview.
+  // The parent (OnboardingWizard) provides its own card/scrollable container.
+  if (controlsOnly) {
+    return (
+      <div className="flex flex-col gap-0">
+        <div className="flex items-center justify-between py-3 px-1 mb-2">
+          <b className="text-[14px] font-[750] tracking-tight text-fg">Customize widget</b>
+          <button
+            title="Reset all settings"
+            className="group flex h-7 w-7 items-center justify-center rounded-full border border-border bg-panel text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
+            onClick={() => {
+              if (window.confirm("Reset all customization back to defaults?")) {
+                store.resetConfig();
+              }
+            }}
+          >
+            <RotateCcw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-rotate-90" />
+          </button>
+        </div>
+        <div className="py-0">
+          <StudioControlsContent
+            store={store}
+            cfg={cfg}
+            botId={botId}
+            hideBanner={true} // In controlsOnly, we don't need the website URL ingest banner
+            ingesting={ingesting}
+            handleIngestUrl={handleIngestUrl}
+            reopenTimerRef={reopenTimerRef}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 ${hideBanner ? "pt-2 pb-10 lg:pt-4" : "py-6 lg:py-8 pb-20"}`}>
       {!hideBanner && botId && <StudioBotBanner botId={botId} />}
@@ -154,229 +415,15 @@ export function Studio({ botId = "", hideBanner = false }: { botId?: string, hid
 
 
           <div className="py-1 px-[18px] pb-[18px]">
-
-            {/* Website URL group */}
-            {!hideBanner && (
-              <ControlGroup title="Your website" icon={<Globe className="h-[13px] w-[13px]" />}>
-                <div>
-                  <FieldLabel label="Website URL" />
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-                        <input
-                          className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 pl-9 pr-3 font-mono text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
-                          placeholder="https://example.com"
-                          value={store.websiteUrl}
-                          onChange={(e) => store.setWebsiteUrl(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleIngestUrl();
-                            }
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleIngestUrl()}
-                        disabled={ingesting || !store.websiteUrl.trim()}
-                        className="group relative shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-[700] text-white hover:bg-accent-strong transition-all disabled:opacity-50 overflow-hidden shadow-sm"
-                      >
-                        <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
-                        {ingesting ? "Scraping..." : (<><Sparkles className="h-4 w-4" /> Connect</>)}
-                      </button>
-                    </div>
-                    <p className="ml-1 text-[11.5px] text-muted">Paste your URL to automatically teach the AI about your business.</p>
-                  </div>
-                </div>
-              </ControlGroup>
-            )}
-
-
-            {/* Brand group */}
-            <ControlGroup title="Brand" icon={<Palette className="h-[13px] w-[13px]" />} defaultOpen={hideBanner}>
-              <div>
-                <FieldLabel
-                  label="Accent color"
-                  value={cfg.accent.toLowerCase()}
-                />
-                <ColorField value={cfg.accent} onChange={store.setAccent} />
-              </div>
-              <div className="mt-4">
-                <FieldLabel label="Logo" />
-                <LogoField value={cfg.logo} onChange={store.setLogo} />
-              </div>
-              <div className="mt-4">
-                <FieldLabel label="Surface" />
-                <Segmented
-                  value={cfg.surface}
-                  options={[
-                    { label: "Auto", value: "auto" },
-                    { label: "Light", value: "light" },
-                    { label: "Dark", value: "dark" },
-                  ]}
-                  onChange={store.setSurface}
-                />
-              </div>
-              <div className="mt-4">
-                <FieldLabel
-                  label="Panel background"
-                  value={cfg.panelBg || "theme"}
-                />
-                <PanelBgField value={cfg.panelBg} onChange={store.setPanelBg} />
-              </div>
-            </ControlGroup>
-
-
-            {/* Shape & type group */}
-            <ControlGroup title="Shape & type" icon={<Type className="h-[13px] w-[13px]" />}>
-              <div>
-                <FieldLabel label="Corners" />
-                <Segmented
-                  value={cfg.corners}
-                  options={[
-                    { label: "Sharp", value: "sharp" },
-                    { label: "Soft", value: "soft" },
-                    { label: "Round", value: "round" },
-                  ]}
-                  onChange={store.setCorners}
-                />
-              </div>
-              <div className="mt-4">
-                <FontField
-                  fontSrc={cfg.fontSrc}
-                  presetFont={cfg.font}
-                  gFont={cfg.gFont}
-                  cFam={cfg.cFam}
-                  cUrl={cfg.cUrl}
-                  onFontSrcChange={store.setFontSrc}
-                  onPresetFontChange={store.setPresetFont}
-                  onGoogleFontChange={store.setGoogleFont}
-                  onCustomFontChange={store.setCustomFont}
-                />
-              </div>
-              <div className="mt-4">
-                <Switch
-                  checked={cfg.glass}
-                  onCheckedChange={store.toggleGlass}
-                  label="Frosted glass"
-                  description="translucent, blurred panel"
-                />
-              </div>
-            </ControlGroup>
-
-            {/* Launcher & position group */}
-            <ControlGroup title="Launcher & position" icon={<MousePointerClick className="h-[13px] w-[13px]" />}>
-              <div>
-                <FieldLabel label="Launcher style" />
-                <Segmented
-                  value={cfg.launcher}
-                  options={[
-                    { label: "Pill", value: "pill" },
-                    { label: "Bubble", value: "bubble" },
-                    { label: "Bar", value: "bar" },
-                  ]}
-                  onChange={(v) => {
-                    store.setLauncher(v as any);
-                    store.setOpen(false);
-                    if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current);
-                    reopenTimerRef.current = setTimeout(() => store.setOpen(true), 2000);
-                  }}
-                />
-              </div>
-              <div className="mt-4">
-                <PlacementMap
-                  anchor={cfg.anchor}
-                  offX={cfg.offX}
-                  offY={cfg.offY}
-                  onChange={(anchor) => {
-                    store.setAnchor(anchor);
-                    store.setOpen(false);
-                    if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current);
-                    reopenTimerRef.current = setTimeout(() => store.setOpen(true), 2000);
-                  }}
-                />
-                <p className="mt-2 text-[11.5px] text-faint leading-[1.45]">
-                  <b className="text-muted">Or drag it:</b> grab the launcher
-                  button in the preview and drop it anywhere {"\u2014"} the position
-                  saves into your embed code.
-                </p>
-              </div>
-            </ControlGroup>
-
-            {/* Content group */}
-            <ControlGroup title="Content" icon={<MessageSquare className="h-[13px] w-[13px]" />}>
-              <div>
-                <FieldLabel label="Assistant name" />
-                <input
-                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
-                  value={cfg.name}
-                  onChange={(e) => store.setName(e.target.value)}
-                />
-              </div>
-              <div className="mt-4">
-                <FieldLabel label="Header subtitle" />
-                <input
-                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
-                  value={cfg.subtitle}
-                  onChange={(e) => store.setSubtitle(e.target.value)}
-                />
-              </div>
-              <div className="mt-4">
-                <FieldLabel label="Launcher label" />
-                <input
-                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
-                  value={cfg.label}
-                  onChange={(e) => store.setLabel(e.target.value)}
-                />
-              </div>
-              <div className="mt-4">
-                <FieldLabel label="Welcome line" />
-                <input
-                  className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
-                  value={cfg.welcome}
-                  onChange={(e) => store.setWelcome(e.target.value)}
-                />
-              </div>
-              <div className="mt-4">
-                <FieldLabel
-                  label="Suggested questions"
-                  value={`${cfg.suggestions.filter((q) => q.trim()).length} chips`}
-                />
-                <textarea
-                  className="w-full resize-y border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] leading-[1.6] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted min-h-[100px]"
-                  rows={4}
-                  value={cfg.suggestions.join("\n")}
-                  onChange={(e) => store.setSuggestions(e.target.value.split("\n"))}
-                />
-                <p className="mt-1.5 text-[11.5px] text-muted">One question per line.</p>
-              </div>
-            </ControlGroup>
-
-            {/* Trust & white-label group */}
-            <ControlGroup title="Trust & white-label" icon={<ShieldCheckIcon className="h-[13px] w-[13px]" />}>
-              <Switch
-                checked={cfg.sources}
-                onCheckedChange={store.toggleSources}
-                label="Show sources"
-                description="the proof card under answers"
-              />
-              <div className="mt-4">
-                <Switch
-                  checked={cfg.brand}
-                  onCheckedChange={store.toggleBrand}
-                  label={"\u201cPowered by ochreshift\u201d"}
-                  description="turn off to white-label"
-                />
-              </div>
-            </ControlGroup>
-
-            {/* Lead capture group */}
-            <ControlGroup title="Lead capture form" icon={<Contact className="h-[13px] w-[13px]" />}>
-              <LeadFormBuilder botId={botId} />
-            </ControlGroup>
-
+            <StudioControlsContent
+              store={store}
+              cfg={cfg}
+              botId={botId}
+              hideBanner={hideBanner}
+              ingesting={ingesting}
+              handleIngestUrl={handleIngestUrl}
+              reopenTimerRef={reopenTimerRef}
+            />
           </div>
         </aside>
 
@@ -403,14 +450,16 @@ export function Studio({ botId = "", hideBanner = false }: { botId?: string, hid
                 <div className="flex w-full items-center justify-center gap-1.5 bg-surface/80 border border-border/80 shadow-sm rounded-md py-1 px-3">
                   <Lock className="h-3 w-3 text-muted shrink-0" />
                   <span className="text-[11px] font-medium text-fg truncate">
-                    {store.websiteUrl ? (() => { try { return new URL(store.websiteUrl).hostname } catch { return store.websiteUrl } })() : "ochreshift.ai"}
+                    {isFallback 
+                      ? "ochreshift.in" 
+                      : (store.websiteUrl ? (() => { try { return new URL(store.websiteUrl).hostname } catch { return store.websiteUrl } })() : "ochreshift.ai")}
                   </span>
                 </div>
               </div>
               <div className="w-[45px]" /> {/* Spacer for flex balance */}
             </div>
 
-            <DemoSite websiteUrl={store.websiteUrl} />
+            <DemoSite websiteUrl={store.websiteUrl} onFallbackStatusChange={setIsFallback} />
             <ZevaWidget positionMode="absolute" themeScopeRef={stageRef} />
 
           </div>

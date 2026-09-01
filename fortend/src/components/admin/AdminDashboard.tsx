@@ -29,6 +29,7 @@ import { AccountMenu } from "@/components/panel/AccountMenu";
 import { BotSwitcher } from "@/components/panel/BotSwitcher";
 import { ThemeToggle } from "@/components/panel/ThemeToggle";
 import { LogoLoader } from "@/components/ui/PageLoader";
+import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 import { InstallCard } from "@/components/panel/InstallCard";
 import {
   OverviewIcon,
@@ -195,8 +196,8 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
       <Centered>
         <EmptyCard
           title="Couldn't load your agents"
-          body="We couldn't reach the ochreshift backend just now. Check your connection and try again."
-          secondary={{ label: "Retry", onClick: () => refetchBots() }}
+          body="We're having trouble reaching your workspace nodes. Verify your connection or refresh to try again."
+          secondary={{ label: "Retry Connection", onClick: async () => { await refetchBots(); } }}
         />
       </Centered>
     );
@@ -314,7 +315,10 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
         <SetupChecklist
           hasBots={!noBots}
           botId={botId}
-          onCreateBot={() => navigate("bots")}
+          onCreateBot={() => {
+            navigate("bots");
+            setTimeout(() => window.dispatchEvent(new Event("zeva:open-bot-modal")), 10);
+          }}
           onGoto={(s) => navigate(s as SectionKey)}
           onOpenStudio={() => navigate("appearance")}
         />
@@ -340,6 +344,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
             setSelectedBotId(id);
             navigate("overview");
           }}
+          onBotUpdated={(id) => setSelectedBotId(id)}
           onOpenStudio={(id) => {
             setSelectedBotId(id);
             navigate("appearance");
@@ -414,10 +419,10 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
             description="Detailed breakdown of chat volumes, resolutions, and topics."
           />
           <div className="flex items-center justify-center py-20">
-             <div className="text-[13px] text-muted flex flex-col items-center">
-                 <OverviewIcon className="w-8 h-8 mb-4 text-faint" />
-                 <p>Advanced Analytics coming soon in Q4.</p>
-             </div>
+            <div className="text-[13px] text-muted flex flex-col items-center">
+              <OverviewIcon className="w-8 h-8 mb-4 text-faint" />
+              <p>Advanced Analytics coming soon in Q4.</p>
+            </div>
           </div>
         </>
       )}
@@ -429,7 +434,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
       {activeSection === "settings" && (
         <SettingsView bot={activeBot} email={email} onLogout={logout} onGoto={navigate} />
       )}
-      
+
       {activeSection === "help" && (
         <HelpSupportView />
       )}
@@ -498,24 +503,28 @@ function OverviewSection({
       <div className="mt-6 mb-6">
         <Card>
           <div className="flex items-center justify-between mb-6">
-            <span className="text-[13px] font-[600] text-muted">Conversations</span>
-            <span className="text-[11px] font-[650] text-muted rounded-md bg-panel border border-border px-2 py-1">Last 30 days v</span>
+            <div>
+              <h3 className="text-[15px] font-[800] text-fg">Conversations Volume</h3>
+              <p className="text-[12px] text-muted mt-0.5">Total queries handled across all platforms.</p>
+            </div>
+            <button className="text-[11px] font-[650] text-fg rounded-lg bg-panel border border-border/80 px-3 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-surface hover:border-border transition-all">Last 30 days &darr;</button>
           </div>
-          <div className="relative h-[200px] w-full flex items-end opacity-80">
-            {/* Fake big chart */}
-            <svg className="w-full h-full preserveAspectRatio-none" viewBox="0 0 1000 200" fill="none">
-              <path d="M0 160 L100 140 L200 170 L300 120 L400 130 L500 80 L600 110 L700 90 L800 130 L900 60 L1000 90" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M0 160 L100 140 L200 170 L300 120 L400 130 L500 80 L600 110 L700 90 L800 130 L900 60 L1000 90 L1000 200 L0 200 Z" fill="url(#chart-fade)" opacity="0.1"/>
+          <div className="relative h-[220px] w-full flex items-end">
+            {/* Glow underneath the line */}
+            <div className="absolute inset-0 bg-accent/5 blur-3xl opacity-50 rounded-full" />
+            <svg className="w-full h-full preserveAspectRatio-none relative z-10" viewBox="0 0 1000 200" fill="none">
+              <path d="M0 160 L100 140 L200 170 L300 120 L400 130 L500 80 L600 110 L700 90 L800 130 L900 60 L1000 90" stroke="var(--accent)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0px 8px 12px rgba(var(--accent-rgb), 0.3))" }}/>
+              <path d="M0 160 L100 140 L200 170 L300 120 L400 130 L500 80 L600 110 L700 90 L800 130 L900 60 L1000 90 L1000 200 L0 200 Z" fill="url(#chart-fade)" opacity="0.15"/>
               <defs>
                 <linearGradient id="chart-fade" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)"/>
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
+                  <stop offset="0%" stopColor="var(--accent)" />
+                  <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
                 </linearGradient>
               </defs>
               {/* Grid lines */}
-              <line x1="0" y1="50" x2="1000" y2="50" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="0" y1="100" x2="1000" y2="100" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="0" y1="150" x2="1000" y2="150" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="0" y1="50" x2="1000" y2="50" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
+              <line x1="0" y1="100" x2="1000" y2="100" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
+              <line x1="0" y1="150" x2="1000" y2="150" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
             </svg>
             <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] text-faint pb-6 pt-2">
               <span>1K</span>
@@ -551,10 +560,10 @@ function OverviewSection({
             {(stats?.topQuestions ?? []).slice(0, 5).map((q, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between gap-3 px-1 py-1 text-[13px]"
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-border/60 hover:bg-panel/40 transition-colors"
               >
-                <span className="truncate font-[500] text-fg">{q.question}</span>
-                <span className="shrink-0 text-muted">{q.count}</span>
+                <span className="truncate font-[500] text-[13px] text-fg">{q.question}</span>
+                <span className="shrink-0 text-[11px] font-[650] text-muted bg-panel border border-border/50 px-2 py-0.5 rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.02)]">{q.count}</span>
               </div>
             ))}
           </div>
@@ -581,14 +590,20 @@ function OverviewSection({
             {leads.slice(0, 5).map((l) => (
               <div
                 key={l.id}
-                className="flex items-center justify-between gap-3 px-1 py-1 text-[13px]"
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-border/60 hover:bg-panel/40 transition-colors"
               >
-                <div className="min-w-0 flex-1 grid grid-cols-[1fr_1fr_auto_auto] gap-4 items-center">
-                  <div className="truncate font-[500] text-fg">{l.name}</div>
-                  <div className="truncate text-muted">{l.email}</div>
-                  <ScoreTag score={l.score} />
-                  <div className="text-muted text-[12px]">2h ago</div>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-[12px] font-[700] shadow-sm">
+                    {l.name ? l.name[0].toUpperCase() : l.email[0].toUpperCase()}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate text-[13px] font-[600] text-fg">{l.name || "Anonymous"}</span>
+                    <span className="truncate text-[11px] font-[500] text-muted">{l.email}</span>
+                  </div>
                 </div>
+                <span className="shrink-0 text-[11px] text-faint">
+                  {new Date(l.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </span>
               </div>
             ))}
           </div>
@@ -609,24 +624,24 @@ function OverviewSection({
             </button>
           </div>
           <div className="flex flex-col gap-3">
-             <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
-                   <KnowledgeIcon className="h-4 w-4" />
-                </span>
-                <div className="text-[13.5px] font-[500]">Website</div>
-             </div>
-             <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
-                   <KnowledgeIcon className="h-4 w-4" />
-                </span>
-                <div className="text-[13.5px] font-[500]">Pricing Guide.pdf</div>
-             </div>
-             <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
-                   <KnowledgeIcon className="h-4 w-4" />
-                </span>
-                <div className="text-[13.5px] font-[500]">FAQ</div>
-             </div>
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
+                <KnowledgeIcon className="h-4 w-4" />
+              </span>
+              <div className="text-[13.5px] font-[500]">Website</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
+                <KnowledgeIcon className="h-4 w-4" />
+              </span>
+              <div className="text-[13.5px] font-[500]">Pricing Guide.pdf</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
+                <KnowledgeIcon className="h-4 w-4" />
+              </span>
+              <div className="text-[13.5px] font-[500]">FAQ</div>
+            </div>
           </div>
         </Card>
 
@@ -645,20 +660,20 @@ function OverviewSection({
             </button>
           </div>
           <div className="flex flex-col gap-3">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                   <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-white font-bold text-xs">AS</span>
-                   <div className="text-[13.5px] font-[500]">Acme Support Agent</div>
-                </div>
-                <span className="text-[11px] font-medium bg-good/10 text-good px-2 py-0.5 rounded-full">Active</span>
-             </div>
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                   <span className="grid h-8 w-8 place-items-center rounded-full bg-panel border border-border text-muted font-bold text-xs">SA</span>
-                   <div className="text-[13.5px] font-[500]">Sales Assistant</div>
-                </div>
-                <span className="text-[11px] font-medium bg-panel border border-border text-muted px-2 py-0.5 rounded-full">Draft</span>
-             </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-white font-bold text-xs">AS</span>
+                <div className="text-[13.5px] font-[500]">Acme Support Agent</div>
+              </div>
+              <span className="text-[11px] font-medium bg-good/10 text-good px-2 py-0.5 rounded-full">Active</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-panel border border-border text-muted font-bold text-xs">SA</span>
+                <div className="text-[13.5px] font-[500]">Sales Assistant</div>
+              </div>
+              <span className="text-[11px] font-medium bg-panel border border-border text-muted px-2 py-0.5 rounded-full">Draft</span>
+            </div>
           </div>
         </Card>
       </div>
@@ -777,12 +792,33 @@ function EmptyCard({
   title: string;
   body: React.ReactNode;
   cta?: { href: string; label: string };
-  secondary?: { label: string; onClick: () => void };
+  secondary?: { label: string; onClick: () => void | Promise<any> };
 }) {
+  const [isSecondaryLoading, setSecondaryLoading] = useState(false);
+
+  const handleSecondaryClick = async () => {
+    if (!secondary) return;
+    setSecondaryLoading(true);
+    try {
+      await secondary.onClick();
+    } finally {
+      setSecondaryLoading(false);
+    }
+  };
+
   return (
     <div className="w-[360px] max-w-full rounded-r3 border border-border bg-surface p-7 text-center shadow-panel">
-      <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-r2 bg-gradient-to-br from-accent to-accent-strong text-white shadow-panel">
-        <OverviewIcon className="h-5 w-5" />
+      <div className="relative mx-auto mb-6 grid h-20 w-20 place-items-center">
+        {/* Subtle pulsing background ring */}
+        <div className="absolute inset-0 rounded-full bg-accent/20 animate-ping opacity-20" style={{ animationDuration: '3s' }} />
+
+        {/* Main logo container */}
+        <div className="relative z-10 grid h-full w-full place-items-center rounded-full bg-gradient-to-br from-accent/10 to-accent/5 ring-1 ring-accent/20 backdrop-blur-sm">
+          <OchreshiftLogo
+            variant="mark"
+            className="h-10 w-10 opacity-90 transition-transform duration-500 ease-out hover:scale-110 hover:opacity-100"
+          />
+        </div>
       </div>
       <b className="text-[17px] font-[750]">{title}</b>
       <p className="mb-5 mt-2 text-[13.5px] leading-relaxed text-muted">{body}</p>
@@ -797,10 +833,21 @@ function EmptyCard({
       {secondary && (
         <button
           type="button"
-          onClick={secondary.onClick}
-          className="mt-3 w-full text-[12.5px] font-[600] text-muted hover:text-fg"
+          onClick={handleSecondaryClick}
+          disabled={isSecondaryLoading}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-[13.5px] font-[650] text-accent transition-all hover:bg-accent/20 active:scale-[0.98] disabled:opacity-60"
         >
-          {secondary.label}
+          {isSecondaryLoading ? (
+            <>
+              <svg className="h-4 w-4 animate-spin text-accent" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Retrying...
+            </>
+          ) : (
+            secondary.label
+          )}
         </button>
       )}
     </div>

@@ -148,39 +148,39 @@ export function SitemapCrawlerConsole({ botId, onCrawlComplete }: SitemapCrawler
       {/* Visual Crawler Progress Dashboard */}
       {job.status !== "idle" && (
         <div className="mt-5 border-t border-border pt-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-surface p-3.5 rounded-r1 border border-border">
+          <div className="flex flex-col gap-3 bg-surface p-4 rounded-xl border border-border shadow-sm">
             <div>
-              <span className="text-[11.5px] font-[700] text-faint uppercase tracking-wider block">Status</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10.5px] font-[750] text-faint uppercase tracking-wider block mb-1.5">Status</span>
+              <div className="flex items-center gap-1.5">
                 {job.status === "discovering" && (
-                  <span className="text-amber-600 font-[700] text-[13.5px] flex items-center gap-1.5 animate-pulse">
+                  <span className="text-amber-600 font-[650] text-[13px] flex items-center gap-1.5 animate-pulse">
                     <Layers className="h-4 w-4" /> Finding your pages…
                   </span>
                 )}
                 {job.status === "scraping" && (
-                  <span className="text-indigo-600 font-[700] text-[13.5px] flex items-center gap-1.5">
+                  <span className="text-indigo-600 font-[650] text-[13px] flex items-center gap-1.5">
                     <RefreshCw className="h-4 w-4 animate-spin" /> Importing pages ({job.scraped_urls} / {job.total_urls})
                   </span>
                 )}
                 {job.status === "completed" && (
-                  <span className="text-emerald-600 font-[700] text-[13.5px] flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-[650] text-[13px] flex items-center gap-1.5">
                     <CheckCircle className="h-4 w-4" /> Done — your content is ready to use.
                   </span>
                 )}
                 {job.status === "failed" && (
-                  <span className="text-bad font-[700] text-[13.5px]">We couldn&apos;t finish — check the URL and try again.</span>
+                  <span className="text-bad font-[650] text-[13px]">We couldn&apos;t finish — check the URL and try again.</span>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-6 text-right">
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border/50">
               <div>
-                <span className="text-[11px] font-[600] text-muted block">Characters imported</span>
-                <span className="text-[15px] font-[750] font-mono text-fg">{job.total_chars.toLocaleString()}</span>
+                <span className="text-[11px] font-[600] text-muted block mb-0.5">Characters imported</span>
+                <span className="text-[16px] font-[750] font-mono text-fg tracking-tight">{job.total_chars.toLocaleString()}</span>
               </div>
               <div>
-                <span className="text-[11px] font-[600] text-muted block">Pages found</span>
-                <span className="text-[15px] font-[750] font-mono text-indigo-600">{job.discovered_pages.length}</span>
+                <span className="text-[11px] font-[600] text-muted block mb-0.5">Pages found</span>
+                <span className="text-[16px] font-[750] font-mono text-indigo-600 tracking-tight">{job.discovered_pages.length}</span>
               </div>
             </div>
           </div>

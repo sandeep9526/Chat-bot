@@ -1526,7 +1526,13 @@ def fetch_playground_sessions(owner_user_id: str, bot_id: str) -> list[dict]:
                 "SELECT id, title, messages, updated_at FROM playground_sessions WHERE bot_id = %s ORDER BY updated_at DESC",
                 (bot_id,)
             )
-            return [dict(r) for r in cur.fetchall()]
+            rows = []
+            for r in cur.fetchall():
+                d = dict(r)
+                if isinstance(d.get("messages"), str):
+                    d["messages"] = json.loads(d["messages"])
+                rows.append(d)
+            return rows
     except Exception as e:
         print("[db] fetch_playground_sessions Postgres failed, using SQLite:", e)
         try:

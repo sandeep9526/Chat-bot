@@ -6,6 +6,7 @@ import { INDUSTRY_TEMPLATES } from "@/lib/templates";
 
 interface DemoSiteProps {
   websiteUrl?: string;
+  onFallbackStatusChange?: (isFallback: boolean) => void;
 }
 
 function normalizeUrl(raw: string): string | null {
@@ -192,30 +193,73 @@ function getMatchedDetails(name: string, url: string) {
   };
 }
 
-export function DemoSite({ websiteUrl }: DemoSiteProps) {
+export function DemoSite({ websiteUrl, onFallbackStatusChange }: DemoSiteProps) {
   if (websiteUrl && websiteUrl.trim()) {
-    return <SitePreview key={websiteUrl.trim()} raw={websiteUrl} />;
+    return <SitePreview key={websiteUrl.trim()} raw={websiteUrl} onFallbackStatusChange={onFallbackStatusChange} />;
   }
-  return <MockSite />;
+  
+  useEffect(() => {
+    onFallbackStatusChange?.(true);
+  }, [onFallbackStatusChange]);
+
+  return (
+    <div className="absolute inset-0 top-[49px] bg-panel z-10 overflow-hidden">
+      <iframe
+        src="https://ochreshift.in"
+        className="h-full w-full border-0 pointer-events-none opacity-80"
+        title="Fallback preview"
+      />
+    </div>
+  );
 }
 
-function SitePreview({ raw }: { raw: string }) {
+function SitePreview({ raw, onFallbackStatusChange }: { raw: string, onFallbackStatusChange?: (isFallback: boolean) => void }) {
   const url = normalizeUrl(raw);
   const [status, setStatus] = useState<"loading" | "loaded" | "blocked">("loading");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!url) return;
+    let mounted = true;
+
+    // Check backend first to see if it allows framing
+    fetch(`/api/check-frame?url=${encodeURIComponent(url)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!mounted) return;
+        if (data.canFrame === false) {
+          setStatus("blocked");
+        }
+      })
+      .catch(() => {
+        if (mounted) setStatus("blocked");
+      });
+
+    // Fallback timeout in case loading takes too long
     timer.current = setTimeout(() => {
       setStatus((s) => (s === "loading" ? "blocked" : s));
     }, 4500);
+
     return () => {
+      mounted = false;
       if (timer.current) clearTimeout(timer.current);
     };
   }, [url]);
 
+  useEffect(() => {
+    onFallbackStatusChange?.(!url || status === "blocked");
+  }, [url, status, onFallbackStatusChange]);
+
   if (!url) {
-    return <CustomSiteMock url={raw} />;
+    return (
+      <div className="absolute inset-0 top-[49px] bg-panel z-10 overflow-hidden">
+        <iframe
+          src="https://ochreshift.in"
+          className="h-full w-full border-0 pointer-events-none opacity-80"
+          title="Fallback preview"
+        />
+      </div>
+    );
   }
 
   return (
@@ -226,7 +270,7 @@ function SitePreview({ raw }: { raw: string }) {
         title="Website preview"
         sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        onLoad={() => setStatus("loaded")}
+        onLoad={() => setStatus(s => s === "loading" ? "loaded" : s)}
       />
 
       {status === "loading" && (
@@ -239,8 +283,12 @@ function SitePreview({ raw }: { raw: string }) {
       )}
 
       {status === "blocked" && (
-        <div className="absolute inset-0 z-20 overflow-hidden">
-          <CustomSiteMock url={url} />
+        <div className="absolute inset-0 z-20 overflow-hidden bg-bg">
+          <iframe
+            src="https://ochreshift.in"
+            className="h-full w-full border-0 pointer-events-none opacity-80"
+            title="Fallback preview"
+          />
         </div>
       )}
     </div>

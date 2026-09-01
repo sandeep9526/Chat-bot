@@ -122,38 +122,32 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-r1 bg-indigo-500/15 text-indigo-600">
-            <Settings2 className="h-5 w-5" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <b className="text-[14px] font-[750] text-fg">Lead form fields</b>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-600 px-2 py-0.5 text-[10.5px] font-[700]">
-                <Sparkles className="h-3 w-3" /> Custom
-              </span>
-            </div>
-            <p className="text-[11.5px] text-muted">
-              Add extra fields to capture visitor data.
-            </p>
-          </div>
+      <div className="flex flex-col gap-3 mb-4">
+        <div>
+          <h3 className="text-[14px] font-[800] text-fg tracking-tight flex items-center gap-2">
+            Lead form fields
+            <span className="bg-accent/10 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> Custom
+            </span>
+          </h3>
+          <p className="text-[12px] text-muted mt-1 leading-[1.4]">
+            Add extra fields to capture visitor data.
+          </p>
         </div>
-
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1.5 rounded-r1 border border-border bg-surface hover:bg-panel text-fg font-[700] px-3.5 py-2 text-[12.5px] transition-colors shadow-2xs"
+            className="flex-1 flex justify-center items-center gap-1 text-[12.5px] font-[700] text-fg hover:bg-panel px-3 py-2 rounded-xl border border-border transition-colors bg-surface shadow-sm"
           >
-            <Plus className="h-4 w-4 text-indigo-600" />
+            <Plus className="h-3.5 w-3.5 text-faint" />
             Add field
           </button>
           <button
             type="button"
             onClick={handleSave}
             disabled={saving || loading}
-            className="flex items-center gap-1.5 rounded-r1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-[700] px-4 py-2 text-[12.5px] transition-colors shadow-2xs"
+            className="flex-1 flex justify-center items-center gap-1.5 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-[700] px-3 py-2 text-[12.5px] transition-colors shadow-sm"
           >
             {saving ? "Saving…" : "Save fields"}
           </button>
@@ -161,14 +155,14 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
       </div>
 
       {savedMsg && (
-        <div className="mb-4 rounded-r1 bg-emerald-500/15 border border-emerald-500/30 p-3 text-[13px] font-[650] text-emerald-700 flex items-center gap-2 animate-fadeIn">
+        <div className="mb-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-3 text-[12.5px] font-[650] text-emerald-700 flex items-center gap-2 animate-pulse">
           <Check className="h-4 w-4 text-emerald-600" />
           Saved — your lead form is updated.
         </div>
       )}
 
       {error && (
-        <div className="mb-4 rounded-r1 bg-bad/10 border border-bad/30 p-3 text-[13px] font-[650] text-bad flex items-center gap-2">
+        <div className="mb-4 rounded-xl bg-bad/10 border border-bad/30 p-3 text-[12.5px] font-[650] text-bad flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
           {error}
         </div>
@@ -176,18 +170,18 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
 
       {/* Add Custom Field Box */}
       {showAdd && (
-        <form onSubmit={handleAddField} className="mb-6 bg-surface p-4 rounded-r1 border border-indigo-500/30 space-y-3.5">
+        <form onSubmit={handleAddField} className="mb-6 bg-surface p-4 rounded-xl border border-border shadow-sm space-y-3.5">
           <b className="block text-[13.5px] font-[750] text-fg">Add a field</b>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="block text-[11.5px] font-[700] text-muted mb-1">Field label</label>
               <input
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="e.g. Desired Budget or Property Location"
+                placeholder="e.g. Budget or Location"
                 required
-                className="w-full rounded-r1 border border-border bg-panel px-3 py-1.5 text-[13px] text-fg focus:border-indigo-500 outline-none font-medium"
+                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none font-medium transition-all"
               />
             </div>
             <div>
@@ -195,20 +189,20 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as any)}
-                className="w-full rounded-r1 border border-border bg-panel px-3 py-1.5 text-[13px] text-fg focus:border-indigo-500 outline-none font-medium"
+                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none font-medium transition-all"
               >
                 <option value="text">Text</option>
                 <option value="dropdown">Dropdown</option>
                 <option value="textarea">Long text</option>
               </select>
             </div>
-            <div className="flex items-end pb-1.5">
+            <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer text-[13px] font-[650] text-fg select-none">
                 <input
                   type="checkbox"
                   checked={newRequired}
                   onChange={(e) => setNewRequired(e.target.checked)}
-                  className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
                 />
                 Required
               </label>
@@ -224,84 +218,82 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
                 type="text"
                 value={newOptions}
                 onChange={(e) => setNewOptions(e.target.value)}
-                placeholder="e.g. Under $5,000, $5,000 to $15,000, Over $15,000"
+                placeholder="e.g. Under $5k, $5k-$15k, Over $15k"
                 required
-                className="w-full rounded-r1 border border-border bg-panel px-3 py-1.5 text-[13px] font-mono text-fg focus:border-indigo-500 outline-none"
+                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-[13px] font-mono text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all"
               />
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setShowAdd(false)}
-              className="px-3 py-1.5 rounded-r1 text-[12.5px] font-[700] text-muted hover:bg-panel transition-colors"
+              className="px-4 py-2 rounded-xl border border-border bg-surface hover:bg-panel text-fg font-[700] text-[12.5px] transition-colors shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-r1 bg-indigo-600 hover:bg-indigo-700 text-white font-[700] text-[12.5px] transition-colors shadow-2xs"
+              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-[700] text-[12.5px] transition-colors shadow-sm"
             >
-Add field
+              Add field
             </button>
           </div>
         </form>
       )}
 
       {/* Existing Fields Table / List */}
-      <div className="rounded-r1 border border-border overflow-hidden bg-surface divide-y divide-border">
-        <div className="grid grid-cols-12 bg-panel/70 px-4 py-2.5 text-[11.5px] font-[750] text-faint uppercase tracking-wider">
-          <div className="col-span-5 sm:col-span-6">Field</div>
-          <div className="col-span-3 sm:col-span-3">Type</div>
-          <div className="col-span-4 sm:col-span-3 text-right">Required</div>
+      <div className="rounded-xl border border-border overflow-hidden bg-surface divide-y divide-border shadow-sm">
+        <div className="grid grid-cols-[1fr_50px_40px] bg-panel/70 px-3 py-2.5 text-[11px] font-[750] text-faint uppercase tracking-wider gap-2">
+          <div>Field</div>
+          <div>Type</div>
+          <div className="text-right">Req</div>
         </div>
         {fields.map((f, idx) => (
-          <div key={f.id} className="grid grid-cols-12 items-center px-4 py-3 text-[13px] hover:bg-panel/40 transition-colors gap-2">
-            <div className="col-span-5 sm:col-span-6 flex items-center gap-2.5 min-w-0">
+          <div key={f.id} className="grid grid-cols-[1fr_50px_60px] sm:grid-cols-[1fr_60px_70px] items-center px-3 py-3 hover:bg-panel/40 transition-colors gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               {f.type === "dropdown" ? (
-                <List className="h-4 w-4 text-indigo-500 shrink-0" />
+                <List className="h-3.5 w-3.5 text-accent shrink-0" />
               ) : f.type === "textarea" ? (
-                <FileText className="h-4 w-4 text-amber-500 shrink-0" />
+                <FileText className="h-3.5 w-3.5 text-accent shrink-0" />
               ) : (
-                <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" />
+                <CheckSquare className="h-3.5 w-3.5 text-accent shrink-0" />
               )}
               <div className="min-w-0">
-                <span className="font-[750] text-fg block truncate">
-                  {f.label} {f.system && <span className="text-[11px] font-[650] text-indigo-600 font-mono ml-1">(System)</span>}
+                <span className="font-[650] text-[12.5px] text-fg block truncate">
+                  {f.label} {f.system && <span className="text-[10px] font-[650] text-accent font-mono ml-1">(System)</span>}
                 </span>
                 {f.options && (
-                  <span className="text-[11px] font-mono text-muted truncate block">
-                    Options: {f.options.join(" | ")}
+                  <span className="text-[10px] font-mono text-muted truncate block mt-0.5">
+                    {f.options.join(", ")}
                   </span>
                 )}
               </div>
             </div>
-            <div className="col-span-3 sm:col-span-3 font-mono text-[12px] text-muted capitalize">
+            <div className="font-mono text-[11px] text-muted capitalize truncate">
               {f.type}
             </div>
-            <div className="col-span-4 sm:col-span-3 flex items-center justify-end gap-3">
-              <label className="flex items-center gap-1.5 text-[12px] font-[650] text-muted cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={f.required}
-                  disabled={f.system}
-                  onChange={() => toggleRequired(f.id)}
-                  className="h-3.5 w-3.5 rounded border-border text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
-                />
-                Req
-              </label>
+            <div className="flex items-center justify-end gap-1.5">
+              <input
+                type="checkbox"
+                checked={f.required}
+                disabled={f.system}
+                onChange={() => toggleRequired(f.id)}
+                className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:opacity-40 cursor-pointer"
+                title="Required"
+              />
               {!f.system ? (
                 <button
                   type="button"
                   onClick={() => removeField(f.id)}
                   title="Remove Custom Field"
-                  className="p-1 rounded text-bad hover:bg-bad/15 transition-colors"
+                  className="p-1 rounded text-bad hover:bg-bad/15 transition-colors ml-1"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <span className="w-6 text-center text-faint font-mono text-[10px]">🔒</span>
+                <span className="w-[26px] text-center text-faint font-mono text-[10px] ml-1">🔒</span>
               )}
             </div>
           </div>
