@@ -308,7 +308,7 @@ export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
 export async function submitLead(payload: LeadPayload): Promise<LeadResponse> {
   if (payload.botId === "preview") {
     await wait(800);
-    return { success: true, message: "Lead captured! (Preview Mode)" };
+    return { ok: true };
   }
 
   if (API_URL) {
