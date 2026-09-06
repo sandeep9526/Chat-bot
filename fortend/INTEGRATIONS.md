@@ -1,6 +1,6 @@
-# Integrating the Zeva Chat Widget
+# Integrating the Ochreshift Chat Widget
 
-The Zeva widget is a single `<script>` tag. It works on any website — plain
+The Ochreshift widget is a single `<script>` tag. It works on any website — plain
 HTML, a framework-built site, or a store on Shopify/WordPress/PrestaShop —
 because it's a self-contained script that injects its own UI, not a package
 you build into your app. No npm install, no build step, no framework
@@ -8,13 +8,13 @@ required.
 
 Everything about how the widget looks and behaves is controlled by `data-*`
 attributes on that one script tag. If you generated your snippet from the
-Zeva Studio, you can copy it as-is. This document explains what each piece
+Ochreshift Studio, you can copy it as-is. This document explains what each piece
 means and how to drop it into common setups.
 
 > **Placeholder URLs.** Two URLs in the examples below are placeholders
 > because there is no live CDN or production API yet:
-> `https://YOUR-ZEVA-DOMAIN/widget.js` (where `widget.js` is hosted) and
-> `https://YOUR-ZEVA-API-DOMAIN` (the deployed backend API). Replace both
+> `https://YOUR-OCHRESHIFT-DOMAIN/widget.js` (where `widget.js` is hosted) and
+> `https://YOUR-OCHRESHIFT-API-DOMAIN` (the deployed backend API). Replace both
 > with your real URLs once they're deployed. Until then, the snippet will
 > not work on a real, live website.
 
@@ -27,7 +27,7 @@ want the widget on:
 
 ```html
 <script
-  src="https://YOUR-ZEVA-DOMAIN/widget.js"
+  src="https://YOUR-OCHRESHIFT-DOMAIN/widget.js"
   data-bot-id="acme-salon"
   data-name="Acme Salon"
   data-accent="#4f46e5"
@@ -38,7 +38,7 @@ want the widget on:
   data-position="bottom-right"
   data-glass="on"
   data-sources="on"
-  data-api-url="https://YOUR-ZEVA-API-DOMAIN"
+  data-api-url="https://YOUR-OCHRESHIFT-API-DOMAIN"
   async></script>
 ```
 
@@ -63,7 +63,7 @@ so it floats over your existing page content.
 | `data-glass` | Optional | `on` / `off` | Frosted-glass panel background. |
 | `data-sources` | Optional | `on` / `off` | Show the "answered from this document" source card under each answer. |
 | `data-offset-x` / `data-offset-y` | Optional | px, e.g. `"24"` | Nudges the widget away from its anchored corner. |
-| `data-whitelabel` | Optional | `on` | Hides the "Powered by Zeva" footer. |
+| `data-whitelabel` | Optional | `on` | Hides the "Powered by Ochreshift" footer. |
 
 **Honesty note:** the core attributes (`bot-id`, `name`, `accent`, `position`,
 `api-url`) are confirmed live and working. The visual-styling attributes
@@ -91,16 +91,16 @@ component can unmount:
 ```jsx
 import { useEffect } from "react";
 
-export function ZevaWidget() {
+export function OchreshiftWidget() {
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "https://YOUR-ZEVA-DOMAIN/widget.js";
+    script.src = "https://YOUR-OCHRESHIFT-DOMAIN/widget.js";
     script.async = true;
     script.dataset.botId = "acme-salon";
     script.dataset.name = "Acme Salon";
     script.dataset.accent = "#4f46e5";
     script.dataset.position = "bottom-right";
-    script.dataset.apiUrl = "https://YOUR-ZEVA-API-DOMAIN";
+    script.dataset.apiUrl = "https://YOUR-OCHRESHIFT-API-DOMAIN";
     document.body.appendChild(script);
 
     return () => {
@@ -112,7 +112,7 @@ export function ZevaWidget() {
 }
 ```
 
-Mount `<ZevaWidget />` once near the root of your app (e.g. in `App.jsx`).
+Mount `<OchreshiftWidget />` once near the root of your app (e.g. in `App.jsx`).
 Note `dataset.botId` → renders as `data-bot-id`, `dataset.apiUrl` → renders
 as `data-api-url` — the DOM automatically converts camelCase `dataset` keys
 to kebab-case attributes.
@@ -124,13 +124,13 @@ placed in the root layout (`app/layout.tsx`) or `_app.tsx`:
 import Script from "next/script";
 
 <Script
-  src="https://YOUR-ZEVA-DOMAIN/widget.js"
+  src="https://YOUR-OCHRESHIFT-DOMAIN/widget.js"
   strategy="afterInteractive"
   data-bot-id="acme-salon"
   data-name="Acme Salon"
   data-accent="#4f46e5"
   data-position="bottom-right"
-  data-api-url="https://YOUR-ZEVA-API-DOMAIN"
+  data-api-url="https://YOUR-OCHRESHIFT-API-DOMAIN"
 />
 ```
 
@@ -164,13 +164,13 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     const script = this.renderer.createElement("script");
-    script.src = "https://YOUR-ZEVA-DOMAIN/widget.js";
+    script.src = "https://YOUR-OCHRESHIFT-DOMAIN/widget.js";
     script.async = true;
     script.setAttribute("data-bot-id", "acme-salon");
     script.setAttribute("data-name", "Acme Salon");
     script.setAttribute("data-accent", "#4f46e5");
     script.setAttribute("data-position", "bottom-right");
-    script.setAttribute("data-api-url", "https://YOUR-ZEVA-API-DOMAIN");
+    script.setAttribute("data-api-url", "https://YOUR-OCHRESHIFT-API-DOMAIN");
     this.renderer.appendChild(this.document.body, script);
   }
 }
@@ -188,13 +188,13 @@ Options API (`App.vue`):
 export default {
   mounted() {
     const script = document.createElement("script");
-    script.src = "https://YOUR-ZEVA-DOMAIN/widget.js";
+    script.src = "https://YOUR-OCHRESHIFT-DOMAIN/widget.js";
     script.async = true;
     script.setAttribute("data-bot-id", "acme-salon");
     script.setAttribute("data-name", "Acme Salon");
     script.setAttribute("data-accent", "#4f46e5");
     script.setAttribute("data-position", "bottom-right");
-    script.setAttribute("data-api-url", "https://YOUR-ZEVA-API-DOMAIN");
+    script.setAttribute("data-api-url", "https://YOUR-OCHRESHIFT-API-DOMAIN");
     document.body.appendChild(script);
   },
 };
@@ -207,13 +207,13 @@ import { onMounted } from "vue";
 
 onMounted(() => {
   const script = document.createElement("script");
-  script.src = "https://YOUR-ZEVA-DOMAIN/widget.js";
+  script.src = "https://YOUR-OCHRESHIFT-DOMAIN/widget.js";
   script.async = true;
   script.setAttribute("data-bot-id", "acme-salon");
   script.setAttribute("data-name", "Acme Salon");
   script.setAttribute("data-accent", "#4f46e5");
   script.setAttribute("data-position", "bottom-right");
-  script.setAttribute("data-api-url", "https://YOUR-ZEVA-API-DOMAIN");
+  script.setAttribute("data-api-url", "https://YOUR-OCHRESHIFT-API-DOMAIN");
   document.body.appendChild(script);
 });
 ```
@@ -321,7 +321,7 @@ strip raw `<script>` tags unless added through their "custom code" field).
 **Widget opens, but every answer says "Sorry, I'm having trouble
 connecting. Please try again later."**
 This is the widget's fallback message when the request to the backend
-fails. Check the console for a `Zeva Widget Error` log — it'll show the
+fails. Check the console for an `Ochreshift Widget Error` log — it'll show the
 underlying failure. Typical causes: `data-bot-id` doesn't match a real bot
 (the backend returns 404), the bot exists but `data-api-url` is wrong or
 unreachable, or the backend itself is down.
@@ -334,6 +334,6 @@ per-bot `allowed_domains` list — and both are configured on the backend,
 not from the embedding site. This is normally set during onboarding: new
 bots default to allowing any domain (`"*"`), but get locked down to the
 client's real domain when the bot goes live. If you're seeing this on a
-domain that's supposed to be allowed, whoever manages the Zeva backend needs
+domain that's supposed to be allowed, whoever manages the Ochreshift backend needs
 to add that exact domain to the bot's allowed list — this isn't something
 that can be fixed from the widget snippet or the client's website code.

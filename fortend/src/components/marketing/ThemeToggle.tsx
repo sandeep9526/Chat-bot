@@ -31,7 +31,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     const next = dark ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
     try {
-      localStorage.setItem("zeva-theme", next);
+      localStorage.setItem("ochreshift-theme", next);
     } catch {
       /* private mode — non-fatal */
     }

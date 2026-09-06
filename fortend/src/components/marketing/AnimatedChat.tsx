@@ -5,7 +5,7 @@ import { SourceCheckIcon } from "./icons";
 
 /**
  * A looping mock conversation that plays when scrolled into view: the customer
- * asks, Zeva "types", answers, then a source proof card slides up with an
+ * asks, Ochreshift "types", answers, then a source proof card slides up with an
  * emerald verified tick. Under reduced motion it renders the finished state and
  * never loops.
  *

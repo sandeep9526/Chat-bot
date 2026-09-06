@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { ShieldCheck as ShieldCheckIcon, ChevronDown as ChevronDownIcon, Zap, Check, Paintbrush, Sparkles, RotateCcw, Globe, Palette, Type, MousePointerClick, MessageSquare, Lock, Contact } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useZevaStore } from "@/stores/zevaStore";
-import { useZevaChat } from "@/hooks/useZevaChat";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
+import { useOchreshiftChat } from "@/hooks/useOchreshiftChat";
 import { Segmented } from "./Segmented";
 import { ColorField } from "./ColorField";
 import { Switch } from "./Switch";
@@ -16,9 +16,10 @@ import { EmbedCode } from "./EmbedCode";
 import { MakeItYoursCard } from "./MakeItYoursCard";
 import { DemoSite } from "./DemoSite";
 import { StudioBotBanner } from "./StudioBotBanner";
-import { ZevaWidget } from "@/components/widget/ZevaWidget";
+import { OchreshiftWidget } from "@/components/widget/OchreshiftWidget";
 import { LeadFormBuilder } from "@/components/admin/LeadFormBuilder";
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
+import { decodeHtmlEntities, sanitizeBrandName, sanitizeWelcomeMessage, sanitizeSuggestions } from "@/lib/sanitize";
 
 function StudioControlsContent({ store, cfg, botId, hideBanner, ingesting, handleIngestUrl, reopenTimerRef }: any) {
   return (
@@ -194,6 +195,7 @@ function StudioControlsContent({ store, cfg, botId, hideBanner, ingesting, handl
           <input
             className="w-full border border-border bg-panel text-fg rounded-xl py-2.5 px-3 font-[inherit] text-[13px] outline-none transition-all focus:border-accent focus:bg-surface focus:ring-4 focus:ring-accent/10 placeholder:text-muted"
             value={cfg.label}
+            placeholder={cfg.name ? `Ask ${cfg.name}` : "Ask Assistant"}
             onChange={(e) => store.setLabel(e.target.value)}
           />
         </div>
@@ -248,10 +250,10 @@ function StudioControlsContent({ store, cfg, botId, hideBanner, ingesting, handl
 
 export function Studio({ botId = "", hideBanner = false, controlsOnly = false }: { botId?: string, hideBanner?: boolean, controlsOnly?: boolean }) {
 
-  const store = useZevaStore();
+  const store = useOchreshiftStore();
   const cfg = store.config;
   const reopenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const chat = useZevaChat();
+  const chat = useOchreshiftChat();
   const isScanning = store.isQuestionProcessing || chat.isScanning;
   const [ingesting, setIngesting] = useState(false);
   const [isFallback, setIsFallback] = useState(false);
@@ -322,10 +324,13 @@ export function Studio({ botId = "", hideBanner = false, controlsOnly = false }:
       });
       if (res.ok) {
         const data = await res.json();
+        const brand = data.name ? sanitizeBrandName(data.name) : "";
         if (data.botId) store.setBotId(data.botId);
-        if (data.name) store.setName(data.name);
-        if (data.welcome) store.setWelcome(data.welcome);
-        if (data.suggestions) store.setSuggestions(data.suggestions);
+        if (brand) store.setName(brand);
+        if (data.welcome) store.setWelcome(sanitizeWelcomeMessage(data.welcome, brand));
+        if (data.suggestions && Array.isArray(data.suggestions)) {
+          store.setSuggestions(sanitizeSuggestions(data.suggestions, brand));
+        }
       }
     } catch (err) {
       console.error("Studio auto-ingest error:", err);
@@ -450,8 +455,8 @@ export function Studio({ botId = "", hideBanner = false, controlsOnly = false }:
                 <div className="flex w-full items-center justify-center gap-1.5 bg-surface/80 border border-border/80 shadow-sm rounded-md py-1 px-3">
                   <Lock className="h-3 w-3 text-muted shrink-0" />
                   <span className="text-[11px] font-medium text-fg truncate">
-                    {isFallback 
-                      ? "ochreshift.in" 
+                    {isFallback
+                      ? "ochreshift.in"
                       : (store.websiteUrl ? (() => { try { return new URL(store.websiteUrl).hostname } catch { return store.websiteUrl } })() : "ochreshift.ai")}
                   </span>
                 </div>
@@ -460,7 +465,7 @@ export function Studio({ botId = "", hideBanner = false, controlsOnly = false }:
             </div>
 
             <DemoSite websiteUrl={store.websiteUrl} onFallbackStatusChange={setIsFallback} />
-            <ZevaWidget positionMode="absolute" themeScopeRef={stageRef} />
+            <OchreshiftWidget positionMode="absolute" themeScopeRef={stageRef} />
 
           </div>
 

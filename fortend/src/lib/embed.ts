@@ -1,4 +1,4 @@
-import type { ZevaConfig } from "./types";
+import type { OchreshiftConfig } from "./types";
 import { BOT_ID } from "./defaults";
 
 /** Backend API URL for the widget */
@@ -8,6 +8,10 @@ const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.ochreshift.app";
 
 function api_url(): string {
+  // Never burn localhost into client embed snippets — fallback to production backend
+  if (RAW_API_URL.includes("localhost") || RAW_API_URL.includes("127.0.0.1")) {
+    return process.env.NEXT_PUBLIC_PROD_API_URL || "https://api.ochreshift.app";
+  }
   if (typeof window === "undefined") return RAW_API_URL;
   if (window.location.protocol === "https:" && RAW_API_URL.startsWith("http://")) {
     return RAW_API_URL.replace("http://", "https://");
@@ -21,7 +25,7 @@ function api_url(): string {
  * Studio page, which always previews the single demo bot — keep working
  * unchanged. The onboarding wizard passes the client's real botId.
  */
-export function buildEmbedRows(cfg: ZevaConfig, botId: string = BOT_ID): [string, string][] {
+export function buildEmbedRows(cfg: OchreshiftConfig, botId: string = BOT_ID): [string, string][] {
   const rows: [string, string][] = [
     ["bot-id", botId],
     ["name", cfg.name],
@@ -30,7 +34,8 @@ export function buildEmbedRows(cfg: ZevaConfig, botId: string = BOT_ID): [string
     ["api-url", api_url()],
   ];
   // Visual settings from Studio
-  if (cfg.logo) rows.push(["logo", cfg.logo]);
+  // Only include logo if it is a real URL, never giant base64 strings
+  if (cfg.logo && !cfg.logo.startsWith("data:")) rows.push(["logo", cfg.logo]);
   if (cfg.surface !== "auto") rows.push(["surface", cfg.surface]);
   if (cfg.corners !== "soft") rows.push(["corners", cfg.corners]);
   if (cfg.launcher !== "pill") rows.push(["launcher", cfg.launcher]);
@@ -52,7 +57,7 @@ export function buildEmbedRows(cfg: ZevaConfig, botId: string = BOT_ID): [string
 }
 
 /** Build the plain-text embed snippet. */
-export function buildEmbedText(cfg: ZevaConfig, botId: string = BOT_ID): string {
+export function buildEmbedText(cfg: OchreshiftConfig, botId: string = BOT_ID): string {
   const rows = buildEmbedRows(cfg, botId);
   return (
     '<script\n  src="' + SCRIPT_HOST + '/widget.js"\n  ' +
@@ -69,7 +74,7 @@ function truncateVal(val: string, maxLen: number = 55): string {
 }
 
 /** Build syntax-highlighted embed HTML for display. */
-export function buildEmbedHtml(cfg: ZevaConfig, botId: string = BOT_ID): string {
+export function buildEmbedHtml(cfg: OchreshiftConfig, botId: string = BOT_ID): string {
   const rows = buildEmbedRows(cfg, botId);
   let html =
     '<span class="text-sky-300">&lt;script</span>\n' +

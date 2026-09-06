@@ -3,7 +3,7 @@
 This document outlines the step-by-step process for auditing and refining the OchreShift AI-generated landing page to ensure it matches the actual product offering, has no grammar/link issues, and maintains a consistent, premium design language.
 
 ## 1. Content & Value Proposition Alignment
-The product is "OchreShift" (formerly Zeva), an AI Answer Engine and Lead Capture widget for service businesses. It answers questions using the business's knowledge base, captures leads, and hands off to humans for hot leads.
+The product is "OchreShift", an AI Answer Engine and Lead Capture widget for service businesses. It answers questions using the business's knowledge base, captures leads, and hands off to humans for hot leads.
 
 - [x] Audit `Hero.tsx` to ensure messaging hits these points correctly.
 - [x] Audit `ProblemSection.tsx`, `ProductMechanism.tsx`, and `ProductProof.tsx`.

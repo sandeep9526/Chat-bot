@@ -1,0 +1,19 @@
+Ochreshift AI Overview & Features:
+Ochreshift AI is an advanced RAG-powered AI chat widget designed for businesses, salons, clinics, real estate agencies, e-commerce stores, and service providers. It reads your website, FAQs, and documents (PDFs, TXT, Docs) and answers customer questions 24/7 with cited sources — never making up facts.
+
+Key Features of Ochreshift AI:
+1. 100% Grounded Answers: Every answer is backed by your own uploaded documents or website content with source citations.
+2. Real-time Lead Capture: Automatically captures hot and warm leads, scoring buying intent and storing contact details.
+3. Multi-Channel Integration: Supports Meta WhatsApp Cloud API integration, Outbound Webhooks, Email alerts, and real-time Google Sheets sync.
+4. Studio Customizer: Full whitelabel customization allowing you to pick brand accent colors, custom logo, fonts, launcher style, and industry presets (Salon, Clinic, Real Estate, E-Commerce, Coaching).
+5. 1-Line Script Embed: Simple script tag installation on any website platform including WordPress, Shopify, Next.js, HTML, and Wix.
+
+Pricing & Plans:
+- Starter Plan: $19/month for 1 bot and up to 2,000 messages/month.
+- Pro Plan: $49/month for 5 bots, 10,000 messages/month, and whitelabeling controls.
+- Business Plan: $99/month for 25 bots, 50,000 messages/month, priority support, and custom domain mapping.
+
+How Ochreshift Works:
+1. Feed Content: Enter your website URL or upload your PDFs/FAQs.
+2. Customize Look: Adjust widget appearance in the Studio.
+3. Embed & Sync: Copy your 1-line embed snippet and connect real-time Google Sheets or email notifications.

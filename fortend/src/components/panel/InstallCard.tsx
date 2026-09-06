@@ -6,7 +6,7 @@ import type { AdminBot } from "@/lib/adminApi";
 import { markSetupDone } from "@/lib/setupProgress";
 import { CopyIcon, CheckIcon } from "./panelIcons";
 import { buildEmbedRows } from "@/lib/embed";
-import type { ZevaConfig } from "@/lib/types";
+import type { OchreshiftConfig } from "@/lib/types";
 import { DEFAULTS } from "@/lib/defaults";
 
 const WIDGET_SRC = "https://www.ochreshift.app/widget.js";
@@ -54,40 +54,40 @@ export const PLATFORMS: { key: PlatformKey; label: string; icon: React.ReactNode
 
 export const WHERE_TO_PASTE: Record<PlatformKey, string[]> = {
   html: [
-    "Open your site's main HTML file.",
-    "Paste the snippet just before the closing </body> tag.",
-    "Publish. The chat launcher appears bottom-right on every page it loads on.",
+    "Open your site's main HTML file (or theme template).",
+    "Paste the snippet from the code editor just before the closing </body> tag.",
+    "Publish your site. The chat launcher will appear bottom-right on every page.",
   ],
   wordpress: [
     "Go to Dashboard → Appearance → Theme File Editor → footer.php (or use WPCode plugin).",
     "Paste the snippet just before </body> (or into the plugin's “Footer” box).",
-    "Save. It now shows on every page — no per-page edits needed.",
+    "Save changes. The chat widget now shows across your entire store.",
   ],
   shopify: [
     "Go to Online Store → Themes → ⋯ → Edit code.",
     "Open Layout → theme.liquid.",
-    "Paste the snippet just before </body> and Save.",
+    "Paste the snippet just before </body> and click Save.",
   ],
   react: [
     "Open your root layout (app/layout.tsx in Next.js, or App.tsx in plain React).",
-    "Add the <Script> component below.",
-    "In plain React (no Next.js), use the useEffect variant shown in the comment.",
+    "Add the <Script> component from the code editor.",
+    "For plain React (no Next.js), use the useEffect variant shown in the code comments.",
   ],
   vue: [
     "Open your app entry file — src/main.js (or src/main.ts).",
-    "Add the injection below, after createApp(...).mount(...).",
-    "The id guard stops a second widget from mounting during hot-reload.",
+    "Add the injection code from the code editor after createApp(...).mount(...).",
+    "The id guard prevents duplicate widget instances during hot reload.",
   ],
   angular: [
     "Open src/app/app.component.ts.",
-    "Implement OnInit and add the injection below.",
-    "The id guard stops a second widget from mounting on re-init.",
+    "Implement OnInit and add the widget injection from the code editor.",
+    "The id guard ensures the widget mounts cleanly once on initialization.",
   ],
 };
 
 function scriptSnippet(bot: AdminBot): string {
-  const cfg: ZevaConfig = bot.design && "config" in bot.design && (bot.design as { config: ZevaConfig }).config
-    ? (bot.design as { config: ZevaConfig }).config
+  const cfg: OchreshiftConfig = bot.design && "config" in bot.design && (bot.design as { config: OchreshiftConfig }).config
+    ? (bot.design as { config: OchreshiftConfig }).config
     : { ...DEFAULTS, name: bot.name, accent: bot.accent };
   const rows = buildEmbedRows(cfg, bot.bot_id);
   return [
@@ -103,8 +103,8 @@ function scriptSnippet(bot: AdminBot): string {
 
 
 function reactSnippet(bot: AdminBot): string {
-  const cfg: ZevaConfig = bot.design && "config" in bot.design && (bot.design as { config: ZevaConfig }).config
-    ? (bot.design as { config: ZevaConfig }).config
+  const cfg: OchreshiftConfig = bot.design && "config" in bot.design && (bot.design as { config: OchreshiftConfig }).config
+    ? (bot.design as { config: OchreshiftConfig }).config
     : { ...DEFAULTS, name: bot.name, accent: bot.accent };
   const rows = buildEmbedRows(cfg, bot.bot_id);
   const dataAttrs = rows.map(([k, v]) => {
@@ -135,8 +135,8 @@ function reactSnippet(bot: AdminBot): string {
 }
 
 function vueSnippet(bot: AdminBot): string {
-  const cfg: ZevaConfig = bot.design && "config" in bot.design && (bot.design as { config: ZevaConfig }).config
-    ? (bot.design as { config: ZevaConfig }).config
+  const cfg: OchreshiftConfig = bot.design && "config" in bot.design && (bot.design as { config: OchreshiftConfig }).config
+    ? (bot.design as { config: OchreshiftConfig }).config
     : { ...DEFAULTS, name: bot.name, accent: bot.accent };
   const rows = buildEmbedRows(cfg, bot.bot_id);
   return [
@@ -161,8 +161,8 @@ function vueSnippet(bot: AdminBot): string {
 }
 
 function angularSnippet(bot: AdminBot): string {
-  const cfg: ZevaConfig = bot.design && "config" in bot.design && (bot.design as { config: ZevaConfig }).config
-    ? (bot.design as { config: ZevaConfig }).config
+  const cfg: OchreshiftConfig = bot.design && "config" in bot.design && (bot.design as { config: OchreshiftConfig }).config
+    ? (bot.design as { config: OchreshiftConfig }).config
     : { ...DEFAULTS, name: bot.name, accent: bot.accent };
   const rows = buildEmbedRows(cfg, bot.bot_id);
   return [
@@ -323,23 +323,25 @@ export function InstallCard({ bot }: { bot: AdminBot }) {
           <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-[#0F111A]">
 
             {/* Window Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#1A1D27] border-b border-white/5">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div>
-                <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div>
-                <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div>
+            <div className="relative flex items-center justify-between px-4 py-2.5 bg-[#1A1D27] border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/80"></div>
+                <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/80"></div>
+                <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/80"></div>
               </div>
-              <div className="font-mono text-[11.5px] text-white/50 absolute left-1/2 -translate-x-1/2">
-                {FILE_LABEL[platform]}
+
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/[0.06] border border-white/10 font-mono text-[11.5px] text-white/75 pointer-events-none shadow-2xs">
+                <span>{FILE_LABEL[platform]}</span>
               </div>
+
               <button
                 type="button"
                 onClick={copy}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11.5px] font-[600] transition-all duration-300",
+                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-[600] transition-all duration-200 cursor-pointer shadow-2xs",
                   copied
                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                    : "bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 hover:text-white"
+                    : "bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 hover:text-white"
                 )}
               >
                 {copied ? (

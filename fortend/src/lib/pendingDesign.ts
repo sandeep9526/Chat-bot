@@ -10,17 +10,17 @@
  * the full look (corners/font/launcher/…) under the created bot's id, letting
  * Studio restore the complete design the first time it's opened for that bot.
  */
-import type { ZevaConfig } from "./types";
+import type { OchreshiftConfig } from "./types";
 
-const PENDING_KEY = "zeva-pending-design";
-const designKey = (botId: string) => `zeva-design:${botId}`;
+const PENDING_KEY = "ochreshift-pending-design";
+const designKey = (botId: string) => `ochreshift-design:${botId}`;
 
 export interface PendingDesign {
-  config: ZevaConfig;
+  config: OchreshiftConfig;
   websiteUrl: string;
 }
 
-export function savePendingDesign(config: ZevaConfig, websiteUrl: string): void {
+export function savePendingDesign(config: OchreshiftConfig, websiteUrl: string): void {
   try {
     localStorage.setItem(PENDING_KEY, JSON.stringify({ config, websiteUrl }));
   } catch {
@@ -49,18 +49,18 @@ export function clearPendingDesign(): void {
 
 /** A bot's saved Studio look — config plus the preview website URL. */
 export interface BotDesign {
-  config: ZevaConfig;
+  config: OchreshiftConfig;
   websiteUrl: string;
 }
 
 /**
  * Persist a bot's full look so Studio can restore corners/font/launcher AND the
  * "Your website" preview URL. Stored as { config, websiteUrl }; older stashes
- * held a bare ZevaConfig, which getBotDesign still reads (see below).
+ * held a bare OchreshiftConfig, which getBotDesign still reads (see below).
  */
 export function stashBotDesign(
   botId: string,
-  config: ZevaConfig,
+  config: OchreshiftConfig,
   websiteUrl = "",
 ): void {
   try {
@@ -74,12 +74,12 @@ export function getBotDesign(botId: string): BotDesign | null {
   try {
     const raw = localStorage.getItem(designKey(botId));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as BotDesign | ZevaConfig;
-    // New shape: { config, websiteUrl }. Legacy shape: a bare ZevaConfig.
+    const parsed = JSON.parse(raw) as BotDesign | OchreshiftConfig;
+    // New shape: { config, websiteUrl }. Legacy shape: a bare OchreshiftConfig.
     if (parsed && "config" in parsed && parsed.config) {
       return { config: parsed.config, websiteUrl: parsed.websiteUrl ?? "" };
     }
-    return { config: parsed as ZevaConfig, websiteUrl: "" };
+    return { config: parsed as OchreshiftConfig, websiteUrl: "" };
   } catch {
     return null;
   }

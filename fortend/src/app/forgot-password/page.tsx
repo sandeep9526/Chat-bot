@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { forgetPassword } from "@/lib/auth-client";
+import { requestPasswordReset } from "@/lib/auth-client";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
 
@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const { error: resetError } = await forgetPassword({
+      const { error: resetError } = await requestPasswordReset({
         email,
         redirectTo: "/reset-password",
       });

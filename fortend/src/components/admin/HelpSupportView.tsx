@@ -144,8 +144,8 @@ export function HelpSupportView() {
           icon={MailIcon}
           title="Email Support"
           description="Encountered an issue or have a billing question? Our team is here to help you directly."
-          buttonText="support@ochreshift.com"
-          href="mailto:support@ochreshift.com"
+          buttonText="support@ochreshift.in"
+          href="mailto:support@ochreshift.in"
         />
         <ResourceCard
           icon={SlackIcon}

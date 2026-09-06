@@ -16,14 +16,14 @@ async function resetPassword() {
   const client = await pool.connect();
   try {
     const res = await client.query(
-      `UPDATE account SET password = $1 WHERE "userId" IN (SELECT id FROM "user" WHERE email = 'admin@zeva.app')`,
+      `UPDATE account SET password = $1 WHERE "userId" IN (SELECT id FROM "user" WHERE email = 'admin@ochreshift.app')`,
       [hashedPassword]
     );
 
     if (res.rowCount === 0) {
-      console.log("No account found for admin@zeva.app. Please make sure the user exists first.");
+      console.log("No account found for admin@ochreshift.app. Please make sure the user exists first.");
     } else {
-      console.log(`✅ Success! Password for admin@zeva.app has been changed to '${newPassword}'.`);
+      console.log(`✅ Success! Password for admin@ochreshift.app has been changed to '${newPassword}'.`);
     }
   } catch (err) {
     console.error("❌ Failed to update password:", err);

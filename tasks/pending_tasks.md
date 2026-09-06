@@ -1,6 +1,6 @@
-# Zeva Platform: Engineering Audit & Pending Tasks Roadmap
+# Ochreshift Platform: Engineering Audit & Pending Tasks Roadmap
 
-This document catalogs the pending architectural improvements, incomplete user interfaces, disconnected integration endpoints, and technical debt across the **Zeva Chatbot Platform** (`zeva-backend` & `fortend`), as uncovered during a deep developer code audit.
+This document catalogs the pending architectural improvements, incomplete user interfaces, disconnected integration endpoints, and technical debt across the **Ochreshift Chatbot Platform** (`ochreshift-backend` & `fortend`), as uncovered during a deep developer code audit.
 
 ---
 
@@ -9,7 +9,7 @@ The backend PostgreSQL schema and automated notification engines support several
 
 ### Current Architecture Status
 - **Backend Schema Ready**: Table `bots` defines columns for `notification_email`, `webhook_url`, `google_sheets_url`, `whatsapp_phone_number_id`, and `allowed_domains`.
-- **Backend Engine Ready**: `zeva-backend/notifications.py` automates SMTP Emails, CRM custom Webhooks, and Google Sheets / Apps Script exports upon capturing high-intent (Hot/Warm) leads.
+- **Backend Engine Ready**: `ochreshift-backend/notifications.py` automates SMTP Emails, CRM custom Webhooks, and Google Sheets / Apps Script exports upon capturing high-intent (Hot/Warm) leads.
 - **Missing UI Layer**: `BotFormModal.tsx` and the dashboard `SettingsSection` do not provide inputs for these parameters.
 
 ### Action Item Checklist
@@ -70,4 +70,4 @@ Staging and local mock code remnants remain in the Next.js frontend repository.
 
 ### Action Item Checklist
 - [x] **Remove Legacy Next.js API Routes**: Prune or properly redirect dead local stub files at `fortend/src/app/api/chat/route.ts` and `fortend/src/app/api/lead/route.ts` (which currently hold `// TODO: wire to real RAG backend` placeholders), ensuring all requests strictly hit the FastAPI backend.
-- [x] **Automated Regression Suite Execution**: Confirmed test suite architecture (`test_smoke.py`, `test_features.py`, and `billing_selftest.py`) directly exercises live Neon PostgreSQL Row-Level Security constraints and Better Auth schemas (designed for developer execution in standard live environments: `cd zeva-backend && venv/bin/pytest tests/ -v`).
+- [x] **Automated Regression Suite Execution**: Confirmed test suite architecture (`test_smoke.py`, `test_features.py`, and `billing_selftest.py`) directly exercises live Neon PostgreSQL Row-Level Security constraints and Better Auth schemas (designed for developer execution in standard live environments: `cd ochreshift-backend && venv/bin/pytest tests/ -v`).

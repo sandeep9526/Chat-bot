@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   useBots,
   useStats,
@@ -8,11 +8,14 @@ import {
   useHandoffs,
   useSubscription,
   useCreateBot,
+  useDocs,
+  useIngestDoc,
 } from "@/hooks/useAdmin";
 import { getPendingDesign } from "@/lib/pendingDesign";
 import {
   ADMIN_ENABLED,
   type AdminBot,
+  type AdminDoc,
   type AdminLead,
   type AdminStats,
   type Handoff,
@@ -20,7 +23,7 @@ import {
   exportTenantData,
 } from "@/lib/adminApi";
 import { useSession, signOut, authClient } from "@/lib/auth-client";
-import { submitLead } from "@/lib/api";
+import { submitLead, sendChat } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { LEAD_SCORE_STYLE } from "@/lib/leadScore";
 
@@ -42,11 +45,44 @@ import {
   SettingsIcon,
   ExternalLinkIcon,
 } from "@/components/panel/panelIcons";
-import { Bot as BotsIcon, Check, ArrowRight } from "lucide-react";
+import {
+  Bot as BotsIcon,
+  Check,
+  ArrowRight,
+  Users,
+  Zap,
+  Sliders,
+  Flame,
+  CheckCircle2,
+  FlaskConical,
+  FileText,
+  AlertTriangle,
+  MessageSquare,
+  Sparkles,
+  TrendingUp,
+  Play,
+  Copy,
+  Globe,
+  ExternalLink,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Eye,
+  Send,
+  Loader2,
+  ShieldCheck,
+  Mail,
+  HelpCircle,
+  Clock,
+  X,
+} from "lucide-react";
 
 import { StatCard } from "./StatCard";
+import { OverviewSection } from "./OverviewSection";
 import { LeadsTable } from "./LeadsTable";
 import { DocsUpload } from "./DocsUpload";
+import { KnowledgeSection } from "./KnowledgeSection";
 import { TestChatBox } from "./TestChatBox";
 import { BillingCard } from "./BillingCard";
 import { SettingsView } from "./SettingsView";
@@ -167,6 +203,11 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
   const { data: sub } = useSubscription();
 
   const [section, navigate] = useHashSection();
+  const [leadsTab, setLeadsTab] = useState<"leads" | "helpdesk" | "builder">("leads");
+  const totalLeadsCount = leads?.length ?? 0;
+  const hotLeadsCount = leads?.filter((l) => l.score === "hot").length ?? 0;
+  const testLeadsCount = leads?.filter((l) => Boolean(l.is_test || l.score === "test" || (l.custom_data && l.custom_data.is_test))).length ?? 0;
+  const verifiedLeadsCount = totalLeadsCount - testLeadsCount;
 
   // Arrived from "Make it yours" and already have bots → jump to the Bots
   // section so its pre-filled create modal can open (0-bot accounts are forced
@@ -303,7 +344,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
             </div>
           </div>
           <a
-            href={`mailto:support@ochreshift.com?subject=Bot%20Suspension%20Inquiry%20-%20${activeBot.bot_id}`}
+            href={`mailto:support@ochreshift.in?subject=Bot%20Suspension%20Inquiry%20-%20${activeBot.bot_id}`}
             className="shrink-0 rounded-[8px] bg-red-600 px-3.5 py-2 text-[12.5px] font-[700] text-white shadow-sm hover:bg-red-700 transition"
           >
             Contact Support &rarr;
@@ -311,13 +352,13 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
         </div>
       )}
 
-      {(activeSection === "overview" || activeSection === "bots") && (
+      {activeSection === "bots" && (
         <SetupChecklist
           hasBots={!noBots}
           botId={botId}
           onCreateBot={() => {
             navigate("bots");
-            setTimeout(() => window.dispatchEvent(new Event("zeva:open-bot-modal")), 10);
+            setTimeout(() => window.dispatchEvent(new Event("ochreshift:open-bot-modal")), 10);
           }}
           onGoto={(s) => navigate(s as SectionKey)}
           onOpenStudio={() => navigate("appearance")}
@@ -327,11 +368,20 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
       {activeSection === "overview" && (
         <OverviewSection
           bot={activeBot}
+          bots={bots ?? []}
+          onSelectBot={(id) => setSelectedBotId(id)}
           name={name}
           stats={stats}
           leads={leads ?? []}
           handoffs={handoffs ?? []}
+          sub={sub}
+          hasBots={!noBots}
           onGoto={navigate}
+          onCreateBot={() => {
+            navigate("bots");
+            setTimeout(() => window.dispatchEvent(new Event("ochreshift:open-bot-modal")), 10);
+          }}
+          onOpenStudio={() => navigate("appearance")}
         />
       )}
 
@@ -342,8 +392,8 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
           maxBots={sub?.max_bots}
           onSelect={(id) => {
             setSelectedBotId(id);
-            navigate("overview");
           }}
+          onNavigate={(s) => navigate(s as SectionKey)}
           onBotUpdated={(id) => setSelectedBotId(id)}
           onOpenStudio={(id) => {
             setSelectedBotId(id);
@@ -352,6 +402,10 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
           onOpenInstall={(id) => {
             setSelectedBotId(id);
             navigate("install");
+          }}
+          onTestAgent={(id) => {
+            setSelectedBotId(id);
+            navigate("playground");
           }}
         />
       )}
@@ -362,7 +416,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
             title="Conversations & Playground"
             description="Try your agent before your visitors do, and view previous chat logs."
           />
-          {botId && <TestChatBox botId={botId} />}
+          {botId && <TestChatBox botId={botId} showLeadTest={true} />}
         </>
       )}
 
@@ -370,19 +424,138 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
         <>
           <SectionHeader
             title="Leads & Live Helpdesk"
-            description="Manage visitor contact details, monitor real-time widget sessions, and take over conversations from AI."
+            description="Manage visitor contact details, monitor real-time widget sessions, and configure lead capture questions."
           />
-          {botId && (
-            <>
-              <div className="mb-6">
+
+          {/* Top KPI Stat Cards (Persistent across all tabs) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11.5px] font-[700] uppercase tracking-wider text-muted block mb-1">
+                  Total Contacts
+                </span>
+                <b className="text-2xl font-[800] text-fg tracking-tight">{totalLeadsCount}</b>
+                <span className="text-[12px] text-muted block mt-0.5">
+                  {verifiedLeadsCount} visitor{verifiedLeadsCount === 1 ? "" : "s"} · {testLeadsCount} test{testLeadsCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                <Users className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11.5px] font-[700] uppercase tracking-wider text-muted block mb-1">
+                  Hot Leads
+                </span>
+                <b className="text-2xl font-[800] text-red-500 tracking-tight">{hotLeadsCount}</b>
+                <span className="text-[12px] text-muted block mt-0.5">
+                  High purchase intent
+                </span>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                <Flame className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11.5px] font-[700] uppercase tracking-wider text-muted block mb-1">
+                  Capture Form
+                </span>
+                <b className="text-[15px] font-[750] text-fg block tracking-tight">Active & Ready</b>
+                <button
+                  type="button"
+                  onClick={() => setLeadsTab("builder")}
+                  className="text-[12px] font-[650] text-accent hover:underline inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                >
+                  <span>Customize fields</span>
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Segmented Sub-navigation Tabs */}
+          <div className="flex items-center gap-2 border-b border-border/80 pb-3 mb-6 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setLeadsTab("leads")}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-[700] transition-all cursor-pointer",
+                leadsTab === "leads"
+                  ? "bg-accent text-white shadow-sm"
+                  : "bg-surface hover:bg-panel text-muted hover:text-fg border border-border/70"
+              )}
+            >
+              <Users className="h-4 w-4" />
+              <span>Captured Leads</span>
+              <span
+                className={cn(
+                  "ml-0.5 px-2 py-0.5 rounded-full text-[11px] font-[750]",
+                  leadsTab === "leads" ? "bg-white/20 text-white" : "bg-panel text-muted"
+                )}
+              >
+                {totalLeadsCount}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLeadsTab("helpdesk")}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-[700] transition-all cursor-pointer",
+                leadsTab === "helpdesk"
+                  ? "bg-accent text-white shadow-sm"
+                  : "bg-surface hover:bg-panel text-muted hover:text-fg border border-border/70"
+              )}
+            >
+              <Zap className="h-4 w-4" />
+              <span>Live Helpdesk</span>
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLeadsTab("builder")}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-[700] transition-all cursor-pointer",
+                leadsTab === "builder"
+                  ? "bg-accent text-white shadow-sm"
+                  : "bg-surface hover:bg-panel text-muted hover:text-fg border border-border/70"
+              )}
+            >
+              <Sliders className="h-4 w-4" />
+              <span>Form Fields</span>
+            </button>
+          </div>
+
+          {/* Main Tab Panel with Unified Container System */}
+          <div className="w-full">
+            {leadsTab === "leads" && (
+              <div className="animate-fade-in">
+                <LeadsTable leads={leads ?? []} botId={botId} bot={activeBot} onOpenFormBuilder={() => setLeadsTab("builder")} />
+              </div>
+            )}
+
+            {leadsTab === "helpdesk" && botId && (
+              <div className="animate-fade-in">
                 <LiveHelpdeskCard botId={botId} />
               </div>
-              <div className="mb-6">
+            )}
+
+            {leadsTab === "builder" && botId && (
+              <div className="animate-fade-in">
                 <LeadFormBuilder botId={botId} />
               </div>
-            </>
-          )}
-          <LeadsTable leads={leads ?? []} />
+            )}
+          </div>
+
+          {/* Team Handoffs (Persistent across all tabs) */}
           <div className="mt-6">
             <HandoffsCard handoffs={handoffs ?? []} />
           </div>
@@ -390,16 +563,11 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
       )}
 
       {activeSection === "knowledge" && (
-        <>
-          <SectionHeader
-            title="Knowledge base"
-            description="What your agent knows. Add pricing, FAQs, hours, policies — the clearer the text, the better the answers."
-          />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {botId && <DocsUpload botId={botId} />}
-            <UnansweredCard stats={stats} />
-          </div>
-        </>
+        <KnowledgeSection
+          botId={botId}
+          stats={stats}
+          onNavigateToPlayground={() => navigate("playground")}
+        />
       )}
 
       {activeSection === "appearance" && (
@@ -443,245 +611,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
   );
 }
 
-/* ============================ Sections ============================ */
-
-function OverviewSection({
-  bot,
-  name,
-  stats,
-  leads,
-  handoffs,
-  onGoto,
-}: {
-  bot?: AdminBot;
-  name?: string | null;
-  stats?: AdminStats;
-  leads: AdminLead[];
-  handoffs: Handoff[];
-  onGoto: (s: SectionKey) => void;
-}) {
-  const firstName = (name || "").split(" ")[0];
-  return (
-    <>
-      <SectionHeader
-        title={firstName ? `Welcome back, ${firstName}` : "Overview"}
-        description={`${bot ? bot.name : "Your agent"} — leads, documents and status at a glance.`}
-        action={
-          <>
-            <button
-              type="button"
-              onClick={() => onGoto("appearance")}
-              className="rounded-r1 border border-border bg-surface px-3.5 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent"
-            >
-              Customize appearance
-            </button>
-            <button
-              type="button"
-              onClick={() => onGoto("playground")}
-              className="rounded-r1 border border-border bg-surface px-3.5 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent"
-            >
-              Test agent
-            </button>
-            <button
-              type="button"
-              onClick={() => onGoto("install")}
-              className="rounded-r1 border border-border bg-surface px-3.5 py-2 text-[12.5px] font-[650] text-fg hover:border-accent hover:text-accent"
-            >
-              Install snippet
-            </button>
-          </>
-        }
-      />
-
-      <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2">
-        <StatCard label="Total Conversations" value={stats?.chats ?? "0"} hint="Processed queries" trend={{ value: "18.6%", isPositive: true }} />
-        <StatCard label="Leads Captured" value={stats?.leads ?? "0"} hint="Captured contacts" trend={{ value: "24.7%", isPositive: true }} />
-        <StatCard label="Resolution Rate" value="89%" hint="Missing doc info" trend={{ value: "14.3%", isPositive: true }} />
-        <StatCard label="Satisfaction" value="4.8 / 5" hint="Satisfaction" trend={{ value: "8.4%", isPositive: true }} />
-      </div>
-
-      <div className="mt-6 mb-6">
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-[15px] font-[800] text-fg">Conversations Volume</h3>
-              <p className="text-[12px] text-muted mt-0.5">Total queries handled across all platforms.</p>
-            </div>
-            <button className="text-[11px] font-[650] text-fg rounded-lg bg-panel border border-border/80 px-3 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-surface hover:border-border transition-all">Last 30 days &darr;</button>
-          </div>
-          <div className="relative h-[220px] w-full flex items-end">
-            {/* Glow underneath the line */}
-            <div className="absolute inset-0 bg-accent/5 blur-3xl opacity-50 rounded-full" />
-            <svg className="w-full h-full preserveAspectRatio-none relative z-10" viewBox="0 0 1000 200" fill="none">
-              <path d="M0 160 L100 140 L200 170 L300 120 L400 130 L500 80 L600 110 L700 90 L800 130 L900 60 L1000 90" stroke="var(--accent)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0px 8px 12px rgba(var(--accent-rgb), 0.3))" }}/>
-              <path d="M0 160 L100 140 L200 170 L300 120 L400 130 L500 80 L600 110 L700 90 L800 130 L900 60 L1000 90 L1000 200 L0 200 Z" fill="url(#chart-fade)" opacity="0.15"/>
-              <defs>
-                <linearGradient id="chart-fade" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {/* Grid lines */}
-              <line x1="0" y1="50" x2="1000" y2="50" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
-              <line x1="0" y1="100" x2="1000" y2="100" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
-              <line x1="0" y1="150" x2="1000" y2="150" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
-            </svg>
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] text-faint pb-6 pt-2">
-              <span>1K</span>
-              <span>750</span>
-              <span>500</span>
-              <span>250</span>
-              <span>0</span>
-            </div>
-            <div className="absolute left-6 bottom-0 w-[calc(100%-24px)] flex justify-between text-[10px] text-faint">
-              <span>May 1</span>
-              <span>May 8</span>
-              <span>May 15</span>
-              <span>May 22</span>
-              <span>May 29</span>
-              <span>Jun 5</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Top Questions */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <b className="text-[15px] font-[800]">Top Questions</b>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            {(stats?.topQuestions ?? []).length === 0 && (
-              <span className="py-4 text-center text-[13px] text-muted">No conversation data yet.</span>
-            )}
-            {(stats?.topQuestions ?? []).slice(0, 5).map((q, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-border/60 hover:bg-panel/40 transition-colors"
-              >
-                <span className="truncate font-[500] text-[13px] text-fg">{q.question}</span>
-                <span className="shrink-0 text-[11px] font-[650] text-muted bg-panel border border-border/50 px-2 py-0.5 rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.02)]">{q.count}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Recent Leads */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <b className="text-[15px] font-[800]">Recent Leads</b>
-            </div>
-            <button
-              type="button"
-              onClick={() => onGoto("leads")}
-              className="inline-flex items-center gap-1 text-[12.5px] font-[600] text-fg hover:underline"
-            >
-              View all
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {leads.length === 0 && (
-              <span className="py-4 text-center text-[13px] text-muted">No leads captured yet.</span>
-            )}
-            {leads.slice(0, 5).map((l) => (
-              <div
-                key={l.id}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-border/60 hover:bg-panel/40 transition-colors"
-              >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-[12px] font-[700] shadow-sm">
-                    {l.name ? l.name[0].toUpperCase() : l.email[0].toUpperCase()}
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="truncate text-[13px] font-[600] text-fg">{l.name || "Anonymous"}</span>
-                    <span className="truncate text-[11px] font-[500] text-muted">{l.email}</span>
-                  </div>
-                </div>
-                <span className="shrink-0 text-[11px] text-faint">
-                  {new Date(l.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Knowledge Base */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <b className="text-[15px] font-[800]">Knowledge Base</b>
-            </div>
-            <button
-              type="button"
-              onClick={() => onGoto("knowledge")}
-              className="inline-flex items-center gap-1 text-[12.5px] font-[600] text-fg hover:underline"
-            >
-              Manage
-            </button>
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
-                <KnowledgeIcon className="h-4 w-4" />
-              </span>
-              <div className="text-[13.5px] font-[500]">Website</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
-                <KnowledgeIcon className="h-4 w-4" />
-              </span>
-              <div className="text-[13.5px] font-[500]">Pricing Guide.pdf</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded bg-panel border border-border text-faint">
-                <KnowledgeIcon className="h-4 w-4" />
-              </span>
-              <div className="text-[13.5px] font-[500]">FAQ</div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Your Agents */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <b className="text-[15px] font-[800]">Your Agents</b>
-            </div>
-            <button
-              type="button"
-              onClick={() => onGoto("bots")}
-              className="inline-flex items-center gap-1 text-[12.5px] font-[600] text-fg hover:underline"
-            >
-              View all
-            </button>
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-white font-bold text-xs">AS</span>
-                <div className="text-[13.5px] font-[500]">Acme Support Agent</div>
-              </div>
-              <span className="text-[11px] font-medium bg-good/10 text-good px-2 py-0.5 rounded-full">Active</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-panel border border-border text-muted font-bold text-xs">SA</span>
-                <div className="text-[13.5px] font-[500]">Sales Assistant</div>
-              </div>
-              <span className="text-[11px] font-medium bg-panel border border-border text-muted px-2 py-0.5 rounded-full">Draft</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Removed old handoffs card render from overview */}
-    </>
-  );
-}
+/* ============================ Sections & Cards ============================ */
 
 function HandoffsCard({
   handoffs,

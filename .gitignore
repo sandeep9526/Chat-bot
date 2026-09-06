@@ -6,15 +6,15 @@
 *.key
 
 # ── Python / backend ─────────────────────────────────────
-zeva-backend/venv/
+ochreshift-backend/venv/
 **/venv/
-zeva-backend/.venv/
+ochreshift-backend/.venv/
 **/.venv/
 **/__pycache__/
 *.pyc
 
 # ── Local data stores (regenerable) ──────────────────────
-zeva-backend/chroma_db/
+ochreshift-backend/chroma_db/
 **/chroma_db/
 *.db
 *.sqlite

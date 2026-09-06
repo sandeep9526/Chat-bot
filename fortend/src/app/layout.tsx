@@ -24,12 +24,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 // Pre-paint, pre-hydration theme boot for EVERY route — sets data-theme from the
-// visitor's saved choice (single `zeva-theme` key across the whole site), else
+// visitor's saved choice (single `ochreshift-theme` key across the whole site), else
 // follows the OS. This prevents a flash of the wrong theme and, crucially, makes
 // the auth/app routes (sign-in, sign-up, onboarding, dashboard, admin) honour the
 // chosen theme too — not just the marketing/studio/demo pages. The home also arms
-// the scroll-reveal CSS; studio/demo let their own useZevaTheme refine it after.
-const THEME_BOOT = `(function(){try{var r=document.documentElement,p=location.pathname,t=localStorage.getItem('zeva-theme');var dark=t==='dark'||(t!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(p==='/')r.classList.add('reveal-ready');r.setAttribute('data-theme',dark?'dark':'light');}catch(e){}})();`;
+// the scroll-reveal CSS; studio/demo let their own useOchreshiftTheme refine it after.
+const THEME_BOOT = `(function(){try{var r=document.documentElement,p=location.pathname,t=localStorage.getItem('ochreshift-theme');var dark=t==='dark'||(t!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(p==='/')r.classList.add('reveal-ready');r.setAttribute('data-theme',dark?'dark':'light');}catch(e){}})();`;
 
 export const metadata: Metadata = {
   title: "ochreshift",

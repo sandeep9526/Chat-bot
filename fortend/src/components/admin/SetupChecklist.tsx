@@ -87,12 +87,14 @@ export function SetupChecklist({
   onCreateBot,
   onGoto,
   onOpenStudio,
+  autoHideWhenComplete,
 }: {
   hasBots: boolean;
   botId: string;
   onCreateBot: () => void;
   onGoto: (section: string) => void;
   onOpenStudio: () => void;
+  autoHideWhenComplete?: boolean;
 }) {
   const { flags, dismissed } = useSetupState(botId);
 
@@ -100,7 +102,7 @@ export function SetupChecklist({
   const doneCount = STEPS.filter(isDone).length;
   const allDone = doneCount === STEPS.length;
 
-  if (dismissed) return null;
+  if (dismissed || (autoHideWhenComplete && allDone)) return null;
 
   const act = (key: StepDef["key"]) => {
     if (key === "create") onCreateBot();
@@ -125,6 +127,15 @@ export function SetupChecklist({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
+          {allDone && (
+            <button
+              type="button"
+              onClick={() => onGoto("playground")}
+              className="tap inline-flex items-center gap-1.5 rounded-r1 bg-accent px-3 py-1.5 text-[12px] font-[650] text-white shadow-sm hover:bg-accent-strong transition-colors cursor-pointer"
+            >
+              Test in Playground
+            </button>
+          )}
           <span className="font-mono text-[12px] font-[700] text-faint">
             {doneCount}/{STEPS.length}
           </span>
@@ -132,7 +143,7 @@ export function SetupChecklist({
             type="button"
             onClick={() => dismissSetup(botId)}
             aria-label="Dismiss setup checklist"
-            className="tap grid h-7 w-7 place-items-center rounded-r1 text-faint transition-colors hover:bg-panel hover:text-fg"
+            className="tap grid h-7 w-7 place-items-center rounded-r1 text-faint transition-colors hover:bg-panel hover:text-fg cursor-pointer"
           >
             <X className="h-4 w-4" strokeWidth={2.2} />
           </button>

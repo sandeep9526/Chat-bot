@@ -10,6 +10,7 @@ import {
   type LiveSessionMessage,
 } from "@/lib/adminApi";
 import { MessageSquare, UserCheck, Bot, Send, Bell, ShieldAlert, Wifi, CheckCircle2 } from "lucide-react";
+import { FormattedMessage } from "@/components/ui/FormattedMessage";
 
 interface LiveHelpdeskCardProps {
   botId: string;
@@ -111,8 +112,8 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
   };
 
   return (
-    <Card>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+    <div className="w-full rounded-2xl border border-border bg-surface shadow-sm overflow-hidden min-h-[540px] flex flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 bg-panel/40">
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -130,7 +131,7 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
           <button
             type="button"
             onClick={requestNotifications}
-            className="flex items-center gap-1.5 rounded-r1 border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-[12px] font-[650] text-indigo-600 hover:bg-indigo-500/20 transition-colors"
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-[12px] font-[650] text-indigo-600 hover:bg-indigo-500/20 transition-colors cursor-pointer"
           >
             <Bell className="h-3.5 w-3.5" />
             Enable Desktop Alerts
@@ -143,23 +144,26 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
         )}
       </div>
 
+      <div className="p-5 flex-1 flex flex-col">
+
       {loading ? (
-        <div className="flex h-[480px] w-full items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-r-transparent" />
-            <span className="text-[13px] font-[600] text-muted">Connecting to Live Stream...</span>
-          </div>
+        <div className="flex flex-col items-center justify-center text-center w-full min-h-[380px] py-14">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-r-transparent mb-3.5" />
+          <span className="text-[13.5px] font-[650] text-fg">Connecting to live feed...</span>
+          <span className="text-[12px] text-muted mt-1">Checking active website visitor sessions</span>
         </div>
       ) : sessions.length === 0 ? (
-        <div className="py-12 text-center">
-          <Wifi className="mx-auto h-8 w-8 text-faint mb-2 opacity-60 animate-pulse" />
-          <p className="text-[13.5px] font-[650] text-fg">No active live chat sessions right now.</p>
-          <p className="mt-1 text-[12px] text-muted max-w-md mx-auto">
-            When website visitors open your widget and chat on <b>{botId}</b>, their real-time conversations will appear here for immediate intervention.
+        <div className="flex flex-col items-center justify-center text-center w-full min-h-[380px] py-14">
+          <div className="mb-3.5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 shadow-sm">
+            <Wifi className="h-7 w-7 opacity-80" />
+          </div>
+          <h4 className="text-[15px] font-[750] text-fg">No active live chat sessions right now</h4>
+          <p className="mt-1.5 text-[13px] text-muted max-w-md mx-auto leading-relaxed">
+            When website visitors open your widget and chat on <b className="text-fg">{botId}</b>, their real-time conversations will appear here for immediate intervention.
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 h-[480px]">
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-[380px] h-[480px]">
           {/* Left Columns: Session List */}
           <div className="border border-border rounded-r2 bg-panel overflow-y-auto p-2 flex flex-col gap-2">
             <div className="px-2 py-1 text-[11.5px] font-[700] text-faint uppercase tracking-wider">
@@ -270,7 +274,7 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
                               : "bg-accent text-white rounded-tr-sm font-[500]"
                           }`}
                         >
-                          {m.text}
+                          <FormattedMessage text={m.text} isUser={!isVisitor} className="text-[13px]" />
                         </div>
                         <span className="text-[10px] text-faint mt-1 px-1 capitalize font-mono">
                           {m.sender} · {new Date(m.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -312,6 +316,7 @@ export function LiveHelpdeskCard({ botId }: LiveHelpdeskCardProps) {
           </div>
         </div>
       )}
-    </Card>
+      </div>
+    </div>
   );
 }

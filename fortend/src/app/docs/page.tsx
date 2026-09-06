@@ -479,7 +479,7 @@ Be friendly, concise, and never make up services we don't offer.`}</CodeBlock>
           <Link href="/dashboard" className="text-[13.5px] font-[600] text-muted hover:text-fg transition-colors">
             ← Back to Dashboard
           </Link>
-          <a href="mailto:support@ochreshift.com" className="text-[13.5px] font-[600] text-muted hover:text-accent transition-colors">
+          <a href="mailto:support@ochreshift.in" className="text-[13.5px] font-[600] text-muted hover:text-accent transition-colors">
             Contact Support
           </a>
         </div>

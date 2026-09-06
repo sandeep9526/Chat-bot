@@ -24,7 +24,7 @@ You will move through five stages. Do not skip. Each stage funds the next one.
 | 3 | SaaS | Self-serve app | Many customers, low effort each |
 | 4 | Brand | A name people trust | Inbound leads, partnerships |
 
-Your product working name is **Zeva (working name)**. Keep using it while you build. You will pick a final name in Stage 4.
+Your product name is **Ochreshift**. Keep using it while you build. You will pick a final name in Stage 4.
 
 ---
 
@@ -173,21 +173,21 @@ After every happy client, ask: "Do you know one other business owner who needs t
 ## Brand Building
 
 ### Product name ideas
-Your working name is **Zeva (working name)**. Here are options. Pick a short, easy-to-say name that hints at chat, help, or leads.
+Your working name is **Ochreshift (working name)**. Here are options. Pick a short, easy-to-say name that hints at chat, help, or leads.
 
 | Name | Why it works |
 |------|--------------|
-| **Zeva** | Short, soft, easy to say worldwide. Sounds friendly, like a helper. |
+| **Ochreshift** | Short, soft, easy to say worldwide. Sounds friendly, like a helper. |
 | **Replyo** | Says "reply" clearly — the bot replies to customers. Modern -o ending. |
 | **Leadchat** | Very clear: it chats and gets leads. Easy to understand, weak on uniqueness. |
 | **Answerly** | Says the bot gives answers. Trustworthy, calm feel. |
 | **Convo** | Short for "conversation". Friendly and simple. |
 | **Nova AI** | "Nova" = new star. Feels smart and premium. |
 
-**Recommended:** **Zeva**. It is short, easy for any customer to say, has no fixed meaning (so it can grow), and sounds friendly. Second choice: **Replyo**.
+**Recommended:** **Ochreshift**. It is short, easy for any customer to say, has no fixed meaning (so it can grow), and sounds friendly. Second choice: **Replyo**.
 
 **IMPORTANT — check before you commit:**
-- [ ] Domain: is zeva.com / zeva.ai / getzeva.com free? Buy the best available.
+- [ ] Domain: is ochreshift.com / ochreshift.ai / getochreshift.com free? Buy the best available.
 - [ ] Trademark: search your country's trademark database and a quick Google. Do not build a brand on a name someone else owns.
 - [ ] Social handles: is the name free on LinkedIn, X, Instagram, YouTube?
 
@@ -200,7 +200,7 @@ Do all three checks before printing anything or telling clients the final name.
 - Tools: Canva or a cheap Fiverr designer. Do not overspend early.
 
 ### Positioning statement
-> "Zeva gives small businesses an AI assistant that answers customer questions from their own content and turns visitors into leads — on their website and WhatsApp, set up for them in days."
+> "Ochreshift gives small businesses an AI assistant that answers customer questions from their own content and turns visitors into leads — on their website and WhatsApp, set up for them in days."
 
 ### Tagline options
 - "Answers from your business. Leads to your inbox."
@@ -275,8 +275,8 @@ Month-by-month, the pattern is simple: **every month, keep bidding, keep shippin
 These rules protect you. Do not break them.
 
 **1. Keep this 100% separate from your day job and clients.**
-- Do not use any employer or client code, tools, accounts, or data. PrepVia is a client project — it is not yours. Zeva must be built only from your own new code, on your own time, with your own accounts.
-- Do not work on Zeva during hours you owe to a client or employer.
+- Do not use any employer or client code, tools, accounts, or data. PrepVia is a client project — it is not yours. Ochreshift must be built only from your own new code, on your own time, with your own accounts.
+- Do not work on Ochreshift during hours you owe to a client or employer.
 - **Why this matters:** Using someone else's IP (their code or ideas) can destroy your reputation and cause legal trouble. Your clean name is your most valuable asset. Guard it.
 
 **2. Protect your reputation above money.**

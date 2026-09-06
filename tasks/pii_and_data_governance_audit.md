@@ -1,11 +1,11 @@
-# Zeva Platform: PII, Data Governance & Compliance Audit
+# Ochreshift Platform: PII, Data Governance & Compliance Audit
 
-This document sets forth the comprehensive **PII (Personally Identifiable Information), Data Management, and Privacy Policy Audit** for the Zeva Platform (`zeva-backend` & `fortend`). It catalogs critical compliance gaps against global standards (GDPR, CCPA, HIPAA, and DPDPA) and outlines exact codebase engineering changes required to enforce rigorous data governance.
+This document sets forth the comprehensive **PII (Personally Identifiable Information), Data Management, and Privacy Policy Audit** for the Ochreshift Platform (`ochreshift-backend` & `fortend`). It catalogs critical compliance gaps against global standards (GDPR, CCPA, HIPAA, and DPDPA) and outlines exact codebase engineering changes required to enforce rigorous data governance.
 
 ---
 
 ## 1. [CRITICAL] Unredacted PII Leakage in Application & Server Logs
-**Location**: `zeva-backend/main.py` ([L1121](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1121), [L1210](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1210)) and stdout stream monitors.  
+**Location**: `ochreshift-backend/main.py` ([L1121](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1121), [L1210](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1210)) and stdout stream monitors.  
 **Vulnerability Type**: Plaintext PII Exposure via Operational Logging
 
 ### Description & Compliance Hazard
@@ -30,7 +30,7 @@ print(f"[chat] bot={req.botId} msg='{req.message[:50]}' → {len(hits)} raw hits
 ---
 
 ## 2. [HIGH] Unencrypted PII inside PostgreSQL Storage
-**Location**: `zeva-backend/schema.sql` -> Tables `leads`, `chats`, `handoffs`  
+**Location**: `ochreshift-backend/schema.sql` -> Tables `leads`, `chats`, `handoffs`  
 **Vulnerability Type**: Plaintext At-Rest Sensitive Data Storage
 
 ### Description & Compliance Hazard
@@ -49,7 +49,7 @@ Customer contact details (`name`, `email`, `phone`, `notes` in `leads`) and comp
 ---
 
 ## 3. [HIGH] Unfiltered PII Transmission to Third-Party LLM Vendors
-**Location**: `zeva-backend/main.py` -> `call_llm()` ([L1171](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1171))  
+**Location**: `ochreshift-backend/main.py` -> `call_llm()` ([L1171](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1171))  
 **Vulnerability Type**: Third-Party Data Dispersal & Unconsented Transmission
 
 ### Description & Compliance Hazard
@@ -80,7 +80,7 @@ Captured conversation logs (`chats`) and contact submissions (`leads`, `handoffs
 ---
 
 ## 5. [MEDIUM] Comprehensive Subject Erasure (GDPR "Right to be Forgotten")
-**Location**: `zeva-backend/main.py` -> `@app.delete("/leads/{lead_id}")` ([L461](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L461))  
+**Location**: `ochreshift-backend/main.py` -> `@app.delete("/leads/{lead_id}")` ([L461](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L461))  
 **Vulnerability Type**: Incomplete Subject Access Request (SAR) & Erasure Infrastructure
 
 ### Description & Compliance Hazard
@@ -109,4 +109,4 @@ The embeddable JavaScript chat widget launches immediately upon user visitor ent
 
 ### Codebase Remediation Checklist
 - [x] **Studio Consent Switch**: Integrate a `data-consent-notice="on"` switch in `widget.js` and Studio customizations.
-- [x] **Interactive Disclaimer UI**: When active, render a discreet agreement screen within the widget interface (*"This automated assistant utilizes Zeva AI processing. By continuing, you consent to our data terms and analytics storage."*) before unfreezing chat input controls.
+- [x] **Interactive Disclaimer UI**: When active, render a discreet agreement screen within the widget interface (*"This automated assistant utilizes Ochreshift AI processing. By continuing, you consent to our data terms and analytics storage."*) before unfreezing chat input controls.

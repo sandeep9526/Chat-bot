@@ -1,9 +1,9 @@
 #!/bin/bash
-# Zeva Backend Test Script
-cd "$(dirname "$0")/zeva-backend"
+# Ochreshift Backend Test Script
+cd "$(dirname "$0")/ochreshift-backend"
 
 echo "========================================="
-echo "  ZEVA PLATFORM - COMPLETE TEST SUITE"
+echo "  OCHRESHIFT PLATFORM - COMPLETE TEST SUITE"
 echo "========================================="
 
 PASS=0
@@ -21,12 +21,12 @@ test_result() {
 
 echo ""
 echo "[1/10] Backend Imports..."
-venv/bin/python -c "from main import app; from db import close_pool; from pii_encryption import encrypt_field, decrypt_field, mask_email, mask_phone" 2>/dev/null
+.venv/bin/python -c "from main import app; from db import close_pool; from pii_encryption import encrypt_field, decrypt_field, mask_email, mask_phone" 2>/dev/null
 test_result $? "All modules import successfully"
 
 echo ""
 echo "[2/10] FastAPI Lifespan..."
-venv/bin/python -c "
+.venv/bin/python -c "
 from main import app
 from db import close_pool
 assert app.router.lifespan_context is not None, 'No lifespan'
@@ -36,7 +36,7 @@ test_result $? "Lifespan context manager attached"
 
 echo ""
 echo "[3/10] SSRF Protection..."
-venv/bin/python -c "
+.venv/bin/python -c "
 from main import app
 import inspect
 src = inspect.getsource(app.routes)
@@ -49,7 +49,7 @@ test_result $? "SSRF IP blocking in demo/ingest-url"
 
 echo ""
 echo "[4/10] PII Encryption..."
-venv/bin/python -c "
+.venv/bin/python -c "
 from pii_encryption import encrypt_field, decrypt_field, mask_email, mask_phone, mask_name
 # Test round-trip
 from cryptography.fernet import Fernet

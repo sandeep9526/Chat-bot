@@ -2,7 +2,7 @@ import { Container } from "./Container";
 
 /**
  * Two infinite marquee rows scrolling opposite ways, pausing on hover. These
- * are the *kinds* of small businesses Zeva is built for — target markets, not
+ * are the *kinds* of small businesses Ochreshift is built for — target markets, not
  * claimed customers — so nothing here is fabricated social proof.
  */
 const ROW_A = [

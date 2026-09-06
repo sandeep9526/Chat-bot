@@ -2,10 +2,10 @@
 
 import { useCallback } from "react";
 import { Zap, ArrowRight } from "lucide-react";
-import type { ZevaConfig } from "@/lib/types";
+import type { OchreshiftConfig } from "@/lib/types";
 
 interface EmbedCodeProps {
-  config: ZevaConfig;
+  config: OchreshiftConfig;
 }
 
 export function EmbedCode({ config }: EmbedCodeProps) {

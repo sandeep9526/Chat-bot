@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { resetPassword } from "@/lib/auth-client";
 import { AuthShell } from "@/components/auth/AuthShell";
-import { KeyRound, CheckCircle2 } from "lucide-react";
+import { KeyRound, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 
 /**
- * Public reset-password execution page.
- * Re-authenticates user and updates Better Auth stored password credentials using URL recovery token.
+ * Reset password form inner component that safely accesses search params.
  */
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [success, setSuccess] = useState(false);
@@ -20,17 +20,33 @@ export default function ResetPasswordPage() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if token exists in URL params
-    const searchParams = new URLSearchParams(window.location.search);
-    const urlToken = searchParams.get("token");
-    if (urlToken) {
-      setToken(urlToken);
+    // 1. Check useSearchParams from Next.js router
+    const qToken = searchParams.get("token");
+    if (qToken) {
+      setToken(qToken);
+      return;
     }
-  }, []);
+
+    // 2. Fallback to window.location.search if client navigation bypassed params
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const winToken = sp.get("token");
+      if (winToken) {
+        setToken(winToken);
+      }
+    }
+  }, [searchParams]);
+
+  const activeToken = token || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("token") : null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!activeToken) {
+      setError("No reset token found in link. Please use the reset link sent to your email or request a new one.");
+      return;
+    }
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
@@ -45,10 +61,17 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const { error: resetErr } = await resetPassword({
-        newPassword: password,
-        token: token || undefined,
-      });
+      const { error: resetErr } = await resetPassword(
+        {
+          newPassword: password,
+          token: activeToken,
+        },
+        {
+          query: {
+            token: activeToken,
+          },
+        }
+      );
 
       if (resetErr) {
         setError(resetErr.message || "Invalid or expired password reset token.");
@@ -77,7 +100,7 @@ export default function ResetPasswordPage() {
             Password updated!
           </h1>
           <p className="mt-2 text-[14.5px] text-muted leading-relaxed">
-            Your ochreshift account password has been successfully reset. Redirecting you to sign in...
+            Your Ochreshift account password has been successfully reset. Redirecting you to sign in...
           </p>
           <div className="mt-8">
             <a
@@ -102,9 +125,29 @@ export default function ResetPasswordPage() {
           Set new password
         </h1>
         <p className="mt-1.5 text-[14px] text-muted">
-          Create a new password for your ochreshift account.
+          Create a new password for your Ochreshift account.
         </p>
       </div>
+
+      {!activeToken && (
+        <div className="mb-5 rounded-r1 border border-amber-500/20 bg-amber-500/10 p-4 text-[13.5px] text-amber-600 dark:text-amber-400">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Reset token missing</p>
+              <p className="mt-1 text-[13px] text-muted leading-relaxed">
+                Please ensure you opened the full link from your recovery email. If the link expired, request a new one below.
+              </p>
+              <a
+                href="/forgot-password"
+                className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Request a new link
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -144,12 +187,23 @@ export default function ResetPasswordPage() {
 
         <button
           type="submit"
-          disabled={loading || !password || !confirmPassword}
+          disabled={loading || !password || !confirmPassword || !activeToken}
           className="w-full cursor-pointer rounded-r1 bg-gradient-to-br from-accent to-accent-strong py-3 text-[14.5px] font-[650] text-white shadow-[0_8px_20px_-8px_var(--accent)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Updating password…" : "Reset password"}
         </button>
       </form>
     </AuthShell>
+  );
+}
+
+/**
+ * Public reset-password execution page wrapped in Suspense.
+ */
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<AuthShell><div className="py-8 text-center text-muted">Loading reset form…</div></AuthShell>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

@@ -4,7 +4,7 @@ This is the full plan to grow from a solo freelancer to a real product brand. It
 
 The product is a RAG-powered lead-qualification and customer-support AI chatbot for small and medium businesses (SMBs). RAG means "retrieval-augmented generation" - the bot reads the business's own content (website, PDFs, docs, database) and answers from that real data, with sources, instead of making up generic answers.
 
-The working product name is **Zeva (working name)**. This name is a placeholder. Check domain and trademark before you fix on it.
+The product name is **Ochreshift**. Check domain and trademark before you fix on it.
 
 ---
 
@@ -25,7 +25,7 @@ Think of the journey in 6 phases. Each phase builds on the one before. You do NO
 
 ## North-Star Vision
 
-> **Zeva helps any small business turn its website and WhatsApp into a 24/7 sales and support team - a smart AI that answers from the business's own knowledge, captures every lead, and never sleeps.**
+> **Ochreshift helps any small business turn its website and WhatsApp into a 24/7 sales and support team - a smart AI that answers from the business's own knowledge, captures every lead, and never sleeps.**
 
 Everything you build must serve this one idea: **answer accurately from their data, and never lose a lead.**
 
@@ -157,7 +157,7 @@ Everything you build must serve this one idea: **answer accurately from their da
 ## Phase 4 - Expand
 
 **What we build (features)**
-- White-label / agency reseller program: other agencies sell Zeva under their own name and pay you.
+- White-label / agency reseller program: other agencies sell Ochreshift under their own name and pay you.
 - More channels: Instagram DM, Facebook Messenger.
 - Voice-agent add-on: the bot can talk on calls (voice is a higher price tier).
 - Template library by industry: ready-made bots for salons, clinics, real estate, e-commerce, coaching, etc.
@@ -194,7 +194,7 @@ Everything you build must serve this one idea: **answer accurately from their da
 - Partnerships: with agencies, hosting companies, industry groups.
 - A funding choice: raise money to grow faster, or stay bootstrapped (grow from profit).
 
-**Who it is for:** The whole market. Now Zeva is a known brand, not a freelancer's side project.
+**Who it is for:** The whole market. Now Ochreshift is a known brand, not a freelancer's side project.
 
 **Goal:** Become a real company with steady growth, a team, and a brand people trust.
 
@@ -330,7 +330,7 @@ The single most important number across all phases: **MRR (monthly recurring rev
 | P4 | Voice is costly and hard | Launch voice as a paid add-on only; charge enough to cover the extra cost |
 | P5 | Growing too fast, cash runs low | Watch cash every month; hire only when MRR pays for it; keep 3-6 months of runway |
 | All | Founder burnout (you are solo) | Automate boring tasks; get part-time help early; do not skip rest |
-| All | Using client or employer IP by mistake | Build everything fresh under Zeva; never reuse PrepVia or any client code or data |
+| All | Using client or employer IP by mistake | Build everything fresh under Ochreshift; never reuse PrepVia or any client code or data |
 
 > **Why this matters:** The biggest risk for a solo founder is doing too much at once. Each phase has ONE main job. Finish it before the next.
 
@@ -342,7 +342,7 @@ A simple action list to begin today. Do these in order.
 
 **Days 1-15: Foundation**
 - [ ] Finish the current $1,200 Upwork contract well; ask for a great review.
-- [ ] Check domain + trademark for the name (Zeva or a backup name).
+- [ ] Check domain + trademark for the name (Ochreshift or a backup name).
 - [ ] Set up the base project: Next.js + Supabase (with pgvector) + one LLM (OpenAI or Claude).
 - [ ] Build the RAG answer flow: upload content, make embeddings, answer with sources.
 

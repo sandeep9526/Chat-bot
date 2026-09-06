@@ -4,7 +4,7 @@ This document answers one big question: **Is there real money in building AI cha
 
 The short answer is **yes**. The demand is growing fast. The prices are good. And there is a clear gap that a skilled freelancer can fill. This document shows the numbers, the buyers, the prices, the competitors, and the risks - all in simple English.
 
-The product we are building is **Zeva (working name)** - a RAG-powered chatbot for small and medium businesses (SMBs). ("RAG" means Retrieval-Augmented Generation: the bot answers from the business's own real content - website, PDFs, docs - not from generic guesses.)
+The product we are building is **Ochreshift** - a RAG-powered chatbot for small and medium businesses (SMBs). ("RAG" means Retrieval-Augmented Generation: the bot answers from the business's own real content - website, PDFs, docs - not from generic guesses.)
 
 ---
 
@@ -19,7 +19,7 @@ Yes. Here are the facts, checked from real market reports.
 | AI market growth | Up about **50%** | The whole AI freelance market grew by half in one year. Fast. |
 | AI Integration & Automation | Up **90%+** | This is the exact sub-area we are in: connecting AI to a business's tools and data. It is the fastest-growing slice. |
 
-**Why this matters:** We are not guessing. Real clients are spending real money, and the trend is going up sharply. The fastest-growing part of the market ("AI Integration & Automation") is the exact thing Zeva does - connect AI to a business's own data and tools.
+**Why this matters:** We are not guessing. Real clients are spending real money, and the trend is going up sharply. The fastest-growing part of the market ("AI Integration & Automation") is the exact thing Ochreshift does - connect AI to a business's own data and tools.
 
 **Warning inside the good news:** The generic "AI & Machine Learning" category is now **over-fished** (too many freelancers chasing the same jobs). Proposals there get replies only **7.21%** of the time, which is *below* the platform average of **7.45%**. So calling yourself a plain "AI developer" is a losing move. We must specialize. (More on this in Section 6.)
 
@@ -44,7 +44,7 @@ These are the business types that buy chatbots, and why.
 2. "Generic bots give wrong answers and embarrass my brand."
 3. "I don't have a tech team to set this up and keep it running."
 
-Zeva solves all three: fast replies, accurate answers (RAG + sources), and done-for-you managed hosting.
+Ochreshift solves all three: fast replies, accurate answers (RAG + sources), and done-for-you managed hosting.
 
 ---
 
@@ -102,7 +102,7 @@ Many tools already exist. That is good news - it proves people pay for this. But
 | **ManyChat** | Marketing automation (Instagram, Messenger, WhatsApp) | Social + WhatsApp marketing flows | Marketing-flow focus, weak on true RAG document answers. Pricing *unverified*. |
 | **CustomGPT** | RAG chatbot from your content | "Accurate RAG bot, no hallucination" | Closest to us on RAG, but still self-serve SaaS - no custom integrations or managed delivery. Pricing *unverified*. |
 
-**The one to study: Boei.** It is the clearest picture of the winning product shape. It: (1) chats on WhatsApp, (2) qualifies leads by asking questions, (3) captures contact info mid-conversation, (4) scores how "warm" the lead is, (5) hands warm leads to a human with a short AI summary, and (6) has a built-in CRM. Zeva must do all of this **and** add RAG answers from the client's own data, a website widget, and done-for-you managed hosting.
+**The one to study: Boei.** It is the clearest picture of the winning product shape. It: (1) chats on WhatsApp, (2) qualifies leads by asking questions, (3) captures contact info mid-conversation, (4) scores how "warm" the lead is, (5) hands warm leads to a human with a short AI summary, and (6) has a built-in CRM. Ochreshift must do all of this **and** add RAG answers from the client's own data, a website widget, and done-for-you managed hosting.
 
 **Why this matters:** We are not inventing a new market. We are entering a proven one and beating the tools on the parts they are weak at: customization, deep integration, and doing it *for* the client.
 
@@ -114,7 +114,7 @@ All the tools above are **no-code SaaS** - the business must sign up, learn the 
 
 Here is the gap, side by side.
 
-| No-code SaaS tool | Zeva (done-for-you) |
+| No-code SaaS tool | Ochreshift (done-for-you) |
 |---|---|
 | "Here is the software - you set it up" | "We build it, host it, and run it for you" |
 | Same features for everyone | Custom logic for *your* business |
@@ -135,7 +135,7 @@ Here is the gap, side by side.
 - The **RAG / knowledge-base bot** niche is the **most defensible and best-paid**. Fewer people can build a bot that answers accurately from a client's own documents with sources. That skill is rare and valuable.
 - "AI Integration & Automation" is the **fastest-growing** sub-segment (up 90%+). That is exactly what RAG + CRM integration is.
 
-**Why this matters:** A specialist gets more replies, charges more, and is remembered. "I build RAG chatbots that answer from your own data and capture leads" beats "I am an AI developer" every time. Position Zeva and your profile around **RAG + integrations**, never around generic AI.
+**Why this matters:** A specialist gets more replies, charges more, and is remembered. "I build RAG chatbots that answer from your own data and capture leads" beats "I am an AI developer" every time. Position Ochreshift and your profile around **RAG + integrations**, never around generic AI.
 
 **What to do (checklist):**
 - [ ] Say "RAG chatbot" and "answers from your own data, with sources" in every proposal.

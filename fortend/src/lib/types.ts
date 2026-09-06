@@ -5,7 +5,7 @@ export type FontSrc = "preset" | "google" | "custom" | "inherit";
 export type PresetFont = "system" | "rounded" | "serif" | "mono";
 export type Anchor = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
-export interface ZevaConfig {
+export interface OchreshiftConfig {
   name: string;
   label: string;
   welcome: string;
@@ -32,6 +32,17 @@ export interface ZevaConfig {
   cUrl: string;
   /** Starter question chips shown in the empty state. */
   suggestions: string[];
+  formSchema?: FormFieldSchema[];
+}
+
+
+export interface FormFieldSchema {
+  id: string;
+  label: string;
+  type: "text" | "email" | "tel" | "textarea" | "dropdown";
+  required: boolean;
+  options?: string[];
+  system?: boolean;
 }
 
 export interface ChatMessage {
@@ -87,9 +98,15 @@ export interface LeadPayload {
   name: string;
   email: string;
   phone?: string;
+  message?: string;
   botId: string;
+  custom_data?: Record<string, any>;
+  isTest?: boolean;
 }
 
 export interface LeadResponse {
   ok: boolean;
+  leadId?: number;
+  score?: string;
+  isTest?: boolean;
 }

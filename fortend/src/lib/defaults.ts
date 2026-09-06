@@ -1,11 +1,11 @@
-import type { ZevaConfig } from "./types";
+import type { OchreshiftConfig } from "./types";
 
 /** Demo tenant id sent with every /chat and /lead call. */
-export const BOT_ID = "zeva-ai";
+export const BOT_ID = "ochreshift-ai";
 
-export const DEFAULTS: ZevaConfig = {
-  name: "ochreshift",
-  label: "Ask ochreshift",
+export const DEFAULTS: OchreshiftConfig = {
+  name: "Assistant",
+  label: "Ask Assistant",
   welcome:
     "Ask in your own words \u2014 every answer comes from ochreshift\u2019s official documents.",
   subtitle: "24/7 AI Assistant \u00b7 Grounded",

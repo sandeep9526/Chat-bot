@@ -1,6 +1,6 @@
 # Technical Plan for the First Step (The MVP)
 
-This is the build plan for the FIRST version of Zeva (working name). We build only the smallest useful product first. We call this the MVP (Minimum Viable Product - the smallest thing that gives real value).
+This is the build plan for the FIRST version of Ochreshift. We build only the smallest useful product first. We call this the MVP (Minimum Viable Product - the smallest thing that gives real value).
 
 The MVP has three parts:
 1. A RAG chatbot backend (the brain that answers from the client's own content).
@@ -128,9 +128,9 @@ The client pastes one `<script>` tag. That script downloads a small JavaScript f
 ### The example snippet
 
 ```html
-<!-- Zeva chat widget -->
+<!-- Ochreshift chat widget -->
 <script
-  src="https://cdn.zeva.app/widget.js"
+  src="https://cdn.ochreshift.com/widget.js"
   data-bot-id="acme-salon-123"
   data-color="#4f46e5"
   async>
@@ -330,7 +330,7 @@ Rough monthly cost for one small-business bot with normal traffic:
 ## 13. File / Folder Structure (Example Repo)
 
 ```
-zeva/
+ochreshift/
 ├── app/
 │   └── api/
 │       ├── chat/route.ts        # POST /api/chat
@@ -394,7 +394,7 @@ Do these in order. Each step should end with something you can test.
 - **Load/limit test:** send many fast requests and confirm rate limiting kicks in.
 
 ### How to demo (portfolio)
-- Build a public demo page (for example `demo.zeva.app`) that looks like a fake small business (a salon or dental clinic).
+- Build a public demo page (for example `demo.ochreshift.com`) that looks like a fake small business (a salon or dental clinic).
 - Put the real widget on it, loaded with one line, so visitors can chat live.
 - Add a short "Try asking..." list of sample questions.
 - Record a 60-90 second screen video: paste one line of code, refresh, chat, capture a lead. Use this in Upwork proposals and on sandeepsharmadev.in.

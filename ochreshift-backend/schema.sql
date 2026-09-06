@@ -1,0 +1,365 @@
+-- Ochreshift app schema (Postgres / Neon). Better Auth owns "user"/"session"/
+-- "account"/"verification"/"jwks" (migrated separately via the Better Auth
+-- CLI from the Next.js app) — this file owns the product tables and
+-- references "user"(id) for bot ownership.
+--
+-- Safe to re-run: CREATE ... IF NOT EXISTS + DROP POLICY IF EXISTS before
+-- each CREATE POLICY.
+
+CREATE TABLE IF NOT EXISTS bots (
+  bot_id          TEXT PRIMARY KEY,
+  owner_user_id   TEXT REFERENCES "user"(id) ON DELETE SET NULL,
+  name            TEXT,
+  accent          TEXT DEFAULT '#4f46e5',
+  welcome         TEXT,
+  suggestions     JSONB DEFAULT '[]'::jsonb,
+  allowed_domains JSONB DEFAULT '["*"]'::jsonb,
+  suspended       BOOLEAN NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+-- ALTER for environments where this table already existed before `suspended`
+-- was added (CREATE TABLE IF NOT EXISTS above is a no-op against an
+-- existing table — this is what actually adds the column there).
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT false;
+-- `paused` is the OWNER's own on/off switch (pause my bot without deleting it),
+-- distinct from `suspended` which is a platform-admin moderation flag the owner
+-- can't touch. Both make a bot inactive; see is_active in db.py.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS paused BOOLEAN NOT NULL DEFAULT false;
+-- `design` holds the FULL Studio look for a signed-in owner's bot
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS design JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS whatsapp_phone_number_id TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS notification_email TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS webhook_url TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS google_sheets_url TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS template_category TEXT DEFAULT 'general';
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS model_override TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS form_schema JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS retention_days INT DEFAULT 90;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS custom_prompt_style TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_whatsapp_phone ON bots(whatsapp_phone_number_id) WHERE whatsapp_phone_number_id IS NOT NULL;
+
+
+CREATE TABLE IF NOT EXISTS leads (
+  id         BIGSERIAL PRIMARY KEY,
+  bot_id     TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+  name       TEXT,
+  email      TEXT,
+  phone      TEXT,
+  message    TEXT,
+  score      TEXT DEFAULT 'cold',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS custom_data JSONB DEFAULT '{}'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_leads_custom_data ON leads USING gin (custom_data);
+
+CREATE TABLE IF NOT EXISTS chats (
+  id           BIGSERIAL PRIMARY KEY,
+  bot_id       TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+  question     TEXT,
+  answer       TEXT,
+  is_guardrail BOOLEAN DEFAULT false,
+  prompt_tokens INT DEFAULT 0,
+  completion_tokens INT DEFAULT 0,
+  feedback_score INT DEFAULT 0,
+  feedback_text TEXT,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS prompt_tokens INT DEFAULT 0;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS completion_tokens INT DEFAULT 0;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_score INT DEFAULT 0;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS feedback_text TEXT;
+CREATE INDEX IF NOT EXISTS idx_chats_feedback ON chats(bot_id, feedback_score);
+
+CREATE TABLE IF NOT EXISTS handoffs (
+  id         BIGSERIAL PRIMARY KEY,
+  bot_id     TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+  name       TEXT,
+  contact    TEXT,
+  summary    TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bots_owner   ON bots(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_leads_bot    ON leads(bot_id);
+CREATE INDEX IF NOT EXISTS idx_chats_bot    ON chats(bot_id);
+CREATE INDEX IF NOT EXISTS idx_handoffs_bot ON handoffs(bot_id);
+
+-- ---- Row-Level Security -----------------------------------------------
+-- Cross-tenant reads are blocked by Postgres itself, not only by app code
+-- forgetting a WHERE clause. FORCE is required because the connecting role
+-- (neondb_owner) owns these tables, and table owners bypass RLS unless
+-- FORCE is also set.
+ALTER TABLE bots     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bots     FORCE  ROW LEVEL SECURITY;
+ALTER TABLE leads    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leads    FORCE  ROW LEVEL SECURITY;
+ALTER TABLE chats    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats    FORCE  ROW LEVEL SECURITY;
+ALTER TABLE handoffs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE handoffs FORCE  ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS bots_select           ON bots;
+DROP POLICY IF EXISTS bots_insert_owner     ON bots;
+DROP POLICY IF EXISTS bots_update_owner     ON bots;
+DROP POLICY IF EXISTS bots_delete_owner     ON bots;
+DROP POLICY IF EXISTS leads_select_owner    ON leads;
+DROP POLICY IF EXISTS leads_insert_any      ON leads;
+DROP POLICY IF EXISTS leads_delete_owner    ON leads;
+DROP POLICY IF EXISTS chats_select_owner    ON chats;
+DROP POLICY IF EXISTS chats_insert_any      ON chats;
+DROP POLICY IF EXISTS chats_delete_owner    ON chats;
+DROP POLICY IF EXISTS handoffs_select_owner ON handoffs;
+DROP POLICY IF EXISTS handoffs_insert_any   ON handoffs;
+DROP POLICY IF EXISTS handoffs_delete_owner ON handoffs;
+
+-- bots: the owner sees their own bots (admin listing / dashboard). An
+-- anonymous/public caller (widget, /config, /chat, /lead) can only see the
+-- ONE bot they explicitly asked for — db.get_bot() sets app.public_bot_id
+-- to that bot_id before the lookup. Nobody can list all tenants by default.
+CREATE POLICY bots_select ON bots
+  FOR SELECT
+  USING (
+    owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+    OR bot_id = NULLIF(current_setting('app.public_bot_id', true), '')
+  );
+
+CREATE POLICY bots_insert_owner ON bots
+  FOR INSERT
+  WITH CHECK (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+CREATE POLICY bots_update_owner ON bots
+  FOR UPDATE
+  USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+-- The owner may delete their own bot (dashboard "Delete bot"). Child rows in
+-- leads/chats/handoffs are removed first by the app (delete_bot_for_owner),
+-- each gated by its own *_delete_owner policy below.
+CREATE POLICY bots_delete_owner ON bots
+  FOR DELETE
+  USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+-- leads/chats/handoffs: only the owning bot's owner can read them (dashboard
+-- / /leads / /admin/stats / /admin/handoffs). Anyone can insert — anonymous
+-- website visitors are the ones submitting leads and chatting, not the bot
+-- owner. INSERT is still scoped to a real, existing bot_id.
+CREATE POLICY leads_select_owner ON leads
+  FOR SELECT
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
+CREATE POLICY leads_insert_any ON leads
+  FOR INSERT
+  WITH CHECK (bot_id IN (SELECT bot_id FROM bots));
+-- GDPR-style delete-on-request: only the owning bot's owner can delete a lead.
+CREATE POLICY leads_delete_owner ON leads
+  FOR DELETE
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
+
+CREATE POLICY chats_select_owner ON chats
+  FOR SELECT
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
+CREATE POLICY chats_insert_any ON chats
+  FOR INSERT
+  WITH CHECK (bot_id IN (SELECT bot_id FROM bots));
+-- Only used as part of an owner deleting their own bot (delete_bot_for_owner
+-- clears chats/handoffs before the bot row itself).
+CREATE POLICY chats_delete_owner ON chats
+  FOR DELETE
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
+
+CREATE POLICY handoffs_select_owner ON handoffs
+  FOR SELECT
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
+CREATE POLICY handoffs_insert_any ON handoffs
+  FOR INSERT
+  WITH CHECK (bot_id IN (SELECT bot_id FROM bots));
+CREATE POLICY handoffs_delete_owner ON handoffs
+  FOR DELETE
+  USING (bot_id IN (
+    SELECT bot_id FROM bots WHERE owner_user_id = NULLIF(current_setting('app.user_id', true), '')
+  ));
+
+-- ---- Subscriptions (Phase 3 foundation: license gate + plan limits) ----
+-- One row per paying account (owner_user_id = Better Auth user.id — a solo
+-- founder's first customers are one user each, no separate "accounts" table
+-- yet; add one later if multi-seat orgs are ever needed). Bots with no owner
+-- (the 5 pre-existing demo bots) are never gated — see get_bot()'s is_active
+-- computation in db.py.
+--
+-- Writes only ever come from trusted, narrow code paths: trial
+-- auto-provisioning at first-bot-creation (db.ensure_trial_subscription,
+-- runs with the creating user's own app.user_id), the three payment-gateway
+-- webhook handlers (each verifies its own webhook signature before ever
+-- touching the DB, and sets app.user_id to the subscription's own owner from
+-- the gateway's echoed-back metadata — Paddle's custom_data, Razorpay's
+-- notes, Stripe's metadata), and the superadmin manual-override endpoint
+-- (gateway='manual', comping a client / fixing an out-of-band payment).
+-- There is no user-facing "set my own plan" endpoint — RLS here is
+-- defense-in-depth on top of that, not the only gate.
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                      BIGSERIAL PRIMARY KEY,
+  owner_user_id           TEXT NOT NULL UNIQUE REFERENCES "user"(id) ON DELETE CASCADE,
+  plan                    TEXT NOT NULL DEFAULT 'trial',      -- trial | starter | pro | business | enterprise
+  status                  TEXT NOT NULL DEFAULT 'trialing',   -- trialing | active | past_due | canceled | expired
+  max_bots                INT NOT NULL DEFAULT 5,
+  max_messages_per_month  INT NOT NULL DEFAULT 500,
+  trial_ends_at           TIMESTAMPTZ,
+  current_period_end      TIMESTAMPTZ,
+  paddle_subscription_id  TEXT,
+  paddle_customer_id      TEXT,
+  created_at              TIMESTAMPTZ DEFAULT now(),
+  updated_at              TIMESTAMPTZ DEFAULT now()
+);
+-- ALTER for environments where this table already existed before the
+-- multi-gateway columns were added (mirrors the `bots` table's pattern
+-- above — CREATE TABLE IF NOT EXISTS is a no-op against an existing table).
+-- `gateway` records which payment processor last wrote this row (paddle |
+-- razorpay | stripe | manual) so the dashboard/superadmin panel can show
+-- where a subscription actually came from. Razorpay is used for India
+-- (INR, UPI/netbanking); Stripe for everyone else (USD/global cards).
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS gateway TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_customer_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS currency TEXT;
+
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions FORCE  ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS subscriptions_select_owner ON subscriptions;
+DROP POLICY IF EXISTS subscriptions_select_public_bot ON subscriptions;
+DROP POLICY IF EXISTS subscriptions_insert_owner ON subscriptions;
+DROP POLICY IF EXISTS subscriptions_update_owner ON subscriptions;
+
+CREATE POLICY subscriptions_select_owner ON subscriptions
+  FOR SELECT
+  USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+-- The public /chat|/config path (db.get_bot) needs to read the license
+-- status of the ONE bot it's already scoped to via app.public_bot_id — same
+-- exception shape as bots_select. This is the row itself becoming visible
+-- (status/trial_ends_at/max_messages_per_month), not a listing: a caller
+-- must already know the exact bot_id, same as for the bots table.
+CREATE POLICY subscriptions_select_public_bot ON subscriptions
+  FOR SELECT
+  USING (
+    owner_user_id IN (
+      SELECT owner_user_id FROM bots WHERE bot_id = NULLIF(current_setting('app.public_bot_id', true), '')
+    )
+  );
+
+CREATE POLICY subscriptions_insert_owner ON subscriptions
+  FOR INSERT
+  WITH CHECK (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+CREATE POLICY subscriptions_update_owner ON subscriptions
+  FOR UPDATE
+  USING (owner_user_id = NULLIF(current_setting('app.user_id', true), ''));
+
+-- ---- Platform admin (Phase: superadmin panel) ---------------------------
+-- One narrow, explicit exception on top of everything above: a request that
+-- the backend has ALREADY verified comes from an allow-listed platform-admin
+-- email (main.py's is_platform_admin(), checked before any of this code
+-- runs) may set app.is_platform_admin = 'true' to read across every tenant.
+-- This flag is never derived from anything a client sends directly — only
+-- backend code that has already done the email check sets it.
+--
+-- Mostly SELECT-only (leads/chats/subscriptions: read-only, so a
+-- compromised admin session can't mutate another tenant's leads/chats/
+-- billing). bots also gets a platform-admin UPDATE policy — RLS applies
+-- row-wide, not per-column, so the real narrowing (only the `suspended`
+-- column, via db.set_bot_suspended()) is enforced at the application layer,
+-- not by Postgres; this policy is the coarser backstop underneath it.
+DROP POLICY IF EXISTS bots_select_platform_admin ON bots;
+DROP POLICY IF EXISTS bots_update_platform_admin ON bots;
+DROP POLICY IF EXISTS leads_select_platform_admin ON leads;
+DROP POLICY IF EXISTS chats_select_platform_admin ON chats;
+DROP POLICY IF EXISTS subscriptions_select_platform_admin ON subscriptions;
+
+CREATE POLICY bots_select_platform_admin ON bots
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY bots_update_platform_admin ON bots
+  FOR UPDATE
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY leads_select_platform_admin ON leads
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY chats_select_platform_admin ON chats
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+CREATE POLICY subscriptions_select_platform_admin ON subscriptions
+  FOR SELECT
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+-- ---- Grants for the least-privilege runtime role -----------------------
+-- ochreshift_app (NOBYPASSRLS) is what the FastAPI backend actually connects as;
+-- neondb_owner (BYPASSRLS, used to run this file) stays reserved for
+-- schema/migrations. Kept here — not a one-off script — so a fresh
+-- environment only needs this one file plus the role-creation step in
+-- ONBOARDING.md.
+GRANT USAGE ON SCHEMA public TO ochreshift_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON bots, leads, chats, handoffs, subscriptions TO ochreshift_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ochreshift_app;
+GRANT REFERENCES ON "user" TO ochreshift_app;
+-- The superadmin bots listing joins in each bot's owner email — "user" has
+-- no sensitive columns beyond what Better Auth itself already returns to a
+-- signed-in session (name/email/image), so a full-table grant is fine.
+GRANT SELECT ON "user" TO ochreshift_app;
+
+CREATE TABLE IF NOT EXISTS playground_sessions (
+  id TEXT PRIMARY KEY,
+  bot_id TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_playground_sessions_bot ON playground_sessions(bot_id);
+
+ALTER TABLE playground_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE playground_sessions FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS playground_sessions_select_owner ON playground_sessions;
+DROP POLICY IF EXISTS playground_sessions_insert_owner ON playground_sessions;
+DROP POLICY IF EXISTS playground_sessions_update_owner ON playground_sessions;
+DROP POLICY IF EXISTS playground_sessions_delete_owner ON playground_sessions;
+
+CREATE POLICY playground_sessions_select_owner ON playground_sessions
+  FOR SELECT TO ochreshift_app
+  USING (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE POLICY playground_sessions_insert_owner ON playground_sessions
+  FOR INSERT TO ochreshift_app
+  WITH CHECK (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE POLICY playground_sessions_update_owner ON playground_sessions
+  FOR UPDATE TO ochreshift_app
+  USING (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE POLICY playground_sessions_delete_owner ON playground_sessions
+  FOR DELETE TO ochreshift_app
+  USING (bot_id IN (SELECT bot_id FROM bots WHERE owner_user_id = current_setting('app.user_id', true)));
+
+CREATE TABLE IF NOT EXISTS email_campaign_logs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  campaign_stage TEXT NOT NULL,
+  sent_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, campaign_stage)
+);

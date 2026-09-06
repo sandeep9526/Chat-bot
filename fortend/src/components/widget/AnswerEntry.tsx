@@ -5,7 +5,8 @@ import { AlertTriangle as WarningIcon, UserPlus as UserPlusIcon, RotateCcw as Re
 import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 import { ProofCard } from "./ProofCard";
 import { LeadTicket, LeadStub } from "./LeadTicket";
-import { useZevaStore } from "@/stores/zevaStore";
+import { FormattedMessage } from "@/components/ui/FormattedMessage";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 import type { ChatMessage } from "@/lib/types";
 
 interface AnswerEntryProps {
@@ -15,8 +16,9 @@ interface AnswerEntryProps {
 }
 
 export function AnswerEntry({ message, showSources, onRetry }: AnswerEntryProps) {
-  const name = useZevaStore((s) => s.config.name);
-  const updateMessage = useZevaStore((s) => s.updateMessage);
+  const name = useOchreshiftStore((s) => s.config.name);
+  const botId = useOchreshiftStore((s) => s.botId);
+  const updateMessage = useOchreshiftStore((s) => s.updateMessage);
 
   const [revealed, setRevealed] = useState(false);
   const hasSource = Boolean(message.sources && message.sources.length > 0);
@@ -42,18 +44,18 @@ export function AnswerEntry({ message, showSources, onRetry }: AnswerEntryProps)
 
   return (
     <div>
-    <div className="pl-[38px] relative">
-      <div className="absolute left-0 top-0 h-[28px] w-[28px] shrink-0 rounded-full bg-surface border border-border shadow-sm flex items-center justify-center p-[4px]">
-        {message.isError ? (
-          <WarningIcon className="h-full w-full text-amber-500" />
-        ) : (
-          <OchreshiftLogo className="h-full w-full" variant="mark" />
-        )}
+      <div className="pl-[38px] relative">
+        <div className="absolute left-0 top-0 h-[28px] w-[28px] shrink-0 rounded-full bg-surface border border-border shadow-sm flex items-center justify-center p-[4px]">
+          {message.isError ? (
+            <WarningIcon className="h-full w-full text-amber-500" />
+          ) : (
+            <OchreshiftLogo className="h-full w-full" variant="mark" />
+          )}
+        </div>
+        <div className="pt-0.5">
+          <TypewriterText text={message.text} />
+        </div>
       </div>
-      <div className="pt-0.5">
-        <TypewriterText text={message.text} />
-      </div>
-    </div>
 
       {/* Failed request: distinct from a real answer, with a way to retry. */}
       {message.isError && (
@@ -121,6 +123,7 @@ export function AnswerEntry({ message, showSources, onRetry }: AnswerEntryProps)
         <div className="mt-3">
           <LeadTicket
             botName={name}
+            botId={botId}
             onDone={(leadName) =>
               updateMessage(message.id, { ticketState: "gone", leadName })
             }
@@ -161,6 +164,6 @@ function TypewriterText({ text }: { text: string }) {
   }, [text, reduce]);
 
   return (
-    <span className="text-[15px] font-medium leading-[1.5]">{shown}</span>
+    <FormattedMessage text={shown} className="text-[14px] leading-[1.6]" />
   );
 }

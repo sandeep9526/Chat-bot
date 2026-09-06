@@ -329,7 +329,7 @@ function Dashboard({ email, name }: { email: string; name?: string | null }) {
               <div className="flex items-center gap-2">
                 {searchBar("Search leads…")}
                 <button
-                  onClick={() => exportCSV((leads as unknown as Record<string, unknown>[]) ?? [], ["id","bot_id","name","email","phone","score","created_at","summary"], "zeva-leads.csv")}
+                  onClick={() => exportCSV((leads as unknown as Record<string, unknown>[]) ?? [], ["id","bot_id","name","email","phone","score","created_at","summary"], "ochreshift-leads.csv")}
                   className="flex items-center gap-1.5 rounded-r1 border border-border bg-surface px-3 py-2 text-[12.5px] font-[600] text-muted hover:bg-panel"
                 >
                   <DownloadIcon className="h-3.5 w-3.5" /> Export CSV

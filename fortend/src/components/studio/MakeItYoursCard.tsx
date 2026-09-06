@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { useZevaStore } from "@/stores/zevaStore";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 import { savePendingDesign } from "@/lib/pendingDesign";
 
 /**
@@ -14,8 +14,8 @@ import { savePendingDesign } from "@/lib/pendingDesign";
  */
 export function MakeItYoursCard() {
   const router = useRouter();
-  const config = useZevaStore((s) => s.config);
-  const websiteUrl = useZevaStore((s) => s.websiteUrl);
+  const config = useOchreshiftStore((s) => s.config);
+  const websiteUrl = useOchreshiftStore((s) => s.websiteUrl);
 
   const go = (to: string) => {
     savePendingDesign(config, websiteUrl);

@@ -44,7 +44,7 @@ export default function SignInPage() {
         setError(signInError.message || "That email or password doesn't match our records.");
       } else {
         // Success - redirect admin to /admin, normal user to /dashboard
-        const target = email.toLowerCase() === "admin@zeva.app" ? "/admin" : "/dashboard";
+        const target = email.toLowerCase() === "admin@ochreshift.app" ? "/admin" : "/dashboard";
         router.push(target);
         router.refresh();
       }

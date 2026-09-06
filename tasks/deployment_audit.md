@@ -1,11 +1,11 @@
-# Zeva Platform: Deployment, DevOps & Production Scaling Audit
+# Ochreshift Platform: Deployment, DevOps & Production Scaling Audit
 
-This document catalogs critical infrastructure, DevOps, containerization, database pooling, and cloud hosting issues discovered during a rigorous technical audit of the **Zeva Chatbot Platform** (`zeva-backend` & `fortend`).
+This document catalogs critical infrastructure, DevOps, containerization, database pooling, and cloud hosting issues discovered during a rigorous technical audit of the **Ochreshift Chatbot Platform** (`ochreshift-backend` & `fortend`).
 
 ---
 
 ## 1. [CRITICAL] Ephemeral Cloud File & Embeddings Wipeout (Stateful Disk Reliance)
-**Location**: `zeva-backend/ingest.py` -> `DOCS_ROOT` & `DB_DIR` ([L25-L26](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/ingest.py#L25-L26))  
+**Location**: `ochreshift-backend/ingest.py` -> `DOCS_ROOT` & `DB_DIR` ([L25-L26](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/ingest.py#L25-L26))  
 **Vulnerability Type**: Data Loss on Container Redeploys & Multi-Instance Desync
 
 ### Description & Impact
@@ -16,12 +16,12 @@ Uploaded customer documents are saved directly to a local file system directory 
 ### Action Item Checklist
 - [x] **Cloud Object Storage Integration**: Store uploaded client raw files in an object storage bucket (Cloudflare R2, AWS S3, or Vercel Blob) rather than relying on local filesystem IO.
 - [x] **Decenteralize Vector Database**: Migrate vector embeddings away from local embedded ChromaDB to a cloud vector engine (Neon Postgres native `pgvector` extension, Pinecone, or standalone hosted ChromaDB Server) so all horizontal API instances share unified embedding state.
-- [x] **Persistent Volume Mount Alternative**: If hosting on Railway or Render web servers without architectural migration, enforce mounting a dedicated persistent Block Storage Volume to `/data`, setting `ZEVA_DOCS_DIR=/data/docs` and `CHROMA_DB_DIR=/data/chroma`. (Done: env vars `ZEVA_DOCS_DIR` and `CHROMA_DB_DIR` configurable in `ingest.py`)
+- [x] **Persistent Volume Mount Alternative**: If hosting on Railway or Render web servers without architectural migration, enforce mounting a dedicated persistent Block Storage Volume to `/data`, setting `OCHRESHIFT_DOCS_DIR=/data/docs` and `CHROMA_DB_DIR=/data/chroma`. (Done: env vars `OCHRESHIFT_DOCS_DIR` and `CHROMA_DB_DIR` configurable in `ingest.py`)
 
 ---
 
 ## 2. [HIGH] Missing FastAPI Lifespan Hooks & Postgres Connection Pool Exhaustion
-**Location**: `zeva-backend/db.py` -> `_get_pool()` ([L42](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/db.py#L42))  
+**Location**: `ochreshift-backend/db.py` -> `_get_pool()` ([L42](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/db.py#L42))  
 **Vulnerability Type**: TCP Connection Exhaustion & Orphaned Pool Handles
 
 ### Description & Impact
@@ -46,20 +46,20 @@ The database layer establishes an asynchronous-compatible connection pool via `p
 ---
 
 ## 3. [MEDIUM] Unconfigured Static CDN Hosting for `widget.js`
-**Location**: `fortend/src/lib/embed.ts` -> `buildEmbedRows` ([L55](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/fortend/src/lib/embed.ts#L55)) & `INTEGRATIONS.md`  
+**Location**: `fortend/src/lib/embed.ts` -> `buildEmbedRows` ([L55](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/fortend/src/lib/embed.ts#L55)) & `INTEGRATIONS.md`  
 **Vulnerability Type**: Broken Onboarding Script Link & Unbound Asset Delivery
 
 ### Description & Impact
 Across the client onboarding wizards, marketing landing pages, and interactive Studio preview tools, the embed generator outputs a static script tag targeting an unprovisioned domain:
 ```html
-<script src="https://cdn.zeva.app/widget.js" data-bot-id="..." data-api-url="..."></script>
+<script src="https://cdn.ochreshift.com/widget.js" data-bot-id="..." data-api-url="..."></script>
 ```
-* **Operational Outcome**: As noted in `INTEGRATIONS.md`, a real global content delivery network at `cdn.zeva.app` has not been provisioned or hooked into automated deployment pipelines. Customers who copy and paste this suggested 1-line script onto live production websites will experience blocked scripts, DNS host failures, or HTTP 404 errors.
+* **Operational Outcome**: As noted in `INTEGRATIONS.md`, a real global content delivery network at `cdn.ochreshift.com` has not been provisioned or hooked into automated deployment pipelines. Customers who copy and paste this suggested 1-line script onto live production websites will experience blocked scripts, DNS host failures, or HTTP 404 errors.
 
 ### Action Item Checklist
-- [x] **Dynamic Domain Fallback Mapper**: Update `embed.ts` to construct script origins dynamically based on active deployment domains:
-  ```typescript
-  const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.zeva.app";
+- [x] **Dynamic CDN Host Fallback Configuration**: Update embed code generators (`embed.ts` and `InstallCard.tsx`) to pull from `process.env.NEXT_PUBLIC_CDN_URL` or fallback gracefully to the live application URL:
+```typescript
+  const SCRIPT_HOST = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cdn.ochreshift.com";
   // Emits: src="${SCRIPT_HOST}/widget.js"
   ```
 - [x] **CDN Deployment Pipeline**: Configure a GitHub Actions CI workflow or Cloudflare Wrangler build step to deploy `fortend/public/widget.js` directly to a high-availability Cloudflare Worker / R2 Edge Bucket whenever updates merge to main.
@@ -67,7 +67,7 @@ Across the client onboarding wizards, marketing landing pages, and interactive S
 ---
 
 ## 4. [MEDIUM] Absence of Docker Containerization Manifests
-**Location**: Workspace Root (`zeva-backend` & `fortend`)  
+**Location**: Workspace Root (`ochreshift-backend` & `fortend`)  
 **Vulnerability Type**: DevOps Deployment Impediment & Local Developer Environment Drift
 
 ### Description & Impact
@@ -75,7 +75,7 @@ The codebase lacks Docker containerization artifacts (such as standard multi-sta
 * **Operational Outcome**: Deployments to modern cloud microservices platforms (AWS ECS, Kubernetes, Fly.io, DigitalOcean App Platform) require hand-crafted build scripts or reliance on legacy Procfile architectures. Furthermore, developer onboarding requires running persistent shell tabs with manual Uvicorn and Next dev loops without database container isolation.
 
 ### Action Item Checklist
-- [x] **Backend Multi-Stage Dockerfile**: Create an optimized Python 3.12 slim Dockerfile for `zeva-backend` invoking enterprise multi-worker Uvicorn (`uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4`).
+- [x] **Backend Multi-Stage Dockerfile**: Create an optimized Python 3.12 slim Dockerfile for `ochreshift-backend` invoking enterprise multi-worker Uvicorn (`uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4`).
 - [x] **Frontend Production Standalone Dockerfile**: Configure Next.js output to `standalone` in `next.config.js` and build a lightweight Node/Alpine container image.
 - [x] **Unified Docker-Compose Orchestration**: Author an end-to-end `docker-compose.yml` network topology that simultaneously boots Next.js, FastAPI, local Redis (for distributed rate limiting), and PostgreSQL for local environment reproducibility.
 
@@ -87,7 +87,7 @@ The codebase lacks Docker containerization artifacts (such as standard multi-sta
 
 ### Description & Impact
 Next.js statically processes and compiles all `NEXT_PUBLIC_*` variables directly into immutable client-side JavaScript bundle files at build time (`npm run build`).
-* **Operational Outcome**: If an automated CI/CD pipeline compiles a Docker container image against staging environment variables (`NEXT_PUBLIC_API_URL=https://staging-api.zeva.app`) and promotes that exact container artifact to production without performing a full Next.js rebuild, interactive customer chat widgets and admin dashboards will silently execute requests against staging infrastructure.
+* **Operational Outcome**: If an automated CI/CD pipeline compiles a Docker container image against staging environment variables (`NEXT_PUBLIC_API_URL=https://staging-api.ochreshift.com`) and promotes that exact container artifact to production without performing a full Next.js rebuild, interactive customer chat widgets and admin dashboards will silently execute requests against staging infrastructure.
 
 ### Action Item Checklist
 - [x] **Runtime Backend Config Interception**: For environment-neutral standalone container deployments, expose an internal frontend endpoint (`/api/env-config`) that returns production runtime environment variables to client modules upon app hydration.

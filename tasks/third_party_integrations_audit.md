@@ -1,6 +1,6 @@
-# Zeva Platform: Third-Party Integrations Audit & Roadmap
+# Ochreshift Platform: Third-Party Integrations Audit & Roadmap
 
-This document provides a technical audit of every external **Third-Party Integration** across the Zeva Platform (`zeva-backend` & `fortend`). It catalogs implementations that remain structurally complete in source code but lack real-world production verification, proper UI bindings, or complete capability mapping.
+This document provides a technical audit of every external **Third-Party Integration** across the Ochreshift Platform (`ochreshift-backend` & `fortend`). It catalogs implementations that remain structurally complete in source code but lack real-world production verification, proper UI bindings, or complete capability mapping.
 
 ---
 
@@ -35,7 +35,7 @@ Dual checkout architectures exist (Stripe for USD/Global and Razorpay for INR/In
 ---
 
 ## 3. LLM Inference Providers (OpenRouter / OpenAI / Anthropic) & RAG Vector Engines
-Zeva uses vector similarity matching alongside external LLM chat inference via OpenRouter / generic OpenAI-compatible completion APIs.
+Ochreshift uses vector similarity matching alongside external LLM chat inference via OpenRouter / generic OpenAI-compatible completion APIs.
 
 ### Current Implementation Status
 - **Config Driven**: Guided by `.env.example` (`OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free`) and vector embeddings stored in Postgres/ChromaDB via `embeddings.py` and `rag.py`.
@@ -57,16 +57,16 @@ Outbound alert systems notify bot owners whenever an incoming lead scores as "Ho
 ### Engineering Deficiencies & Pending Tasks
 - [x] **REST API Delivery Provider Upgrade**: Raw SMTP connections on Port 587 are routinely rate-limited, firewalled, or flagged as spam by commercial cloud environments (Vercel, AWS, Google Cloud).
   - **Task**: Implement direct HTTP API integration with a reliable transactional email provider (Resend, Mailgun, Postmark, or SendGrid) to guarantee instant lead delivery, password reset emails, and welcome notifications without SMTP TCP timeouts. (Completed: Direct HTTP REST delivery via Resend implemented with fallback SMTP)
-- [x] **Branded Email Templating**: Replace inline string concatenation in `notifications.py` with responsive HTML email layouts featuring Zeva brand design tokens, prominent call-to-action buttons, and direct CRM links. (Completed: Responsive table-based email design with gradient headers and CRM direct action buttons built)
+- [x] **Branded Email Templating**: Replace inline string concatenation in `notifications.py` with responsive HTML email layouts featuring Ochreshift brand design tokens, prominent call-to-action buttons, and direct CRM links. (Completed: Responsive table-based email design with gradient headers and CRM direct action buttons built)
 
 ---
 
 ## 5. Google Workspace Webhooks (Google Sheets Apps Script Sync)
-Zeva supports exporting structured lead rows directly into client Google Spreadsheets via outbound POST calls.
+Ochreshift supports exporting structured lead rows directly into client Google Spreadsheets via outbound POST calls.
 
 ### Current Implementation Status
 - **Backend Functioning**: `send_gsheets_alert(google_sheets_url, ...)` automatically formats and POSTs lead rows whenever `google_sheets_url` is non-empty on a chatbot record.
 
 ### Engineering Deficiencies & Pending Tasks
 - [x] **Missing Copy-Paste Client Template**: While the backend sending mechanism works, bot owners cannot utilize this feature without a corresponding Google Apps Script (`doPost(e)`) code snippet and pre-formatted spreadsheet template.
-  - **Task**: Create a standardized Zeva Lead Sync Google Sheets Template and embed an interactive setup instructions modal inside the Bot Integrations tab so users can deploy their webhook URL in under 60 seconds. (Completed: Interactive setup guide modal with 1-click clipboard copy embedded in Admin Dashboard)
+  - **Task**: Create a standardized Ochreshift Lead Sync Google Sheets Template and embed an interactive setup instructions modal inside the Bot Integrations tab so users can deploy their webhook URL in under 60 seconds. (Completed: Interactive setup guide modal with 1-click clipboard copy embedded in Admin Dashboard)

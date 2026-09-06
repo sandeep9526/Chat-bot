@@ -63,13 +63,13 @@ export function DocsUpload({ botId }: { botId: string }) {
         });
       } catch (err: any) {
         if (err?.status === 404 || (err?.message && err.message.includes("not found"))) {
-           localStorage.removeItem("zeva-onboarding-draft");
-           setFileError("Bot not found on server (it may have been created during a connection error). The draft has been cleared. Please refresh the page to start over.");
+          localStorage.removeItem("ochreshift-onboarding-draft");
+          setFileError("Bot not found on server (it may have been created during a connection error). The draft has been cleared. Please refresh the page to start over.");
         } else {
-           setFileMsg({
-             ok: false,
-             text: err instanceof AdminApiError ? err.message : `Couldn't read "${file.name}".`,
-           });
+          setFileMsg({
+            ok: false,
+            text: err instanceof AdminApiError ? err.message : `Couldn't read "${file.name}".`,
+          });
         }
       }
     }
@@ -134,11 +134,10 @@ export function DocsUpload({ botId }: { botId: string }) {
           setDragging(false);
           uploadFiles(e.dataTransfer.files);
         }}
-        className={`tap relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-200 overflow-hidden ${
-          dragging
-            ? "border-accent bg-accent/[0.08] shadow-[0_0_20px_rgba(var(--color-accent),0.1)] scale-[1.01]"
-            : "border-border/60 bg-surface hover:border-accent/50 hover:bg-surface"
-        }`}
+        className={`tap relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-200 overflow-hidden ${dragging
+          ? "border-accent bg-accent/[0.08] shadow-[0_0_20px_rgba(var(--color-accent),0.1)] scale-[1.01]"
+          : "border-border/60 bg-surface hover:border-accent/50 hover:bg-surface"
+          }`}
       >
         <div className={`absolute inset-0 bg-gradient-to-b from-accent/5 to-transparent opacity-0 transition-opacity duration-300 ${dragging ? 'opacity-100' : 'group-hover:opacity-100'}`} />
         <div className={`grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent transition-transform duration-300 ${dragging ? 'scale-110' : ''}`}>
@@ -168,9 +167,8 @@ export function DocsUpload({ botId }: { botId: string }) {
       )}
       {!upload.isPending && fileMsg && (
         <p
-          className={`mt-2 flex items-center gap-1.5 rounded-r1 px-3 py-2 text-[12.5px] ${
-            fileMsg.ok ? "bg-good/10 text-good" : "bg-warn/10 text-warn"
-          }`}
+          className={`mt-2 flex items-center gap-1.5 rounded-r1 px-3 py-2 text-[12.5px] ${fileMsg.ok ? "bg-good/10 text-good" : "bg-warn/10 text-warn"
+            }`}
         >
           {fileMsg.ok && <Check className="h-3.5 w-3.5 shrink-0" />}
           {fileMsg.text}
@@ -192,7 +190,7 @@ export function DocsUpload({ botId }: { botId: string }) {
             Or paste text directly
           </span>
         </div>
-        
+
         <div className="overflow-hidden rounded-xl border border-border bg-surface focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/20 transition-all">
           <div className="border-b border-border bg-panel px-3 py-2">
             <input

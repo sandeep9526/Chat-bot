@@ -4,7 +4,7 @@ with open('fortend/src/components/onboarding/OnboardingWizard.tsx', 'r') as f:
     content = f.read()
 
 # Find the store initialization
-store_init = "const store = useZevaStore();"
+store_init = "const store = useOchreshiftStore();"
 
 # Add useEffect after it
 sync_effect = """

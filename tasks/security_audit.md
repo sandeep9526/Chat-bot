@@ -1,11 +1,11 @@
-# Zeva Platform: Security, Cybersecurity & Threat Modeling Audit
+# Ochreshift Platform: Security, Cybersecurity & Threat Modeling Audit
 
-This document details the findings of a rigorous cybersecurity, authorization, and vulnerability audit conducted across the **Zeva Platform** (`zeva-backend` & `fortend`). Each vulnerability is categorized by severity, impact, exact file references, and actionable engineering remediation plans.
+This document details the findings of a rigorous cybersecurity, authorization, and vulnerability audit conducted across the **Ochreshift Platform** (`ochreshift-backend` & `fortend`). Each vulnerability is categorized by severity, impact, exact file references, and actionable engineering remediation plans.
 
 ---
 
 ## 1. [CRITICAL] Server-Side Request Forgery (SSRF) via URL Ingestion
-**Location**: `zeva-backend/main.py` -> `@app.post("/demo/ingest-url")` ([L1298](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1298))  
+**Location**: `ochreshift-backend/main.py` -> `@app.post("/demo/ingest-url")` ([L1298](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1298))  
 **Vulnerability Type**: Server-Side Request Forgery (SSRF) & Internal Data Exfiltration
 
 ### Description & Impact
@@ -20,7 +20,7 @@ When a user calls `/demo/ingest-url`, the server extracts the raw URL supplied i
 ---
 
 ## 2. [HIGH] WhatsApp Webhook Authentication Fallback & Tenant Hijacking
-**Location**: `zeva-backend/main.py` -> `whatsapp_incoming()` ([L1256](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1256))  
+**Location**: `ochreshift-backend/main.py` -> `whatsapp_incoming()` ([L1256](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1256))  
 **Vulnerability Type**: Authorization Bypass & Resource Splattering
 
 ### Description & Impact
@@ -38,7 +38,7 @@ bot_id = bot["bot_id"] if bot else "acme-salon"
 ---
 
 ## 3. [MEDIUM] Unprotected Lead Capture & Missing Domain Whitelisting
-**Location**: `zeva-backend/main.py` -> `@app.post("/lead")` ([L374](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L374))  
+**Location**: `ochreshift-backend/main.py` -> `@app.post("/lead")` ([L374](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L374))  
 **Vulnerability Type**: Cross-Origin Resource Abuse & Spam Flooding
 
 ### Description & Impact
@@ -51,7 +51,7 @@ While `POST /chat` actively enforces `check_domain(req.botId, origin)` against t
 ---
 
 ## 4. [MEDIUM] In-Memory Rate Limit DOS & Memory Leak
-**Location**: `zeva-backend/main.py` -> `check_rate_limit()` ([L1043](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1043))  
+**Location**: `ochreshift-backend/main.py` -> `check_rate_limit()` ([L1043](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1043))  
 **Vulnerability Type**: Denial of Service (DOS) & Memory Exhaustion (OOM)
 
 ### Description & Impact
@@ -65,7 +65,7 @@ Rate limits are monitored via a global in-memory dictionary: `_hits: dict[str, l
 ---
 
 ## 5. [MEDIUM] Prompt Injection & System Instruction Override via RAG
-**Location**: `zeva-backend/main.py` -> `call_llm()` ([L1171](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1171))  
+**Location**: `ochreshift-backend/main.py` -> `call_llm()` ([L1171](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1171))  
 **Vulnerability Type**: Prompt Injection (Indirect & Direct AI Manipulation)
 
 ### Description & Impact

@@ -40,6 +40,7 @@ export default function SignUpPage() {
         name,
         email,
         password,
+        callbackURL: "/dashboard",
       });
 
       if (signUpError) {

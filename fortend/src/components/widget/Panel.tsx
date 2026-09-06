@@ -5,8 +5,8 @@ import { X as XIcon, Check as CheckSmallIcon, MoreHorizontal as MoreHorizontalIc
 import { cn } from "@/lib/cn";
 import { Composer } from "./Composer";
 import { MessageStream } from "./MessageStream";
-import { useZevaStore } from "@/stores/zevaStore";
-import { useZevaChat } from "@/hooks/useZevaChat";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
+import { useOchreshiftChat } from "@/hooks/useOchreshiftChat";
 import { isLightColor } from "@/lib/color";
 import { OchreshiftLogo } from "@/components/ui/OchreshiftLogo";
 
@@ -18,15 +18,15 @@ interface PanelProps {
 }
 
 export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
-  const name = useZevaStore((s) => s.config.name);
-  const welcome = useZevaStore((s) => s.config.welcome);
-  const logo = useZevaStore((s) => s.config.logo);
-  const panelBg = useZevaStore((s) => s.config.panelBg);
-  const glass = useZevaStore((s) => s.config.glass);
-  const sources = useZevaStore((s) => s.config.sources);
-  const brand = useZevaStore((s) => s.config.brand);
+  const name = useOchreshiftStore((s) => s.config.name);
+  const welcome = useOchreshiftStore((s) => s.config.welcome);
+  const logo = useOchreshiftStore((s) => s.config.logo);
+  const panelBg = useOchreshiftStore((s) => s.config.panelBg);
+  const glass = useOchreshiftStore((s) => s.config.glass);
+  const sources = useOchreshiftStore((s) => s.config.sources);
+  const brand = useOchreshiftStore((s) => s.config.brand);
 
-  const { messages, ask, isScanning } = useZevaChat();
+  const { messages, ask, isScanning } = useOchreshiftChat();
   const [input, setInput] = useState("");
 
   const handleSubmit = () => {
@@ -112,7 +112,7 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
             <button
               type="button"
               className="tap grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] border-none bg-transparent text-muted hover:bg-ring hover:text-fg focus-visible:outline-2 focus-visible:outline-accent transition-colors"
-              onClick={useZevaStore.getState().resetSession}
+              onClick={useOchreshiftStore.getState().resetSession}
               aria-label="Clear chat"
               title="Clear chat"
             >
@@ -137,6 +137,16 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
         </div>
       </div>
 
+      {/* Scrollable Conversation Stream */}
+      <MessageStream
+        messages={messages}
+        isScanning={isScanning}
+        welcome={welcome}
+        showSources={sources}
+        onAsk={ask}
+      />
+
+      {/* Input Box at the Bottom */}
       <Composer
         name={name}
         value={input}
@@ -146,16 +156,8 @@ export function Panel({ sideAlign, openDir, isOpen, onClose }: PanelProps) {
         onSubmit={handleSubmit}
       />
 
-      <MessageStream
-        messages={messages}
-        isScanning={isScanning}
-        welcome={welcome}
-        showSources={sources}
-        onAsk={ask}
-      />
-
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-border px-[14px] py-[9px]">
+      <div className="flex items-center justify-between border-t border-border px-[14px] py-[9px] shrink-0">
         <span className="flex items-center gap-[5px] text-[10.5px] text-faint">
           <CheckSmallIcon className="h-3 w-3 text-good" />
           Answers from {name}&rsquo;s own info

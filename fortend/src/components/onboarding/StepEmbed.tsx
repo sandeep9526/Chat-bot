@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { OnboardingEmbedCode } from "./OnboardingEmbedCode";
 import { DEFAULTS } from "@/lib/defaults";
-import type { ZevaConfig } from "@/lib/types";
+import type { OchreshiftConfig } from "@/lib/types";
 import type { WizardData } from "./types";
 
 interface StepEmbedProps {
@@ -13,7 +13,7 @@ interface StepEmbedProps {
 }
 
 export function StepEmbed({ data, onBack, onNext }: StepEmbedProps) {
-  const config: ZevaConfig = useMemo(
+  const config: OchreshiftConfig = useMemo(
     () => ({
       ...DEFAULTS,
       name: data.businessName || DEFAULTS.name,

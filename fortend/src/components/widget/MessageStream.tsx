@@ -39,13 +39,15 @@ export function MessageStream({
       role="log"
       aria-live="polite"
       aria-relevant="additions"
-      className="ae-stream flex flex-1 flex-col gap-4 overflow-y-auto px-[14px] py-0.5 pb-[14px]"
+      className="ae-stream flex flex-1 flex-col gap-3.5 overflow-y-auto px-[14px] py-3 pb-2 custom-scrollbar"
     >
       {isEmpty && (
-        <div>
-          <p className="mx-0.5 mb-3 mt-1 text-[13px] leading-[1.5] text-muted">
-            {welcome}
-          </p>
+        <div className="flex flex-col gap-2.5">
+          <div className="rounded-2xl rounded-tl-sm bg-panel/70 border border-border/60 p-3.5 shadow-xs">
+            <p className="text-[13px] leading-[1.55] text-fg">
+              {welcome}
+            </p>
+          </div>
           <SuggestionChips onSelect={onAsk} />
         </div>
       )}

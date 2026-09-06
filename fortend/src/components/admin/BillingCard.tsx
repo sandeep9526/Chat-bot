@@ -48,27 +48,27 @@ function formatDate(iso: string | null | undefined): string {
 const PLAN_ORDER: BillingPlan[] = ["starter", "pro", "business", "enterprise"];
 
 const PLAN_INFO: Record<BillingPlan, { label: string; blurb: string; priceUsd: string; priceInr: string; features: string[] }> = {
-  starter: { 
-    label: "Starter", 
-    blurb: "Essential tools for small teams.", 
+  starter: {
+    label: "Starter",
+    blurb: "Essential tools for small teams.",
     priceUsd: "$19", priceInr: "₹1,499",
     features: ["1 Chatbot", "1,000 Messages/mo", "Basic Analytics", "Standard Support"]
   },
-  pro: { 
-    label: "Pro", 
-    blurb: "Advanced features and branding.", 
+  pro: {
+    label: "Pro",
+    blurb: "Advanced features and branding.",
     priceUsd: "$49", priceInr: "₹3,999",
     features: ["5 Chatbots", "5,000 Messages/mo", "Remove 'Powered by' Branding", "Priority Support"]
   },
-  business: { 
-    label: "Business", 
-    blurb: "For growing businesses.", 
+  business: {
+    label: "Business",
+    blurb: "For growing businesses.",
     priceUsd: "$99", priceInr: "₹7,999",
     features: ["25 Chatbots", "25,000 Messages/mo", "Advanced Analytics", "Dedicated Account Manager"]
   },
-  enterprise: { 
-    label: "Enterprise", 
-    blurb: "Custom scale and integrations.", 
+  enterprise: {
+    label: "Enterprise",
+    blurb: "Custom scale and integrations.",
     priceUsd: "Custom", priceInr: "Custom",
     features: ["Unlimited Chatbots", "Unlimited Messages", "Custom API Integrations", "24/7 Phone Support"]
   },
@@ -163,20 +163,20 @@ export function BillingCard() {
 
   return (
     <div className="w-full animate-fade-in flex flex-col gap-8">
-      
+
       {/* SECTION A: Current Plan & Usage Dashboard */}
       <div className="rounded-2xl border border-border bg-surface/50 shadow-sm overflow-hidden backdrop-blur-sm relative">
         {/* Glow effect */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
-        
+
         <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <h2 className="text-[20px] font-[800] text-fg tracking-tight">
-                {!sub || sub.status === "none" || !sub.plan 
-                  ? "No active plan" 
-                  : currentPlan === "trial" 
-                    ? "Free Trial" 
+                {!sub || sub.status === "none" || !sub.plan
+                  ? "No active plan"
+                  : currentPlan === "trial"
+                    ? "Free Trial"
                     : PLAN_INFO[currentPlan as BillingPlan]?.label + " Plan"}
               </h2>
               {sub && sub.status !== "none" && (
@@ -190,7 +190,7 @@ export function BillingCard() {
               )}
             </div>
             <p className="text-[13px] text-muted">
-              {!sub || sub.status === "none" || !sub.plan 
+              {!sub || sub.status === "none" || !sub.plan
                 ? "Create your first agent to start a 14-day trial automatically."
                 : isTrialing
                   ? `Your trial ends on ${formatDate(sub.trial_ends_at)}. Upgrade now to prevent interruption.`
@@ -216,7 +216,7 @@ export function BillingCard() {
             <h3 className="text-[18px] font-[800] text-fg">Upgrade your plan</h3>
             <p className="text-[13px] text-muted mt-1">Scale your agents as your business grows.</p>
           </div>
-          
+
           <div className="flex p-1 bg-surface-hover rounded-lg border border-border shrink-0">
             <button
               type="button"
@@ -252,8 +252,8 @@ export function BillingCard() {
                 key={plan}
                 className={cn(
                   "relative flex flex-col rounded-2xl border bg-surface transition-all duration-300",
-                  isBusiness 
-                    ? "border-accent shadow-[0_0_30px_-10px_rgba(var(--accent-rgb),0.3)] scale-[1.02] lg:scale-[1.05] z-10" 
+                  isBusiness
+                    ? "border-accent shadow-[0_0_30px_-10px_rgba(var(--accent-rgb),0.3)] scale-[1.02] lg:scale-[1.05] z-10"
                     : "border-border hover:border-border-strong hover:-translate-y-1"
                 )}
               >
@@ -262,11 +262,11 @@ export function BillingCard() {
                     Most Popular
                   </div>
                 )}
-                
+
                 <div className="p-6 border-b border-border flex flex-col gap-1">
                   <h4 className="text-[18px] font-[800] text-fg">{info.label}</h4>
                   <p className="text-[13px] text-muted h-10">{info.blurb}</p>
-                  
+
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-[32px] font-[800] tracking-tight text-fg">
                       {region === "india" ? info.priceInr : info.priceUsd}
@@ -314,11 +314,11 @@ export function BillingCard() {
         {/* Fallbacks & Errors */}
         {fallbackPlan && (
           <div className="mt-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex gap-3 items-start">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-blue-500 shrink-0 mt-0.5"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/><path d="M12 16v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-blue-500 shrink-0 mt-0.5"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" /><path d="M12 16v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="12" cy="8" r="1" fill="currentColor" /></svg>
             <div className="text-[13px] text-blue-500/90 leading-relaxed">
               The <strong>{PLAN_INFO[fallbackPlan].label}</strong> checkout isn't live yet.{" "}
               <a
-                href={`mailto:support@ochreshift.com?subject=Upgrade%20to%20${encodeURIComponent(PLAN_INFO[fallbackPlan].label)}`}
+                href={`mailto:support@ochreshift.in?subject=Upgrade%20to%20${encodeURIComponent(PLAN_INFO[fallbackPlan].label)}`}
                 className="font-[700] hover:underline"
               >
                 Contact us
@@ -327,7 +327,7 @@ export function BillingCard() {
             </div>
           </div>
         )}
-        
+
         {error && (
           <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-[13px] text-red-500 font-[500]">
             {error}
@@ -348,7 +348,7 @@ export function BillingCard() {
           </div>
         </div>
       </div>
-      
+
     </div>
   );
 }

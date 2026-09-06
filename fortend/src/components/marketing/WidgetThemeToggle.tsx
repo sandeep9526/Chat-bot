@@ -2,26 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
-import { useZevaStore } from "@/stores/zevaStore";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 
 /** Site-wide persisted theme, shared with the marketing ThemeToggle so a choice
  *  made on any page carries across the whole site (main ↔ demo ↔ studio). */
-const THEME_KEY = "zeva-theme";
+const THEME_KEY = "ochreshift-theme";
 
 /**
  * Dark/light toggle for the Studio + Demo pages. On those pages the page theme
- * is driven by the widget's `surface` config (useZevaTheme sets <html>
+ * is driven by the widget's `surface` config (useOchreshiftTheme sets <html>
  * data-theme from it), so a plain data-theme toggle would get overwritten. This
  * flips `surface` instead — keeping the page chrome, the widget preview and the
  * Studio "Surface" control all in sync from the single store value.
  *
  * It also bridges the two theme systems: on mount it adopts the site-wide saved
- * theme (`zeva-theme`, the same key the marketing toggle writes) so dark chosen
+ * theme (`ochreshift-theme`, the same key the marketing toggle writes) so dark chosen
  * on the main page carries into demo/studio, and it writes that key back on
  * every toggle so the choice persists everywhere.
  */
 export function WidgetThemeToggle({ className = "" }: { className?: string }) {
-  const setSurface = useZevaStore((s) => s.setSurface);
+  const setSurface = useOchreshiftStore((s) => s.setSurface);
   const [dark, setDark] = useState(false);
 
   // Mirror the live effective theme (data-theme reflects surface incl. "auto").
@@ -29,7 +29,7 @@ export function WidgetThemeToggle({ className = "" }: { className?: string }) {
     const el = document.documentElement;
     // Adopt the site-wide saved theme first, so a dark choice made on the main
     // page shows through here (the pre-paint boot already set data-theme; this
-    // aligns the widget's surface so useZevaTheme keeps it instead of reverting
+    // aligns the widget's surface so useOchreshiftTheme keeps it instead of reverting
     // to the OS default).
     try {
       const saved = localStorage.getItem(THEME_KEY);

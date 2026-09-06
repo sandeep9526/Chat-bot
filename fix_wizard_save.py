@@ -3,8 +3,8 @@ import re
 with open('fortend/src/components/onboarding/OnboardingWizard.tsx', 'r') as f:
     content = f.read()
 
-# Add useZevaStore and stashBotDesign imports
-import_store = """import { useZevaStore } from "@/stores/zevaStore";
+# Add useOchreshiftStore and stashBotDesign imports
+import_store = """import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 import { stashBotDesign } from "@/lib/pendingDesign";"""
 
 content = content.replace(
@@ -20,7 +20,7 @@ insert_func_after = """    } finally {
 
 save_func = """
 
-  const store = useZevaStore();
+  const store = useOchreshiftStore();
 
   const handleSaveAppearanceAndContinue = async () => {
     setIsProcessing(true);

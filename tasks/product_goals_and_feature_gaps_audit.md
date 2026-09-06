@@ -1,6 +1,6 @@
-# Zeva Platform: Product Goals, End-to-End Experience & Feature Gaps Audit
+# Ochreshift Platform: Product Goals, End-to-End Experience & Feature Gaps Audit
 
-This document contrasts the core commercial product goals of the **Zeva AI Chatbot Platform** against the current engineering state of `zeva-backend` and `fortend`. It details significant feature gaps, disconnected customizations, and roadmap milestones required to deliver a state-of-the-art enterprise conversational AI product.
+This document contrasts the core commercial product goals of the **Ochreshift AI Chatbot Platform** against the current engineering state of `ochreshift-backend` and `fortend`. It details significant feature gaps, disconnected customizations, and roadmap milestones required to deliver a state-of-the-art enterprise conversational AI product.
 
 ---
 
@@ -8,8 +8,8 @@ This document contrasts the core commercial product goals of the **Zeva AI Chatb
 A prominent value proposition of customized AI bots is adapting conversational style, brand tone, and exact operational rules to individual businesses.
 
 ### Current Architecture & Limitations
-- **Backend Dead Code**: While `zeva-backend/templates.py` explicitly maps customized operational personalities for each industry vertical (`system_prompt_style`: e.g., *"Courteous, reassuring, clear clinic assistant"* or *"Professional real-estate property consultant"*), this parameter is ignored during live execution.
-- **Hardcoded Inference**: In `main.py` -> `POST /chat` ([L1166](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1166)), the system instructions are rigidly locked to a single generic prompt:  
+- **Backend Dead Code**: While `ochreshift-backend/templates.py` explicitly maps customized operational personalities for each industry vertical (`system_prompt_style`: e.g., *"Courteous, reassuring, clear clinic assistant"* or *"Professional real-estate property consultant"*), this parameter is ignored during live execution.
+- **Hardcoded Inference**: In `main.py` -> `POST /chat` ([L1166](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1166)), the system instructions are rigidly locked to a single generic prompt:  
   `"You are the friendly, helpful AI assistant for {bot['name']}. Answer strictly using the CONTEXT below..."`
 
 ### Action Item Checklist
@@ -23,7 +23,7 @@ A prominent value proposition of customized AI bots is adapting conversational s
 When visitors experience high-intent purchase scenarios or unresolved technical hurdles, modern chat widget platforms allow smooth transition from automated AI to live human agents.
 
 ### Current Architecture & Limitations
-- **Static Form Redirection**: When a visitor requests a human (*"I want to speak to an agent"*), `main.py` intercepts the intent ([L1141](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1141)) by asking them to complete a standard contact lead form and logging a timestamped record inside the `handoffs` table.
+- **Static Form Redirection**: When a visitor requests a human (*"I want to speak to an agent"*), `main.py` intercepts the intent ([L1141](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1141)) by asking them to complete a standard contact lead form and logging a timestamped record inside the `handoffs` table.
 - **Missing Live Chat UI**: There is no live messaging operational helpdesk console. An account owner logging into the dashboard can only view historical handoff requests rather than communicating directly with website visitors in real time.
 
 ### Action Item Checklist
@@ -37,7 +37,7 @@ When visitors experience high-intent purchase scenarios or unresolved technical 
 Reducing onboarding friction requires rapid, hands-off ingestion of enterprise customer knowledge bases.
 
 ### Current Architecture & Limitations
-- **Single-Page Fetching**: Endpoint `@app.post("/demo/ingest-url")` ([L1298](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-zeva-project%202/zeva-backend/main.py#L1298)) processes exclusively the single HTML webpage target provided in the HTTP input string.
+- **Single-Page Fetching**: Endpoint `@app.post("/demo/ingest-url")` ([L1298](file:///Users/sandeepsharma/Manisha-Folder/chat-bot-ochreshift-project/ochreshift-backend/main.py#L1298)) processes exclusively the single HTML webpage target provided in the HTTP input string.
 - **Manual Labor Overhead**: To onboard a commercial website with dozens of information pages (`/about`, `/pricing`, `/faq`, `/services`, `/blog`), an admin must manually type and invoke every separate URL link independently.
 
 ### Action Item Checklist
@@ -76,7 +76,7 @@ Maintaining continuous accuracy across generative RAG answers requires direct us
 ---
 
 ## 6. Omni-Channel Deployment Expansion
-While Zeva offers a robust website Javascript snippet and foundational Meta WhatsApp integration, enterprise platforms must meet customers across diverse ecosystem messaging clients.
+While Ochreshift offers a robust website Javascript snippet and foundational Meta WhatsApp integration, enterprise platforms must meet customers across diverse ecosystem messaging clients.
 
 ### Action Item Checklist
 - [x] **Unified Message Abstraction Layer**: Refactor inbound webhook processing into a standardized abstract `IncomingMessage` schema (`sender_id`, `tenant_id`, `text`, `media_payload`, `channel_type`) targeting unified RAG answering functions.

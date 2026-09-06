@@ -127,7 +127,7 @@ async function fetchJson(url: string, body: unknown, ms = 45_000) {
 
 import { INDUSTRY_TEMPLATES } from "./templates";
 
-const ZEVA_AI_KB = [
+const OCHRESHIFT_AI_KB = [
   {
     keys: ["install", "embed", "script", "code", "add", "website", "setup", "widget"],
     answer: "Installing ochreshift is as simple as pasting a 1-line JavaScript snippet (`<script src=\"https://cdn.ochreshift.app/widget.js\" data-bot-id=\"YOUR_BOT_ID\"></script>`) right before the `</body>` tag of your website HTML.",
@@ -137,9 +137,9 @@ const ZEVA_AI_KB = [
     hi: "Copy your 1-line embed script from ochreshift Studio and paste it right before the closing </body> tag",
   },
   {
-    keys: ["zeva", "what is zeva", "about zeva", "platform", "who are you"],
+    keys: ["ochreshift", "what is ochreshift", "about ochreshift", "platform", "who are you"],
     answer: "ochreshift is an intelligent RAG-powered chatbot platform that grounds every answer strictly in your company's official documents, eliminating AI hallucinations and capturing leads 24/7.",
-    file: "zeva_overview.pdf",
+    file: "ochreshift_overview.pdf",
     match: 97,
     snip: "ochreshift Platform — Autonomous AI chatbot grounded in real business documents. Prevents hallucinations and captures qualified leads.",
     hi: "Autonomous AI chatbot grounded in real business documents.",
@@ -147,7 +147,7 @@ const ZEVA_AI_KB = [
   {
     keys: ["price", "pricing", "plan", "cost", "free", "tier", "subscription"],
     answer: "ochreshift offers flexible plans: Starter ($29/mo), Pro ($79/mo with full white-labeling & Google Sheets sync), and custom Enterprise plans.",
-    file: "zeva_pricing.pdf",
+    file: "ochreshift_pricing.pdf",
     match: 95,
     snip: "ochreshift Plans & Pricing — Starter $29/mo, Pro $79/mo with white-labeling and unlimited chats, Enterprise custom SLA.",
     hi: "Starter $29/mo, Pro $79/mo with white-labeling",
@@ -157,24 +157,24 @@ const ZEVA_AI_KB = [
 /** Local demo resolution against template knowledge base or DEMO_KB. */
 function mockChat(req: ChatRequest): ChatResponse {
   const q = req.message.toLowerCase().trim();
-  const isZevaBot =
+  const isOchreshiftBot =
     !req.botId ||
-    req.botId === "zeva-ai" ||
-    (req.name && req.name.toLowerCase() === "zeva ai") ||
+    req.botId === "ochreshift-ai" ||
+    (req.name && req.name.toLowerCase() === "ochreshift ai") ||
     (!req.botId?.startsWith("demo-") && !INDUSTRY_TEMPLATES.some((t) => req.name && req.name.toLowerCase().includes(t.botName.toLowerCase())));
 
-  // 1. If it's default Zeva AI bot or asking a Zeva question, check Zeva AI knowledge base first
-  if (isZevaBot) {
-    const zevaMatch = ZEVA_AI_KB.find((entry) => entry.keys.some((k) => q.includes(k)));
-    if (zevaMatch) {
+  // 1. If it's default Ochreshift AI bot or asking an Ochreshift question, check Ochreshift AI knowledge base first
+  if (isOchreshiftBot) {
+    const match = OCHRESHIFT_AI_KB.find((entry) => entry.keys.some((k) => q.includes(k)));
+    if (match) {
       return {
-        answer: zevaMatch.answer,
+        answer: match.answer,
         sources: [
           {
-            file: zevaMatch.file,
-            match: zevaMatch.match,
-            snip: zevaMatch.snip,
-            highlight: zevaMatch.hi,
+            file: match.file,
+            match: match.match,
+            snip: match.snip,
+            highlight: match.hi,
           },
         ],
         isGuardrail: false,
@@ -306,13 +306,24 @@ export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
  * - MOCK mode: resolve optimistically.
  */
 export async function submitLead(payload: LeadPayload): Promise<LeadResponse> {
-  if (payload.botId === "preview") {
-    await wait(800);
-    return { ok: true };
-  }
-
   if (API_URL) {
-    return (await fetchJson(`${base()}/lead`, payload, 15_000)) as LeadResponse;
+    try {
+      const isTestMode = payload.botId === "preview" || Boolean(payload.isTest);
+      return (await fetchJson(`${base()}/lead`, {
+        ...payload,
+        isTest: isTestMode,
+        custom_data: {
+          ...(payload.custom_data || {}),
+          is_test: isTestMode,
+        },
+      }, 15_000)) as LeadResponse;
+    } catch (err) {
+      console.warn("[submitLead] Server submission error:", err);
+      if (payload.botId === "preview" || payload.isTest) {
+        return { ok: true, isTest: true };
+      }
+      throw err;
+    }
   }
   await wait(200);
   return { ok: Boolean(payload.name && payload.email) };
@@ -325,6 +336,7 @@ export interface BotPublicConfig {
   accent: string;
   welcome: string;
   suggestions: string[];
+  formSchema?: any[];
 }
 
 /** Fetch a bot's public config from the backend (real mode only). */

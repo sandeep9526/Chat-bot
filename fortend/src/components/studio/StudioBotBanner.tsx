@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
-import { useZevaStore } from "@/stores/zevaStore";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 import { useBots, useCreateBot } from "@/hooks/useAdmin";
 import { AdminApiError } from "@/lib/adminApi";
 import { markSetupDone } from "@/lib/setupProgress";
@@ -22,13 +22,13 @@ export function StudioBotBanner({ botId }: { botId: string }) {
   const bot = (bots ?? []).find((b) => b.bot_id === botId);
   const createBot = useCreateBot();
 
-  const cfg = useZevaStore((s) => s.config);
-  const websiteUrl = useZevaStore((s) => s.websiteUrl);
-  const setName = useZevaStore((s) => s.setName);
-  const setAccent = useZevaStore((s) => s.setAccent);
-  const setWelcome = useZevaStore((s) => s.setWelcome);
-  const setSuggestions = useZevaStore((s) => s.setSuggestions);
-  const applyConfig = useZevaStore((s) => s.applyConfig);
+  const cfg = useOchreshiftStore((s) => s.config);
+  const websiteUrl = useOchreshiftStore((s) => s.websiteUrl);
+  const setName = useOchreshiftStore((s) => s.setName);
+  const setAccent = useOchreshiftStore((s) => s.setAccent);
+  const setWelcome = useOchreshiftStore((s) => s.setWelcome);
+  const setSuggestions = useOchreshiftStore((s) => s.setSuggestions);
+  const applyConfig = useOchreshiftStore((s) => s.applyConfig);
 
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState("");
@@ -75,7 +75,7 @@ export function StudioBotBanner({ botId }: { botId: string }) {
       fetch(`${API}/config?botId=${encodeURIComponent(botId)}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && apply(d))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [botId, bot, setName, setAccent, setWelcome, setSuggestions, applyConfig]);
 

@@ -12,7 +12,7 @@ export function MarketingThemeInit() {
   useEffect(() => {
     let saved: string | null = null;
     try {
-      saved = localStorage.getItem("zeva-theme");
+      saved = localStorage.getItem("ochreshift-theme");
     } catch {
       /* private mode */
     }

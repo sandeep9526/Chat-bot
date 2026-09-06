@@ -7,13 +7,13 @@ import { getPendingDesign } from "@/lib/pendingDesign";
 
 /** Per-USER seen flag (not per-browser) so every new account gets the tour once,
  *  even in a shared browser where someone else already saw it. */
-const seenKeyFor = (userKey: string) => `zeva-tour-seen:${userKey || "anon"}`;
+const seenKeyFor = (userKey: string) => `ochreshift-tour-seen:${userKey || "anon"}`;
 
 /**
  * A 30-second guided tour of the dashboard (driver.js), replacing the old
  * step-by-step onboarding wizard. Auto-runs once per user on their first desktop
  * visit — and always for a brand-new account (0 bots) that hasn't seen it. Can
- * be re-triggered anywhere by dispatching `window` event "zeva:start-tour" (the
+ * be re-triggered anywhere by dispatching `window` event "ochreshift:start-tour" (the
  * "Take the tour" buttons in Settings and the empty state). Renders nothing.
  */
 export function DashboardTour({
@@ -28,7 +28,7 @@ export function DashboardTour({
   useEffect(() => {
     const seenKey = seenKeyFor(userKey);
     const start = () => runTour(hasBots, onGoto, seenKey);
-    window.addEventListener("zeva:start-tour", start);
+    window.addEventListener("ochreshift:start-tour", start);
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -47,7 +47,7 @@ export function DashboardTour({
     }
 
     return () => {
-      window.removeEventListener("zeva:start-tour", start);
+      window.removeEventListener("ochreshift:start-tour", start);
       if (timer) clearTimeout(timer);
     };
   }, [hasBots, userKey, onGoto]);

@@ -1,9 +1,9 @@
 #!/bin/bash
-# Zeva Live Server Test - Backend start karke endpoints test karo
-cd "$(dirname "$0")/zeva-backend"
+# Ochreshift Live Server Test - Backend start karke endpoints test karo
+cd "$(dirname "$0")/ochreshift-backend"
 
 echo "========================================="
-echo "  ZEVA LIVE SERVER TEST"
+echo "  OCHRESHIFT LIVE SERVER TEST"
 echo "========================================="
 
 # Kill existing server
@@ -12,7 +12,7 @@ sleep 1
 
 echo ""
 echo "Starting backend server..."
-venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 &
+.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 &
 SERVER_PID=$!
 sleep 4
 
@@ -84,7 +84,7 @@ fi
 
 # Test 7: Config endpoint
 echo -n "[7] Widget config: "
-RESP=$(curl -s "http://127.0.0.1:8000/config?botId=zeva-ai")
+RESP=$(curl -s "http://127.0.0.1:8000/config?botId=ochreshift-ai")
 if echo "$RESP" | grep -q 'name'; then
     echo "✅ PASS - Config loads"
 else

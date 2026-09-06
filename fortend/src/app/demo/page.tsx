@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useZevaStore } from "@/stores/zevaStore";
-import { useZevaChat } from "@/hooks/useZevaChat";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
+import { useOchreshiftChat } from "@/hooks/useOchreshiftChat";
 import { DemoSite } from "@/components/studio/DemoSite";
-import { ZevaWidget } from "@/components/widget/ZevaWidget";
+import { OchreshiftWidget } from "@/components/widget/OchreshiftWidget";
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
 import { Eyebrow } from "@/components/marketing/Eyebrow";
 import { Footer } from "@/components/marketing/Footer";
@@ -15,13 +15,13 @@ import { Lock, Loader2 } from "lucide-react";
 
 /**
  * Public "watch it work" demo page.
- * Users can switch between industry presets to see how Zeva adapts its
+ * Users can switch between industry presets to see how Ochreshift adapts its
  * brand logo, website background, sample questions, and RAG AI knowledge base.
  */
 export default function DemoPage() {
-  const store = useZevaStore();
+  const store = useOchreshiftStore();
   const setOpen = store.setOpen;
-  const chat = useZevaChat();
+  const chat = useOchreshiftChat();
   const isScanning = store.isQuestionProcessing || chat.isScanning;
   const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -122,11 +122,10 @@ export default function DemoPage() {
                   onClick={() => handleSelectPreset(tmpl)}
                   disabled={isProcessing}
                   title={isProcessing ? "Preset locked while question is processing" : tmpl.name}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[12.5px] font-[650] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none ${
-                    isSelected
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[12.5px] font-[650] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none ${isSelected
                       ? "border-accent bg-accent/10 text-accent ring-1 ring-accent shadow-sm"
                       : "border-border bg-surface hover:border-accent text-fg"
-                  }`}
+                    }`}
                 >
                   <span className="text-sm">{tmpl.icon}</span>
                   <span>{tmpl.name}</span>
@@ -164,7 +163,7 @@ export default function DemoPage() {
           </div>
 
           <DemoSite websiteUrl={store.websiteUrl} />
-          <ZevaWidget positionMode="absolute" />
+          <OchreshiftWidget positionMode="absolute" />
         </div>
 
         {/* Closing CTA */}

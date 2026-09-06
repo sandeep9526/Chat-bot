@@ -263,7 +263,7 @@
   var ICON_CHECK =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   var ICON_ARROW =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
   var ICON_WARNING =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   var ICON_FILE =
@@ -363,7 +363,7 @@
       ".ochreshift-stream{flex:1;overflow-y:auto;padding:2px 14px 14px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}" +
       ".ochreshift-stream::-webkit-scrollbar{width:5px;}" +
       ".ochreshift-stream::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}" +
-      ".ochreshift-welcome{font-size:13px;line-height:1.5;color:var(--muted);margin:4px 2px 12px;}" +
+      ".ochreshift-welcome{font-size:13px;line-height:1.55;color:var(--text);margin:6px 2px 10px;padding:12px 14px;border-radius:14px 14px 14px 4px;background:var(--panel);border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.04);}" +
       ".ochreshift-unavailable{margin:0 2px;padding:12px 14px;border-radius:var(--r2);border:1px dashed var(--border);background:var(--panel);font-size:12.5px;line-height:1.5;color:var(--muted);}" +
       // Suggestion chips — pill-shaped wrap layout
       ".ochreshift-chips{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 12px;}" +
@@ -679,12 +679,12 @@
       '<button type="button" class="ochreshift-header-btn" id="ochreshift-close-btn" aria-label="Close">' + ICON_CLOSE + "</button>" +
       '</div>' +
       "</div>" +
+      '<div class="ochreshift-sr-only" id="ochreshift-live-region" aria-live="polite" aria-atomic="true"></div>' +
+      '<div class="ochreshift-stream" id="ochreshift-stream"></div>' +
       '<form class="ochreshift-composer" id="ochreshift-composer-form" autocomplete="off">' +
       '<input class="ochreshift-input" id="ochreshift-input" type="text" placeholder="Ask anything..." />' +
       '<button type="submit" class="ochreshift-send" id="ochreshift-send-btn" aria-label="Ask" disabled>' + ICON_ARROW + "</button>" +
       "</form>" +
-      '<div class="ochreshift-sr-only" id="ochreshift-live-region" aria-live="polite" aria-atomic="true"></div>' +
-      '<div class="ochreshift-stream" id="ochreshift-stream"></div>' +
       '<div class="ochreshift-footer">' +
       '<span class="ochreshift-footer-left" id="ochreshift-footer-left">' + ICON_CHECK + '<span id="ochreshift-footer-status">Answers from ' + escapeHtml(state.name || "the assistant") + '’s own info</span></span>' +
       brandRow +
@@ -1462,6 +1462,10 @@
       submitBtn.textContent = "Sending…";
 
       var payload = { name: leadName, email: emailVal, botId: BOT_ID, custom_data: customData };
+      if (BOT_ID === "preview" || BOT_ID.indexOf("demo-") === 0) {
+        payload.isTest = true;
+        customData["is_test"] = true;
+      }
       if (phoneVal) payload.phone = phoneVal;
       if (msgVal) payload.message = msgVal;
 

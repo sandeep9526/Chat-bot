@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useZevaStore } from "@/stores/zevaStore";
-import { useBotConfig } from "./useZevaApi";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
+import { useBotConfig } from "./useOchreshiftApi";
 
 /**
  * Widget brands itself from the backend: fetch /config?botId and apply the
@@ -12,10 +12,10 @@ import { useBotConfig } from "./useZevaApi";
  */
 export function useAutoBrand(botId: string): void {
   const { data } = useBotConfig(botId);
-  const setName = useZevaStore((s) => s.setName);
-  const setAccent = useZevaStore((s) => s.setAccent);
-  const setWelcome = useZevaStore((s) => s.setWelcome);
-  const setSuggestions = useZevaStore((s) => s.setSuggestions);
+  const setName = useOchreshiftStore((s) => s.setName);
+  const setAccent = useOchreshiftStore((s) => s.setAccent);
+  const setWelcome = useOchreshiftStore((s) => s.setWelcome);
+  const setSuggestions = useOchreshiftStore((s) => s.setSuggestions);
 
   useEffect(() => {
     if (!data) return;

@@ -6,6 +6,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   devIndicators: false,
+  async rewrites() {
+    return [
+      {
+        source: "/api/auth/forget-password",
+        destination: "/api/auth/request-password-reset",
+      },
+      {
+        source: "/api/auth/forgot-password",
+        destination: "/api/auth/request-password-reset",
+      },
+    ];
+  },
 };
 
 // Safe with no Sentry project configured — this only adds build-time

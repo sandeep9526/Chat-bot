@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useZevaStore } from "@/stores/zevaStore";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 import { INDUSTRY_TEMPLATES } from "@/lib/templates";
 
 interface DemoSiteProps {
@@ -197,7 +197,7 @@ export function DemoSite({ websiteUrl, onFallbackStatusChange }: DemoSiteProps) 
   if (websiteUrl && websiteUrl.trim()) {
     return <SitePreview key={websiteUrl.trim()} raw={websiteUrl} onFallbackStatusChange={onFallbackStatusChange} />;
   }
-  
+
   useEffect(() => {
     onFallbackStatusChange?.(true);
   }, [onFallbackStatusChange]);
@@ -296,8 +296,8 @@ function SitePreview({ raw, onFallbackStatusChange }: { raw: string, onFallbackS
 }
 
 function CustomSiteMock({ url }: { url: string }) {
-  const name = useZevaStore((s) => s.config.name);
-  const logo = useZevaStore((s) => s.config.logo);
+  const name = useOchreshiftStore((s) => s.config.name);
+  const logo = useOchreshiftStore((s) => s.config.logo);
   const host = hostOf(url);
   const cleanHost = host.replace(/^www\./i, "");
   const brandTitle = name || cleanHost.split(".")[0];
@@ -378,10 +378,10 @@ function CustomSiteMock({ url }: { url: string }) {
 }
 
 function MockSite() {
-  const name = useZevaStore((s) => s.config.name);
-  const logo = useZevaStore((s) => s.config.logo);
-  const websiteUrl = useZevaStore((s) => s.websiteUrl);
-  const brandTitle = name || "Zeva AI";
+  const name = useOchreshiftStore((s) => s.config.name);
+  const logo = useOchreshiftStore((s) => s.config.logo);
+  const websiteUrl = useOchreshiftStore((s) => s.websiteUrl);
+  const brandTitle = name || "Ochreshift AI";
   const details = getMatchedDetails(name, websiteUrl || "");
 
   return (

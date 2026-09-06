@@ -12,10 +12,10 @@
  */
 export type SetupStep = "knowledge" | "customize" | "install";
 
-export const SETUP_EVENT = "zeva:setup-changed";
+export const SETUP_EVENT = "ochreshift:setup-changed";
 
-const flagsKey = (botId: string) => `zeva-setup:${botId || "new"}`;
-const dismissKey = (botId: string) => `zeva-setup-dismissed:${botId || "new"}`;
+const flagsKey = (botId: string) => `ochreshift-setup:${botId || "new"}`;
+const dismissKey = (botId: string) => `ochreshift-setup-dismissed:${botId || "new"}`;
 
 export type SetupFlags = Partial<Record<SetupStep, boolean>>;
 

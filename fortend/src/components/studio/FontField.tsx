@@ -81,7 +81,7 @@ export function FontField({
         </div>
       )}
 
-      {/* Google pane — loaded live at runtime by useZevaTheme. */}
+      {/* Google pane — loaded live at runtime by useOchreshiftTheme. */}
       {fontSrc === "google" && (
         <div className="mt-2.5">
           <input

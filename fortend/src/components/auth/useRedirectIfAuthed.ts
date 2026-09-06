@@ -18,7 +18,7 @@ export function useRedirectIfAuthed(to = "/dashboard") {
   useEffect(() => {
     if (!isPending && session) {
       const email = session.user?.email?.toLowerCase();
-      const target = email === "admin@zeva.app" ? "/admin" : to;
+      const target = email === "admin@ochreshift.app" ? "/admin" : to;
       router.replace(target);
     }
   }, [isPending, session, router, to]);

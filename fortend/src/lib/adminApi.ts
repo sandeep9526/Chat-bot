@@ -53,8 +53,9 @@ export interface AdminLead {
   email: string;
   phone: string | null;
   message: string | null;
-  score: "hot" | "warm" | "cold";
+  score: "hot" | "warm" | "cold" | "test" | string;
   custom_data?: Record<string, any>;
+  is_test?: boolean;
   created_at: string;
 }
 
@@ -118,6 +119,7 @@ export interface AdminStats {
   chats: number;
   unanswered: number;
   topQuestions: TopQuestion[];
+  unansweredQuestions?: TopQuestion[];
 }
 
 function base(): string {
@@ -258,6 +260,12 @@ export async function applyIndustryTemplate(payload: {
   await postJson<{ ok: boolean }>("/admin/apply-template", payload);
 }
 
+/** Generates intelligent, tailored starter questions based on the bot's uploaded knowledge base documents. */
+export async function generateBotQuestions(botId: string): Promise<string[]> {
+  const res = await postJson<{ ok: boolean; suggestions: string[] }>("/admin/generate-questions", { botId });
+  return res.suggestions || [];
+}
+
 /**
  * Global (non-India) checkout — creates a Stripe Checkout Session and
  * returns its hosted-page URL; the caller redirects the browser there.
@@ -313,6 +321,51 @@ export async function deleteLead(leadId: number): Promise<void> {
     throw new AdminApiError(res.status, detail);
   }
 }
+
+/** Test real-time delivery to a Google Apps Script Web App URL. */
+export async function testGoogleSheets(
+  botId: string,
+  url: string,
+): Promise<{ ok: boolean; message: string }> {
+  return postJson<{ ok: boolean; message: string }>("/admin/test-sheets", {
+    botId,
+    url,
+  });
+}
+
+/** Backfill/sync all historic leads for this bot to Google Sheets. */
+export async function syncGoogleSheetsHistory(
+  botId: string,
+  url?: string,
+): Promise<{ ok: boolean; count: number; total: number; message: string }> {
+  return postJson<{ ok: boolean; count: number; total: number; message: string }>(
+    "/admin/sync-sheets-history",
+    { botId, url },
+  );
+}
+
+/** Test webhook delivery by sending a sample lead payload. */
+export async function testWebhook(
+  botId: string,
+  url: string,
+): Promise<{ ok: boolean; message: string }> {
+  return postJson<{ ok: boolean; message: string }>("/admin/test-webhook", {
+    botId,
+    url,
+  });
+}
+
+/** Test email notification delivery by sending a sample lead alert. */
+export async function testNotificationEmail(
+  botId: string,
+  email: string,
+): Promise<{ ok: boolean; message: string }> {
+  return postJson<{ ok: boolean; message: string }>("/admin/test-email", {
+    botId,
+    email,
+  });
+}
+
 
 export interface CreateBotPayload {
   botId?: string;
@@ -488,6 +541,13 @@ export interface AdminDoc {
 
 export async function fetchDocs(botId: string): Promise<AdminDoc[]> {
   return (await getJson<{ docs?: AdminDoc[] }>(`/admin/docs?botId=${encodeURIComponent(botId)}`)).docs ?? [];
+}
+
+export async function fetchDocContent(botId: string, filename: string): Promise<string> {
+  const data = await getJson<{ ok: boolean; content: string }>(
+    `/admin/docs/content?botId=${encodeURIComponent(botId)}&filename=${encodeURIComponent(filename)}`
+  );
+  return data.content ?? "";
 }
 
 export async function deleteDocFile(botId: string, filename: string): Promise<void> {

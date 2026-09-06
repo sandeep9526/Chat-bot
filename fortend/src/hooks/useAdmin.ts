@@ -14,6 +14,7 @@ import {
   deleteBot,
   setBotPaused,
   fetchDocs,
+  fetchDocContent,
   deleteDocFile,
   createStripeCheckoutSession,
   createRazorpaySubscription,
@@ -41,6 +42,7 @@ export function useLeads(botId: string) {
     queryKey: ["admin", "leads", botId],
     queryFn: () => fetchLeads(botId),
     enabled: Boolean(botId),
+    refetchInterval: 4000,
   });
 }
 
@@ -132,6 +134,15 @@ export function useDocs(botId: string) {
     queryKey: ["admin", "docs", botId],
     queryFn: () => fetchDocs(botId),
     enabled: Boolean(botId),
+  });
+}
+
+export function useDocContent(botId: string, filename: string) {
+  return useQuery({
+    queryKey: ["admin", "doc-content", botId, filename],
+    queryFn: () => fetchDocContent(botId, filename),
+    enabled: Boolean(botId && filename),
+    staleTime: 60_000,
   });
 }
 

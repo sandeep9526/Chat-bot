@@ -8,7 +8,7 @@ Sab ban gaya — ab **bechna** hai. Ye file technical nahi, business hai. Client
 
 ## Task 1: Ek killer live demo taiyaar rakho
 
-Ek public demo bot rakho (jaise `demo.zeva.app`) ek fake business ka (salon/dental). Usme:
+Ek public demo bot rakho (jaise `demo.ochreshift.com`) ek fake business ka (salon/dental). Usme:
 - Widget laga ho (asli, ek line se).
 - 3-4 "Try asking..." sawaal likhe hon.
 - Sources dikhein, lead ticket chale.

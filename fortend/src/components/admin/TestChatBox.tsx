@@ -14,8 +14,11 @@ import {
   DollarSign,
   Headphones,
   Loader2,
+  FlaskConical,
 } from "lucide-react";
-import { useSendMessage } from "@/hooks/useZevaApi";
+import { LeadTicket } from "@/components/widget/LeadTicket";
+import { useSendMessage } from "@/hooks/useOchreshiftApi";
+import { FormattedMessage } from "@/components/ui/FormattedMessage";
 import type { ChatSource } from "@/lib/types";
 import {
   fetchPlaygroundSessions,
@@ -48,7 +51,8 @@ export function TestChatBox({
   messages = [],
   onMessagesChange,
   onClear,
-  previewMode
+  previewMode,
+  showLeadTest = true,
 }: {
   botId: string;
   botName?: string;
@@ -59,7 +63,9 @@ export function TestChatBox({
   onMessagesChange?: (msgs: PlaygroundMsg[]) => void;
   onClear?: () => void;
   previewMode?: boolean;
+  showLeadTest?: boolean;
 }) {
+  const canShowLeadTest = Boolean(showLeadTest && !previewMode);
   const displayTitle =
     botName && botName.trim() ? botName.trim() : "OchreShift AI Assistant";
   const displayWelcome =
@@ -98,6 +104,7 @@ export function TestChatBox({
     ? onMessagesChange
     : setInternalMessages;
   const [input, setInput] = useState("");
+  const [showLeadForm, setShowLeadForm] = useState(false);
   const send = useSendMessage();
   const qc = useQueryClient();
   const streamEndRef = useRef<HTMLDivElement>(null);
@@ -241,7 +248,7 @@ export function TestChatBox({
   ).filter((p) => p.trim());
 
   const isEmptyState =
-    actualMessages.length === 0 && activeSessionId === "new";
+    actualMessages.length === 0 && activeSessionId === "new" && !showLeadForm;
 
   const renderComposer = () => (
     <form
@@ -379,6 +386,24 @@ export function TestChatBox({
                 </span>
               </div>
             </div>
+
+            {canShowLeadTest && (
+              <div className="flex items-center gap-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => setShowLeadForm((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] font-[650] transition-all cursor-pointer shadow-xs active:scale-95 ${
+                    showLeadForm
+                      ? "bg-purple-500 text-white border-purple-500 shadow-purple-500/25"
+                      : "border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20"
+                  }`}
+                  title="Test how your agent captures visitor leads"
+                >
+                  <FlaskConical className="h-3.5 w-3.5" />
+                  <span>{showLeadForm ? "Close Form" : "Test Lead Capture"}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ═══════════ Chat Content ═══════════ */}
@@ -497,7 +522,7 @@ export function TestChatBox({
                           : "bg-panel/50 border border-border/50 rounded-2xl rounded-tl-md text-fg shadow-sm",
                       )}
                     >
-                      <p className="whitespace-pre-wrap">{m.text}</p>
+                      <FormattedMessage text={m.text} isUser={m.role === "user"} />
                       {m.sources && m.sources.length > 0 && (
                         <div className="mt-2.5 flex flex-wrap gap-1.5 pt-2.5 border-t border-border/40">
                           {m.sources.map((s, i) => (
@@ -513,6 +538,56 @@ export function TestChatBox({
                     </div>
                   </div>
                 ))}
+
+                {/* Interactive Lead Ticket Test Form */}
+                {showLeadForm && (
+                  <div className="my-2 max-w-[440px] w-full rounded-2xl border border-purple-500/30 bg-surface shadow-xl p-4 ring-4 ring-purple-500/5 animate-slide-up-fade">
+                    <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-border/60">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 text-xs font-[750]">
+                          <FlaskConical className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="font-[750] text-fg text-[13px]">Test Lead Capture Form</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowLeadForm(false)}
+                        className="text-muted hover:text-fg text-xs font-[600] px-2 py-0.5 rounded hover:bg-panel cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <LeadTicket
+                      botName={displayTitle}
+                      botId={botId}
+                      isTest={true}
+                      onDone={(leadName) => {
+                        setShowLeadForm(false);
+                        const confirmMsg: PlaygroundMsg = {
+                          id: Date.now(),
+                          role: "assistant",
+                          text: `🎉 **Test lead successfully captured for ${leadName}!**\n\nYour test lead was submitted with the \`[Testing]\` badge. You can view its contact details and custom fields right now in the **Leads & Live Helpdesk** tab.`,
+                        };
+                        setActualMessages([...actualMessages, confirmMsg]);
+                        qc.invalidateQueries({ queryKey: ["admin", "leads"] });
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Inline shortcut button to test lead capture if form is closed */}
+                {canShowLeadTest && !showLeadForm && actualMessages.length > 0 && (
+                  <div className="flex justify-start pl-10 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowLeadForm(true)}
+                      className="inline-flex items-center gap-1.5 text-[11.5px] font-[650] text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <FlaskConical className="h-3 w-3" />
+                      Test Lead Capture Form
+                    </button>
+                  </div>
+                )}
 
                 {/* Typing indicator */}
                 {send.isPending && (

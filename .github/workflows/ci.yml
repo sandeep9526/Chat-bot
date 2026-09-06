@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: zeva-backend
+        working-directory: ochreshift-backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: zeva-backend
+        working-directory: ochreshift-backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -61,9 +61,9 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./zeva-backend
+          context: ./ochreshift-backend
           push: false
-          tags: zeva-backend:latest
+          tags: ochreshift-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build frontend image
@@ -71,6 +71,6 @@ jobs:
         with:
           context: ./fortend
           push: false
-          tags: zeva-frontend:latest
+          tags: ochreshift-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

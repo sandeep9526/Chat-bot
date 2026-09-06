@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ArrowUpRight as ArrowIcon } from "lucide-react";
-import { useZevaStore } from "@/stores/zevaStore";
+import { ArrowUp as ArrowIcon } from "lucide-react";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 
-/** Mirrors the backend's MAX_MESSAGE_LEN (zeva-backend/main.py) so an
+/** Mirrors the backend's MAX_MESSAGE_LEN (ochreshift-backend/main.py) so an
  *  over-length message is caught before it round-trips to the server. */
 const MAX_MESSAGE_LEN = 1000;
 
@@ -43,10 +43,10 @@ export function Composer({
   };
 
   return (
-    <form className="relative m-3 mt-2" onSubmit={handleSubmit} autoComplete="off">
+    <form className="relative m-3 mt-1.5 shrink-0" onSubmit={handleSubmit} autoComplete="off">
       <input
         ref={inputRef}
-        className="w-full rounded-[10px] border border-border bg-panel py-3.5 pl-4 pr-14 font-ui text-[14px] text-fg outline-none transition-colors hover:border-border/80 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60 placeholder:text-muted"
+        className="w-full rounded-[10px] border border-border bg-panel py-3 pl-4 pr-12 font-ui text-[14px] text-fg outline-none transition-colors hover:border-border/80 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60 placeholder:text-muted"
         placeholder="Ask anything..."
         aria-label="Ask anything"
         value={value}
@@ -56,11 +56,11 @@ export function Composer({
       />
       <button
         type="submit"
-        className="tap absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-[8px] border-none bg-accent text-fg outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-accent-ring disabled:cursor-not-allowed disabled:opacity-35"
+        className="tap absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-[7px] border-none bg-accent text-white outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-accent-ring disabled:cursor-not-allowed disabled:opacity-35 cursor-pointer shadow-xs"
         disabled={!value.trim() || isScanning}
         aria-label="Ask"
       >
-        <ArrowIcon className="h-[18px] w-[18px]" strokeWidth={2.5} />
+        <ArrowIcon className="h-4 w-4" strokeWidth={2.5} />
       </button>
       {value.length > MAX_MESSAGE_LEN * 0.8 && (
         <div className="mt-1 pr-1 text-right font-mono text-[10px] text-faint">
@@ -85,7 +85,7 @@ const GENERIC_SUGGESTIONS = [
 ];
 
 export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
-  const configuredSuggestions = useZevaStore((s) => s.config.suggestions);
+  const configuredSuggestions = useOchreshiftStore((s) => s.config.suggestions);
 
   // Use configured template suggestions if present, otherwise fallback to generic
   const suggestions =

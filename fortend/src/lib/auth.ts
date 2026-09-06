@@ -109,6 +109,7 @@ export const auth = betterAuth({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: user.email, url, token }),
+          signal: AbortSignal.timeout(5000),
         });
       } catch (err) {
         console.error("Failed sending password reset email via backend:", err);
@@ -118,6 +119,8 @@ export const auth = betterAuth({
 
   // Email verification setup
   emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url, token }: { user: any; url: string; token: string }) => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -125,6 +128,7 @@ export const auth = betterAuth({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: user.email, url, token }),
+          signal: AbortSignal.timeout(5000),
         });
       } catch (err) {
         console.error("Failed sending verification email via backend:", err);
@@ -150,6 +154,7 @@ export const auth = betterAuth({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, url, token }),
+            signal: AbortSignal.timeout(5000),
           });
         } catch (err) {
           console.error("Failed sending magic link via backend:", err);

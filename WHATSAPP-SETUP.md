@@ -1,4 +1,4 @@
-# WhatsApp Cloud API Setup — Zeva ko WhatsApp se jodo 📱
+# WhatsApp Cloud API Setup — Ochreshift ko WhatsApp se jodo 📱
 
 Ye guide tab ke liye hai jab tum (Sandeep) ready ho **wahi RAG dimaag** ko WhatsApp pe le jaane ke liye. Website widget already `/chat` se chal raha hai — WhatsApp bas ek **naya darwaaza** hai jis se wahi message andar aata hai aur wahi jawaab bahar jaata hai.
 
@@ -16,7 +16,7 @@ WhatsApp Cloud API free me ek **test number** deta hai — client ka asli number
 
 1. Jao 👉 **[developers.facebook.com](https://developers.facebook.com)** → apne normal Facebook account se login karo.
 2. Upar right me **"My Apps"** → **"Create App"** dabao.
-3. Use case me **"Other"** → app type me **"Business"** chuno → app ko naam do (e.g. `zeva-whatsapp`).
+3. Use case me **"Other"** → app type me **"Business"** chuno → app ko naam do (e.g. `ochreshift-whatsapp`).
 4. App ban gayi → left sidebar/products me **"WhatsApp"** dhoondo → **"Set up"** dabao.
 5. Ek **Meta Business Account** maangega — naya bana lo (bas naam daalo, free hai).
 6. Ab **WhatsApp → API Setup** page khulega. Yahan Meta ne tumhe automatic ek **test number** de diya hai (`+1 555...` type ka). Isi se practice karoge.
@@ -41,7 +41,7 @@ Inko backend ke `.env` me daalna hai (jaise `OPENROUTER_API_KEY` already hai):
 # .env me (git me commit NAHI hota)
 WHATSAPP_TOKEN=EAAG...tumhara-temporary-token
 WHATSAPP_PHONE_NUMBER_ID=123456789012345
-WHATSAPP_VERIFY_TOKEN=zeva-secret-verify-123   # ye tum khud banate ho (koi bhi random string)
+WHATSAPP_VERIFY_TOKEN=ochreshift-secret-verify-123   # ye tum khud banate ho (koi bhi random string)
 ```
 
 > ⚠️ **Temporary token 24 ghante me mar jaata hai.** Development me theek hai. Client ke liye live jaane se pehle **permanent token** banana padega — uske liye Meta me ek "System User" banake usko permanent token deना padता hai (Task 6 me niche). Abhi ke liye temporary se practice karo.
@@ -208,7 +208,7 @@ async def wa_send(to: str, body: str):
         await client.post(url, json=payload, headers=headers)
 ```
 
-**Kaise check karein:** Test number ko WhatsApp pe sawaal bhejo jiska jawaab documents me ho → thodi der me bot ka grounded jawaab WhatsApp pe wapas aaye, aur `zeva.db` me chat save ho. ✅
+**Kaise check karein:** Test number ko WhatsApp pe sawaal bhejo jiska jawaab documents me ho → thodi der me bot ka grounded jawaab WhatsApp pe wapas aaye, aur `ochreshift.db` me chat save ho. ✅
 
 ---
 
@@ -248,6 +248,6 @@ Ye WhatsApp/Meta ke apne rules hain — tod diye to number **ban** ho sakta hai.
 - [ ] 24-hour window, template, billing rules padh liye
 - [ ] Live se pehle: permanent token + client number + business verification
 
-**Samajh lo:** Yahan tak aa gaye, to Zeva ka **ek hi dimaag** ab do jagah bol raha hai — website widget aur WhatsApp. Client ke liye yeh bada wow moment hai. 🎉
+**Samajh lo:** Yahan tak aa gaye, to Ochreshift ka **ek hi dimaag** ab do jagah bol raha hai — website widget aur WhatsApp. Client ke liye yeh bada wow moment hai. 🎉
 
 👉 Wapas plan pe: `second-setup-hinglish/05-whatsapp-aur-handoff.md` (Part B: Lead Scoring, Part C: Handoff).

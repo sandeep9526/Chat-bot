@@ -3,11 +3,11 @@
 import { useState, useCallback, useMemo } from "react";
 import { Copy as CopyIcon, Check as CheckIcon } from "lucide-react";
 import { buildEmbedText, buildEmbedHtml } from "@/lib/embed";
-import type { ZevaConfig } from "@/lib/types";
+import type { OchreshiftConfig } from "@/lib/types";
 
 interface OnboardingEmbedCodeProps {
   botId: string;
-  config: ZevaConfig;
+  config: OchreshiftConfig;
 }
 
 /**

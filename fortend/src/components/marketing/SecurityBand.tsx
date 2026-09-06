@@ -11,7 +11,7 @@ interface Guarantee {
 }
 
 /**
- * Trust band. Every claim is a real property of how Zeva works (grounded RAG,
+ * Trust band. Every claim is a real property of how Ochreshift works (grounded RAG,
  * cited sources, per-tenant isolation, owner control) — no invented
  * certifications or badges.
  */

@@ -69,7 +69,7 @@ export function StepNameBot({ data, onNext }: StepNameBotProps) {
           <input
             autoFocus
             className={INPUT}
-            placeholder="Zeva AI"
+            placeholder="Ochreshift AI"
             value={businessName}
             onChange={(e) => handleNameChange(e.target.value)}
           />

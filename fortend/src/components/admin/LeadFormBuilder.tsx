@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Check, AlertCircle, List, FileText, CheckSquare, Settings2, Sparkles, MoveUp, MoveDown } from "lucide-react";
+import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2, Check, AlertCircle, List, FileText, CheckSquare, Settings2, Sparkles, MoveUp, MoveDown, FlaskConical, X } from "lucide-react";
+import { LeadTicket } from "@/components/widget/LeadTicket";
+import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 
 export interface FormFieldSchema {
   id: string;
@@ -24,11 +28,20 @@ interface LeadFormBuilderProps {
 }
 
 export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
+  const qc = useQueryClient();
+  const storeBotId = useOchreshiftStore((s) => s.botId);
+  const activeBotId = botId || storeBotId || "";
   const [fields, setFields] = useState<FormFieldSchema[]>(DEFAULT_FIELDS);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedMsg, setSavedMsg] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // New Field modal state
   const [showAdd, setShowAdd] = useState(false);
@@ -121,183 +134,273 @@ export function LeadFormBuilder({ botId }: LeadFormBuilderProps) {
   };
 
   return (
-    <div className="w-full">
-      <div className="flex flex-col gap-3 mb-4">
+    <div className="w-full rounded-2xl border border-border bg-surface shadow-sm overflow-hidden min-h-[540px] flex flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 bg-panel/40">
         <div>
-          <h3 className="text-[14px] font-[800] text-fg tracking-tight flex items-center gap-2">
-            Lead form fields
-            <span className="bg-accent/10 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+          <h3 className="text-[15px] font-[800] text-fg tracking-tight flex items-center gap-2">
+            Lead Capture Form Fields
+            <span className="bg-accent/10 text-accent text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
               <Sparkles className="h-3 w-3" /> Custom
             </span>
           </h3>
-          <p className="text-[12px] text-muted mt-1 leading-[1.4]">
-            Add extra fields to capture visitor data.
+          <p className="text-[12px] text-muted mt-0.5">
+            Configure the questions and contact details your agent asks visitors before team handoff
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowTestModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-[700] px-3.5 py-1.5 text-[12px] transition-all shadow-xs cursor-pointer active:scale-95"
+            title="Preview and test submitting your lead form"
+          >
+            <FlaskConical className="h-3.5 w-3.5" />
+            <span>Test Form</span>
+          </button>
           <button
             type="button"
             onClick={() => setShowAdd(!showAdd)}
-            className="flex-1 flex justify-center items-center gap-1 text-[12.5px] font-[700] text-fg hover:bg-panel px-3 py-2 rounded-xl border border-border transition-colors bg-surface shadow-sm"
+            className="inline-flex items-center gap-1.5 text-[12px] font-[700] text-fg hover:bg-panel px-3.5 py-1.5 rounded-xl border border-border transition-colors bg-surface shadow-xs cursor-pointer active:scale-95"
           >
             <Plus className="h-3.5 w-3.5 text-faint" />
-            Add field
+            <span>Add Field</span>
           </button>
           <button
             type="button"
             onClick={handleSave}
             disabled={saving || loading}
-            className="flex-1 flex justify-center items-center gap-1.5 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-[700] px-3 py-2 text-[12.5px] transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-[700] px-4 py-1.5 text-[12px] transition-colors shadow-sm cursor-pointer active:scale-95"
           >
-            {saving ? "Saving…" : "Save fields"}
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       </div>
 
-      {savedMsg && (
-        <div className="mb-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-3 text-[12.5px] font-[650] text-emerald-700 flex items-center gap-2 animate-pulse">
-          <Check className="h-4 w-4 text-emerald-600" />
-          Saved — your lead form is updated.
-        </div>
-      )}
+      <div className="p-5 flex-1 flex flex-col">
 
-      {error && (
-        <div className="mb-4 rounded-xl bg-bad/10 border border-bad/30 p-3 text-[12.5px] font-[650] text-bad flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {error}
-        </div>
-      )}
+        {savedMsg && (
+          <div className="mb-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-3 text-[12.5px] font-[650] text-emerald-700 flex items-center gap-2 animate-pulse">
+            <Check className="h-4 w-4 text-emerald-600" />
+            Saved — your lead form is updated.
+          </div>
+        )}
 
-      {/* Add Custom Field Box */}
-      {showAdd && (
-        <form onSubmit={handleAddField} className="mb-6 bg-surface p-4 rounded-xl border border-border shadow-sm space-y-3.5">
-          <b className="block text-[13.5px] font-[750] text-fg">Add a field</b>
-          <div className="grid grid-cols-1 gap-3">
-            <div>
-              <label className="block text-[11.5px] font-[700] text-muted mb-1">Field label</label>
-              <input
-                type="text"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="e.g. Budget or Location"
-                required
-                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none font-medium transition-all"
-              />
+        {error && (
+          <div className="mb-4 rounded-xl bg-bad/10 border border-bad/30 p-3 text-[12.5px] font-[650] text-bad flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        {/* Add Custom Field Modal (Portal mounted to eliminate layout shift) */}
+        {showAdd && mounted && createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
+            onClick={() => setShowAdd(false)}
+          >
+            <div
+              className="w-full max-w-[460px] rounded-2xl border border-border bg-surface shadow-2xl p-6 animate-fade-in-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-border/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-accent/15 border border-accent/25 flex items-center justify-center text-accent">
+                    <Plus className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-[800] text-fg text-[15px] tracking-tight">Add Custom Form Field</h4>
+                    <p className="text-[11.5px] text-muted">Collect additional info from visitors before handoff</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdd(false)}
+                  className="text-muted hover:text-fg p-1.5 rounded-lg hover:bg-panel cursor-pointer transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddField} className="space-y-4">
+                <div>
+                  <label className="block text-[12px] font-[700] text-muted mb-1.5">Field Question / Label</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    placeholder="e.g. Company Name, Budget, Project Scope"
+                    required
+                    className="w-full rounded-xl border border-border bg-panel px-3.5 py-2.5 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none font-medium transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[12px] font-[700] text-muted mb-1.5">Input Type</label>
+                    <select
+                      value={newType}
+                      onChange={(e) => setNewType(e.target.value as any)}
+                      className="w-full rounded-xl border border-border bg-panel px-3.5 py-2.5 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none font-medium transition-all cursor-pointer"
+                    >
+                      <option value="text">Short Text</option>
+                      <option value="dropdown">Dropdown Select</option>
+                      <option value="textarea">Long Text / Details</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                    <label className="flex items-center gap-2.5 h-[42px] px-3.5 rounded-xl border border-border bg-panel cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={newRequired}
+                        onChange={(e) => setNewRequired(e.target.checked)}
+                        className="h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+                      />
+                      <span className="text-[12.5px] font-[650] text-fg">Required</span>
+                    </label>
+                  </div>
+                </div>
+
+                {newType === "dropdown" && (
+                  <div className="animate-fade-in">
+                    <label className="block text-[12px] font-[700] text-muted mb-1.5">
+                      Dropdown Options <span className="text-faint text-[11px] font-normal">(comma-separated)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newOptions}
+                      onChange={(e) => setNewOptions(e.target.value)}
+                      placeholder="e.g. Under $10k, $10k - $50k, $50k+"
+                      required
+                      className="w-full rounded-xl border border-border bg-panel px-3.5 py-2.5 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border/70">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdd(false)}
+                    className="px-4 py-2 rounded-xl border border-border bg-surface hover:bg-panel text-fg font-[700] text-[12.5px] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-[700] text-[12.5px] transition-colors shadow-sm cursor-pointer active:scale-95"
+                  >
+                    Add Field
+                  </button>
+                </div>
+              </form>
             </div>
-            <div>
-              <label className="block text-[11.5px] font-[700] text-muted mb-1">Field type</label>
-              <select
-                value={newType}
-                onChange={(e) => setNewType(e.target.value as any)}
-                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-[13px] text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none font-medium transition-all"
-              >
-                <option value="text">Text</option>
-                <option value="dropdown">Dropdown</option>
-                <option value="textarea">Long text</option>
-              </select>
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer text-[13px] font-[650] text-fg select-none">
+          </div>,
+          document.body
+        )}
+
+        {/* Existing Fields Table / List */}
+        <div className="rounded-xl border border-border overflow-hidden bg-surface divide-y divide-border shadow-sm">
+          <div className="grid grid-cols-[1fr_50px_40px] bg-panel/70 px-3 py-2.5 text-[11px] font-[750] text-faint uppercase tracking-wider gap-2">
+            <div>Field</div>
+            <div>Type</div>
+            <div className="text-right">Req</div>
+          </div>
+          {fields.map((f, idx) => (
+            <div key={f.id} className="grid grid-cols-[1fr_50px_60px] sm:grid-cols-[1fr_60px_70px] items-center px-3 py-3 hover:bg-panel/40 transition-colors gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {f.type === "dropdown" ? (
+                  <List className="h-3.5 w-3.5 text-accent shrink-0" />
+                ) : f.type === "textarea" ? (
+                  <FileText className="h-3.5 w-3.5 text-accent shrink-0" />
+                ) : (
+                  <CheckSquare className="h-3.5 w-3.5 text-accent shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <span className="font-[650] text-[12.5px] text-fg block truncate">
+                    {f.label} {f.system && <span className="text-[10px] font-[650] text-accent font-mono ml-1">(System)</span>}
+                  </span>
+                  {f.options && (
+                    <span className="text-[10px] font-mono text-muted truncate block mt-0.5">
+                      {f.options.join(", ")}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="font-mono text-[11px] text-muted capitalize truncate">
+                {f.type}
+              </div>
+              <div className="flex items-center justify-end gap-1.5">
                 <input
                   type="checkbox"
-                  checked={newRequired}
-                  onChange={(e) => setNewRequired(e.target.checked)}
-                  className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                  checked={f.required}
+                  disabled={f.system}
+                  onChange={() => toggleRequired(f.id)}
+                  className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:opacity-40 cursor-pointer"
+                  title="Required"
                 />
-                Required
-              </label>
-            </div>
-          </div>
-
-          {newType === "dropdown" && (
-            <div>
-              <label className="block text-[11.5px] font-[700] text-muted mb-1">
-                Dropdown options <span className="text-faint">(comma separated)</span>
-              </label>
-              <input
-                type="text"
-                value={newOptions}
-                onChange={(e) => setNewOptions(e.target.value)}
-                placeholder="e.g. Under $5k, $5k-$15k, Over $15k"
-                required
-                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-[13px] font-mono text-fg focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all"
-              />
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowAdd(false)}
-              className="px-4 py-2 rounded-xl border border-border bg-surface hover:bg-panel text-fg font-[700] text-[12.5px] transition-colors shadow-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-[700] text-[12.5px] transition-colors shadow-sm"
-            >
-              Add field
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Existing Fields Table / List */}
-      <div className="rounded-xl border border-border overflow-hidden bg-surface divide-y divide-border shadow-sm">
-        <div className="grid grid-cols-[1fr_50px_40px] bg-panel/70 px-3 py-2.5 text-[11px] font-[750] text-faint uppercase tracking-wider gap-2">
-          <div>Field</div>
-          <div>Type</div>
-          <div className="text-right">Req</div>
-        </div>
-        {fields.map((f, idx) => (
-          <div key={f.id} className="grid grid-cols-[1fr_50px_60px] sm:grid-cols-[1fr_60px_70px] items-center px-3 py-3 hover:bg-panel/40 transition-colors gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {f.type === "dropdown" ? (
-                <List className="h-3.5 w-3.5 text-accent shrink-0" />
-              ) : f.type === "textarea" ? (
-                <FileText className="h-3.5 w-3.5 text-accent shrink-0" />
-              ) : (
-                <CheckSquare className="h-3.5 w-3.5 text-accent shrink-0" />
-              )}
-              <div className="min-w-0">
-                <span className="font-[650] text-[12.5px] text-fg block truncate">
-                  {f.label} {f.system && <span className="text-[10px] font-[650] text-accent font-mono ml-1">(System)</span>}
-                </span>
-                {f.options && (
-                  <span className="text-[10px] font-mono text-muted truncate block mt-0.5">
-                    {f.options.join(", ")}
-                  </span>
+                {!f.system ? (
+                  <button
+                    type="button"
+                    onClick={() => removeField(f.id)}
+                    title="Remove Custom Field"
+                    className="p-1 rounded text-bad hover:bg-bad/15 transition-colors ml-1"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <span className="w-[26px] text-center text-faint font-mono text-[10px] ml-1">🔒</span>
                 )}
               </div>
             </div>
-            <div className="font-mono text-[11px] text-muted capitalize truncate">
-              {f.type}
-            </div>
-            <div className="flex items-center justify-end gap-1.5">
-              <input
-                type="checkbox"
-                checked={f.required}
-                disabled={f.system}
-                onChange={() => toggleRequired(f.id)}
-                className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:opacity-40 cursor-pointer"
-                title="Required"
-              />
-              {!f.system ? (
+          ))}
+        </div>
+
+        {showTestModal && mounted && createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
+            onClick={() => setShowTestModal(false)}
+          >
+            <div
+              className="w-full max-w-[420px] rounded-2xl border border-purple-500/30 bg-surface shadow-2xl p-5 ring-4 ring-purple-500/10 animate-fade-in-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 text-xs font-[750]">
+                    <FlaskConical className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h4 className="font-[750] text-fg text-[14px]">Test Lead Capture Form</h4>
+                    <p className="text-[11px] text-muted">Preview how your visitors experience your custom fields</p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => removeField(f.id)}
-                  title="Remove Custom Field"
-                  className="p-1 rounded text-bad hover:bg-bad/15 transition-colors ml-1"
+                  onClick={() => setShowTestModal(false)}
+                  className="text-muted hover:text-fg text-xs font-[600] p-1.5 rounded-lg hover:bg-panel cursor-pointer transition-colors"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                 </button>
-              ) : (
-                <span className="w-[26px] text-center text-faint font-mono text-[10px] ml-1">🔒</span>
-              )}
+              </div>
+              <LeadTicket
+                botName="Assistant"
+                botId={activeBotId || "preview"}
+                isTest={true}
+                initialFields={fields}
+                onDone={() => {
+                  setShowTestModal(false);
+                  qc.invalidateQueries({ queryKey: ["admin", "leads"] });
+                  qc.refetchQueries({ queryKey: ["admin", "leads"] });
+                  qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+                  qc.refetchQueries({ queryKey: ["admin", "stats"] });
+                }}
+              />
             </div>
-          </div>
-        ))}
+          </div>,
+          document.body
+        )}
       </div>
     </div>
   );
