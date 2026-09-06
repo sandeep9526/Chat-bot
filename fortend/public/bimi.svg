@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" viewBox="0 0 100 100">
   <rect width="100" height="100" fill="#FFFFFF"/>
-  <g transform="translate(5, 0)">
-    <path d="M45 0 L0 25 L0 75 L45 100 L45 72 L22 58 L22 42 L45 28 Z" fill="#F5A623"/>
-    <path d="M45 0 L90 25 L90 75 L45 100 L45 72 L68 58 L68 42 L45 28 Z" fill="#1A202C"/>
-  </g>
+  <path d="M50 0 L5 25 L5 75 L50 100 L50 72 L27 58 L27 42 L50 28 Z" fill="#F5A623"/>
+  <path d="M50 0 L95 25 L95 75 L50 100 L50 72 L73 58 L73 42 L50 28 Z" fill="#1A202C"/>
 </svg>
