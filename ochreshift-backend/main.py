@@ -794,7 +794,7 @@ def resolve_unique_bot_id(requested_bot_id: str | None, name: str, owner_id: str
 def create_bot(req: CreateBotRequest, user: CurrentUser):
     check_rate_limit(f"admin:{user['id']}")
 
-    if not db.is_user_email_verified(user["id"]):
+    if not user.get("emailVerified"):
         raise HTTPException(status_code=403, detail="Email not verified. Please verify your email first.")
 
     final_bot_id = resolve_unique_bot_id(req.botId, req.name, user["id"])
