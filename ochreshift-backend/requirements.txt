@@ -81,7 +81,7 @@ referencing==0.37.0
 requests==2.34.2
 requests-oauthlib==2.0.0
 rich==14.3.3
-scikit-learn==1.8.1
+scikit-learn==1.8.0
 scipy==1.17.1
 setuptools>=84.0.0
 sentry-sdk==2.66.0
