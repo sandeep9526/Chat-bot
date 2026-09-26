@@ -2,37 +2,37 @@
 
 import Link from "next/link";
 import { Reveal } from "./Reveal";
-import { Scissors, Stethoscope, Briefcase, Wrench, Quote } from "lucide-react";
+import { Scissors, CalendarCheck, Sparkles, Clock, Quote } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 
 const CASES = [
   {
     icon: Scissors,
-    tag: "Salons & spas",
+    tag: "Services & Pricing",
     title: "Turn price inquiries into bookings.",
-    body: "Answer questions about services and pricing instantly. When they are ready, capture their contact details for a confirmed appointment.",
-    ask: "Do you have anything open this Saturday?",
+    body: "Answer questions about hair, nails, or spa pricing instantly. When they are ready, capture their contact details for a confirmed appointment.",
+    ask: "How much for a balayage?",
   },
   {
-    icon: Stethoscope,
-    tag: "Clinics & practices",
-    title: "Patient intake on autopilot.",
-    body: "Provide policy answers and intake forms securely. Capture new patient information before your front desk even opens.",
-    ask: "Are weekend appointments available?",
+    icon: Clock,
+    tag: "After-Hours Booking",
+    title: "Capture leads while you sleep.",
+    body: "Provide policy answers and store hours securely. Capture new client information before your front desk even opens.",
+    ask: "Are you open this Sunday?",
   },
   {
-    icon: Briefcase,
-    tag: "Agencies & consultancies",
-    title: "Qualify high-value clients.",
-    body: "Filter out bad fits automatically. Ask qualifying questions about project budgets and scope before passing the lead to your team.",
-    ask: "Do you take on rebranding projects?",
+    icon: Sparkles,
+    tag: "Specialized Treatments",
+    title: "Qualify high-value services.",
+    body: "Filter out bad fits automatically. Ask qualifying questions about hair history or skin conditions before passing the lead to your specialists.",
+    ask: "Do you offer keratin treatments?",
   },
   {
-    icon: Wrench,
-    tag: "Home services",
-    title: "Emergency dispatch & quotes.",
-    body: "Capture addresses, phone numbers, and urgent service requests immediately, so your team can dispatch the right person instantly.",
-    ask: "My heater broke — can someone come today?",
+    icon: CalendarCheck,
+    tag: "Last-Minute Openings",
+    title: "Fill cancellations instantly.",
+    body: "Capture names, phone numbers, and urgent appointment requests immediately, so your team can fill unexpected gaps in the schedule.",
+    ask: "Do you have anything open today?",
   },
 ];
 
@@ -43,9 +43,9 @@ export function UseCases() {
 
         <SectionHead
           align="center"
-          eyebrow="Industry Use Cases"
-          title="Built for businesses where every unanswered question matters."
-          description="Whether you're booking appointments or qualifying high-value clients, OchreShift turns conversations into revenue for service businesses."
+          eyebrow="Salon Workflows"
+          title="Built for salons where every unanswered question matters."
+          description="Whether you're booking balayage appointments or filling last-minute cancellations, OchreShift turns conversations into revenue for your salon."
           className="mb-16"
         />
 

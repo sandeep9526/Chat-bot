@@ -41,7 +41,7 @@ export function Hero() {
         <div className="flex flex-col items-center text-center max-w-[860px] mx-auto">
           <motion.div {...RISE} transition={{ duration: 0.5 }} className="badge-pill mb-7">
             <span className="eyebrow-dot" />
-            AI lead capture for service businesses
+            AI lead capture for salons & spas
           </motion.div>
 
           <motion.h1
@@ -58,7 +58,7 @@ export function Hero() {
             transition={{ duration: 0.55, delay: 0.16 }}
             className="mt-6 text-[18px] sm:text-[20px] text-muted max-w-[680px] leading-relaxed text-balance"
           >
-            OchreShift talks to visitors, answers their questions, and captures qualified leads for your service business 24/7.
+            OchreShift talks to visitors, answers their questions, and captures qualified leads for your salon 24/7.
           </motion.p>
 
           <motion.div
@@ -81,14 +81,7 @@ export function Hero() {
             transition={{ duration: 0.55, delay: 0.3 }}
             className="mt-10 flex items-center justify-center gap-1.5"
           >
-            <div className="flex items-center gap-0.5 text-[#F59E0B] mr-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star key={star} size={15} className="fill-current text-[#F59E0B]" />
-              ))}
-            </div>
-            <span className="text-[14px] font-[600] text-fg">4.9/5</span>
-            <span className="text-[14px] text-muted mx-1">·</span>
-            <span className="text-[14px] font-[500] text-muted">Trusted by 500+ service businesses</span>
+            <span className="text-[14px] font-[500] text-muted">Currently in private beta securing early access for salon owners.</span>
           </motion.div>
         </div>
 
