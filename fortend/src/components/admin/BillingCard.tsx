@@ -64,12 +64,7 @@ const PLAN_ORDER: BillingPlan[] = ["starter", "pro", "business", "enterprise"];
 type Region = "india" | "global";
 
 function defaultRegion(): Region {
-  if (typeof Intl === "undefined") return "global";
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone === "Asia/Kolkata" ? "india" : "global";
-  } catch {
-    return "global";
-  }
+  return "india";
 }
 
 export function BillingCard() {
@@ -476,33 +471,7 @@ export function BillingCard() {
               </button>
             </div>
 
-            {/* Region / Currency Switcher */}
-            <div className="flex p-1 bg-surface-hover rounded-xl border border-border">
-              <button
-                type="button"
-                onClick={() => setRegion("global")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[12.5px] font-[700] transition-all duration-200",
-                  region === "global"
-                    ? "bg-surface text-fg shadow-sm border border-border"
-                    : "text-muted hover:text-fg border border-transparent"
-                )}
-              >
-                USD ($)
-              </button>
-              <button
-                type="button"
-                onClick={() => setRegion("india")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[12.5px] font-[700] transition-all duration-200",
-                  region === "india"
-                    ? "bg-surface text-fg shadow-sm border border-border"
-                    : "text-muted hover:text-fg border border-transparent"
-                )}
-              >
-                INR (₹)
-              </button>
-            </div>
+            {/* Region Switcher removed — everyone gets Razorpay INR */}
           </div>
         </div>
 
