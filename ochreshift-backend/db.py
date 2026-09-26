@@ -342,9 +342,9 @@ def get_bot_for_owner(bot_id: str, owner_user_id: str) -> dict | None:
                 f"""
                 SELECT b.*, s.plan, s.max_messages_per_month, {_IS_ACTIVE_SQL}
                 FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
-                WHERE b.bot_id = %s
+                WHERE b.bot_id = %s AND b.owner_user_id = %s
                 """,
-                (bot_id,),
+                (bot_id, owner_user_id),
             )
             row = cur.fetchone()
             if row:
@@ -871,8 +871,10 @@ def list_bots_for_owner(owner_user_id: str) -> list[dict]:
                        b.model_override, b.custom_prompt_style,
                        {_IS_ACTIVE_SQL}
                 FROM bots b LEFT JOIN subscriptions s ON s.owner_user_id = b.owner_user_id
+                WHERE b.owner_user_id = %s
                 ORDER BY b.created_at DESC
-                """
+                """,
+                (owner_user_id,),
             )
             return [dict(r) for r in cur.fetchall()]
     except Exception as e:
@@ -887,7 +889,7 @@ def set_bot_paused(bot_id: str, owner_user_id: str, paused: bool) -> bool:
     the `paused` column (never `suspended`, which is platform-admin's)."""
     with _get_pool().connection() as conn, conn.cursor() as cur:
         _set_owner(cur, owner_user_id)
-        cur.execute("UPDATE bots SET paused = %s WHERE bot_id = %s", (paused, bot_id))
+        cur.execute("UPDATE bots SET paused = %s WHERE bot_id = %s AND owner_user_id = %s", (paused, bot_id, owner_user_id))
         return cur.rowcount > 0
 
 
@@ -900,11 +902,15 @@ def delete_bot_for_owner(bot_id: str, owner_user_id: str) -> bool:
     (ingest.delete_bot_docs) after this returns True."""
     with _get_pool().connection() as conn, conn.cursor() as cur:
         _set_owner(cur, owner_user_id)
+        # First verify ownership because we are bypassing RLS
+        cur.execute("SELECT bot_id FROM bots WHERE bot_id = %s AND owner_user_id = %s", (bot_id, owner_user_id))
+        if not cur.fetchone():
+            return False
         cur.execute("DELETE FROM handoffs WHERE bot_id = %s", (bot_id,))
         cur.execute("DELETE FROM chats WHERE bot_id = %s", (bot_id,))
         cur.execute("DELETE FROM leads WHERE bot_id = %s", (bot_id,))
-        cur.execute("DELETE FROM bots WHERE bot_id = %s", (bot_id,))
-        return cur.rowcount > 0
+        cur.execute("DELETE FROM bots WHERE bot_id = %s AND owner_user_id = %s", (bot_id, owner_user_id))
+        return True
 
 
 def get_bot_by_whatsapp_phone_id(phone_number_id: str) -> dict | None:
