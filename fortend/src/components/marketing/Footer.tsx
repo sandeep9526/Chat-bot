@@ -8,7 +8,7 @@ const FOOTER_LINKS = {
     { label: "Use Cases", href: "#use-cases" },
   ],
   Company: [
-    { label: "Contact", href: "mailto:hello@ochreshift.com" },
+    { label: "Contact", href: "mailto:support@ochreshift.com" },
     { label: "Sign in", href: "/sign-in" },
     { label: "Start free", href: "/sign-up" },
   ],
@@ -33,10 +33,10 @@ export function Footer() {
             OchreShift answers customer questions, detects buying intent, and captures qualified leads for your business 24/7.
           </p>
           <a
-            href="mailto:hello@ochreshift.com"
+            href="mailto:support@ochreshift.com"
             className="mb-8 inline-flex items-center gap-2 text-[14px] font-[500] text-muted hover:text-accent transition-colors"
           >
-            hello@ochreshift.com
+            support@ochreshift.com
           </a>
           <p className="text-[14px] text-slate-500">
             © {new Date().getFullYear()} Ochreshift. All rights reserved.

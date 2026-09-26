@@ -42,7 +42,7 @@ Plan:
 - Rebuild with current design tokens (bg-surface/text-fg/border-border/accent), dark+light safe.
 - Keep 3 tiers ($19 Starter / $49 Pro "Most Popular" / Enterprise Custom) but verify prices with
   billing reality in `BillingCard.tsx` before shipping.
-- Enterprise CTA → `mailto:hello@ochreshift.com` until a contact page exists.
+- Enterprise CTA → `mailto:support@ochreshift.com` until a contact page exists.
 - Under grid: "14-day free trial · No credit card required · Cancel anytime".
 - Add `id="pricing"`; add Pricing link to header nav.
 

@@ -121,7 +121,7 @@ export default function NotFound() {
               <Link href="/">~/home</Link>
               <Link href="/docs">~/docs</Link>
               <Link href="/sign-up">~/start-free</Link>
-              <a href="mailto:hello@ochreshift.com">~support</a>
+              <a href="mailto:support@ochreshift.com">~support</a>
             </div>
           </section>
 
@@ -202,7 +202,7 @@ export default function NotFound() {
                     <Link href="/docs" className="nf-chip">
                       read the docs
                     </Link>
-                    <a href="mailto:hello@ochreshift.com" className="nf-chip">
+                    <a href="mailto:support@ochreshift.com" className="nf-chip">
                       talk to a human
                     </a>
                   </div>
