@@ -5,6 +5,7 @@ import { ShieldCheck as ShieldCheckIcon, ChevronDown as ChevronDownIcon, Zap, Ch
 import { cn } from "@/lib/cn";
 import { useOchreshiftStore } from "@/stores/ochreshiftStore";
 import { useOchreshiftChat } from "@/hooks/useOchreshiftChat";
+import { useSubscription } from "@/hooks/useAdmin";
 import { Segmented } from "./Segmented";
 import { ColorField } from "./ColorField";
 import { Switch } from "./Switch";
@@ -22,6 +23,9 @@ import { INDUSTRY_TEMPLATES, type IndustryTemplate } from "@/lib/templates";
 import { decodeHtmlEntities, sanitizeBrandName, sanitizeWelcomeMessage, sanitizeSuggestions } from "@/lib/sanitize";
 
 function StudioControlsContent({ store, cfg, botId, hideBanner, ingesting, handleIngestUrl, reopenTimerRef }: any) {
+  const { data: sub } = useSubscription();
+  const isPaidOrTrial = sub?.status === "trialing" || sub?.plan === "pro" || sub?.plan === "business" || sub?.plan === "enterprise";
+
   return (
     <>
       {/* Website URL group */}
@@ -231,12 +235,28 @@ function StudioControlsContent({ store, cfg, botId, hideBanner, ingesting, handl
           description="the proof card under answers"
         />
         <div className="mt-4">
-          <Switch
-            checked={cfg.brand}
-            onCheckedChange={store.toggleBrand}
-            label={"\u201cPowered by ochreshift\u201d"}
-            description="turn off to white-label"
-          />
+          <div className="flex items-center justify-between">
+            <Switch
+              checked={cfg.brand}
+              disabled={!isPaidOrTrial}
+              onCheckedChange={() => {
+                if (isPaidOrTrial) store.toggleBrand();
+              }}
+              label={"“Powered by ochreshift”"}
+              description="turn off to white-label"
+            />
+            {!isPaidOrTrial && (
+              <span className="text-[10.5px] font-[750] uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                <Lock className="h-2.5 w-2.5" />
+                Pro+
+              </span>
+            )}
+          </div>
+          {!isPaidOrTrial && (
+            <p className="text-[11.5px] text-muted mt-1.5 leading-snug">
+              White-labeling is unlocked on Pro and Business plans.
+            </p>
+          )}
         </div>
       </ControlGroup>
 

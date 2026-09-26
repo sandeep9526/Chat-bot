@@ -312,10 +312,26 @@ class CreateStripeCheckoutRequest(BaseModel):
     plan: str
     successUrl: str
     cancelUrl: str
+    interval: str = "month"
 
 
 class CreateRazorpaySubscriptionRequest(BaseModel):
     plan: str
+    interval: str = "month"
+
+
+class CreateStripePortalRequest(BaseModel):
+    returnUrl: str
+
+
+class VerifyRazorpayPaymentRequest(BaseModel):
+    subscriptionId: str
+    paymentId: str
+    signature: str
+
+
+class DowngradeRequest(BaseModel):
+    immediately: bool = False
 
 
 # ---- OpenRouter client ------------------------------------------------------
@@ -1029,6 +1045,8 @@ def subscription(user: CurrentUser):
 # Paddle account (none exists for this project yet).
 @app.post("/billing/paddle-webhook")
 async def paddle_webhook(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    check_rate_limit(f"webhook:paddle:{ip}", limit=60)
     raw_body = await request.body()
     if not billing.verify_signature(raw_body, request.headers.get("paddle-signature")):
         raise HTTPException(status_code=401, detail="invalid webhook signature")
@@ -1190,7 +1208,7 @@ def superadmin_suspend_bot(req: SuspendBotRequest, user: CurrentUser):
     return {"ok": True, "botId": req.botId, "suspended": req.suspended}
 
 
-VALID_PLANS = {"trial", "starter", "pro", "business", "enterprise"}
+VALID_PLANS = {"free", "trial", "starter", "pro", "business", "enterprise"}
 VALID_STATUSES = {"trialing", "active", "past_due", "canceled", "expired"}
 
 
@@ -1284,11 +1302,38 @@ def create_stripe_checkout_session(req: CreateStripeCheckoutRequest, user: Curre
     check_rate_limit(f"admin:{user['id']}")
     if req.plan not in VALID_PLANS:
         raise HTTPException(status_code=400, detail=f"plan must be one of {sorted(VALID_PLANS)}")
+
+    # Plan switching / upgrade check: if user already has an active Stripe subscription, modify it instead
+    sub = db.get_subscription(user["id"])
+    if sub and sub.get("gateway") == "stripe" and sub.get("stripe_subscription_id") and sub.get("status") == "active":
+        try:
+            stripe_billing.modify_subscription_plan(sub["stripe_subscription_id"], req.plan, req.interval)
+            sep = "&" if "?" in req.successUrl else "?"
+            return {"url": f"{req.successUrl}{sep}upgraded=1"}
+        except Exception as e:
+            # If modification fails (e.g. status was invalid), proceed with new checkout session
+            print(f"[stripe] modify_subscription_plan fallback to checkout: {e}")
+
     try:
         url = stripe_billing.create_checkout_session(
-            req.plan, user["id"], user.get("email"), req.successUrl, req.cancelUrl
+            req.plan, user["id"], user.get("email"), req.successUrl, req.cancelUrl, req.interval
         )
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"url": url}
+
+
+@app.post("/billing/stripe/create-portal-session")
+def create_stripe_portal_session(req: CreateStripePortalRequest, user: CurrentUser):
+    check_rate_limit(f"admin:{user['id']}")
+    sub = db.get_subscription(user["id"])
+    if not sub or not sub.get("stripe_customer_id"):
+        raise HTTPException(status_code=400, detail="No active Stripe customer account found.")
+    try:
+        url = stripe_billing.create_customer_portal_session(sub["stripe_customer_id"], req.returnUrl)
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"url": url}
 
@@ -1298,45 +1343,109 @@ def create_razorpay_subscription(req: CreateRazorpaySubscriptionRequest, user: C
     check_rate_limit(f"admin:{user['id']}")
     if req.plan not in VALID_PLANS:
         raise HTTPException(status_code=400, detail=f"plan must be one of {sorted(VALID_PLANS)}")
+
+    # Plan switching / upgrade check: if user already has an active Razorpay subscription,
+    # cancel the old one so they are not double-billed after new one activates
+    sub = db.get_subscription(user["id"])
+    if sub and sub.get("gateway") == "razorpay" and sub.get("razorpay_subscription_id") and sub.get("status") == "active":
+        try:
+            razorpay_billing.cancel_subscription(sub["razorpay_subscription_id"], at_cycle_end=False)
+        except Exception as e:
+            print(f"[razorpay] old sub cancel during upgrade: {e}")
+
     try:
-        result = razorpay_billing.create_subscription(req.plan, user["id"], user.get("email"))
+        result = razorpay_billing.create_subscription(req.plan, user["id"], user.get("email"), req.interval)
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return result
 
 
+@app.post("/billing/razorpay/verify")
+def verify_razorpay_payment_endpoint(req: VerifyRazorpayPaymentRequest, user: CurrentUser):
+    """Verifies Razorpay subscription signature returned by Checkout.js modal."""
+    check_rate_limit(f"admin:{user['id']}")
+    is_valid = razorpay_billing.verify_payment_signature(
+        req.subscriptionId, req.paymentId, req.signature
+    )
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid Razorpay payment signature.")
+    sub = db.get_subscription(user["id"])
+    return {"ok": True, "subscription": sub}
+
+
+@app.post("/billing/razorpay/cancel")
+def cancel_razorpay_subscription_endpoint(user: CurrentUser):
+    """Explicitly cancels active Razorpay subscription at end of billing cycle."""
+    check_rate_limit(f"admin:{user['id']}")
+    sub = db.get_subscription(user["id"])
+    if not sub or not sub.get("razorpay_subscription_id"):
+        raise HTTPException(status_code=400, detail="No active Razorpay subscription found to cancel.")
+    try:
+        razorpay_billing.cancel_subscription(sub["razorpay_subscription_id"], at_cycle_end=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to cancel Razorpay subscription: {e}")
+    updated_sub = db.downgrade_to_free(user["id"], cancel_at_period_end=True)
+    return {"ok": True, "subscription": updated_sub}
+
+
+@app.post("/billing/downgrade-to-free")
+def downgrade_to_free_endpoint(user: CurrentUser, req: DowngradeRequest | None = None):
+    check_rate_limit(f"admin:{user['id']}")
+    sub = db.get_subscription(user["id"])
+    immediate = req.immediately if req else False
+
+    if sub:
+        gateway = sub.get("gateway")
+        stripe_sub_id = sub.get("stripe_subscription_id")
+        rzp_sub_id = sub.get("razorpay_subscription_id")
+        if gateway == "stripe" and stripe_sub_id:
+            try:
+                stripe_billing.cancel_subscription(stripe_sub_id, at_period_end=not immediate)
+            except Exception as e:
+                print(f"[downgrade] Stripe cancellation error: {e}")
+        elif gateway == "razorpay" and rzp_sub_id:
+            try:
+                razorpay_billing.cancel_subscription(rzp_sub_id, at_cycle_end=not immediate)
+            except Exception as e:
+                print(f"[downgrade] Razorpay cancellation error: {e}")
+
+    updated_sub = db.downgrade_to_free(user["id"], cancel_at_period_end=not immediate)
+    return {"ok": True, "subscription": updated_sub}
+
+
 # Razorpay webhook — keeps `subscriptions` in sync with real payment events
-# for India. NOT user-auth-gated (Razorpay's servers call this) — instead
-# gated by HMAC signature verification. See razorpay_billing.py's module
-# docstring: structurally complete but not yet exercised against a live
-# Razorpay account (none exists for this project yet).
+# for India. Gated by HMAC signature verification and rate limited.
 @app.post("/billing/razorpay-webhook")
 async def razorpay_webhook(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    check_rate_limit(f"webhook:razorpay:{ip}", limit=60)
     raw_body = await request.body()
     if not razorpay_billing.verify_webhook_signature(
         raw_body, request.headers.get("x-razorpay-signature")
     ):
         raise HTTPException(status_code=401, detail="invalid webhook signature")
-    
+
     req_json = await request.json()
     await run_in_threadpool(razorpay_billing.handle_event, req_json)
     return {"ok": True}
 
 
 # Stripe webhook — keeps `subscriptions` in sync with real payment events for
-# everyone outside India. NOT user-auth-gated (Stripe's servers call this) —
-# instead gated by Stripe's own SDK signature verification. See
-# stripe_billing.py's module docstring: structurally complete but not yet
-# exercised against a live Stripe account (none exists for this project yet).
+# everyone outside India. Gated by Stripe signature verification and rate limited.
 @app.post("/billing/stripe-webhook")
 async def stripe_webhook(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    check_rate_limit(f"webhook:stripe:{ip}", limit=60)
     raw_body = await request.body()
     event = stripe_billing.verify_and_parse_event(raw_body, request.headers.get("stripe-signature"))
     if event is None:
         raise HTTPException(status_code=401, detail="invalid webhook signature")
-    
+
     await run_in_threadpool(stripe_billing.handle_event, event)
     return {"ok": True}
+
 
 
 # Client ki docs (text) bot me daalo aur re-index karo. JWT auth zaroori + must own the bot.

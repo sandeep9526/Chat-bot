@@ -815,3 +815,158 @@ def send_magic_link_email(to_email: str, magic_url: str) -> bool:
     <p>Or paste this link in your browser: {magic_url}</p>
     """
     return send_generic_email(to_email, subject, body)
+
+
+# ---- Transactional Billing Emails -------------------------------------------
+
+def _billing_email_wrapper(title: str, preheader: str, body_html: str) -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin:0; padding:0; background-color:#0f172a; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:#f8fafc;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 40px 15px;">
+        <tr>
+          <td align="center">
+            <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#1e293b; border-radius:16px; border:1px solid #334155; overflow:hidden; box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);">
+              <tr>
+                <td style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); padding: 24px 32px; color:#ffffff;">
+                  <span style="font-size:20px; font-weight:800; letter-spacing:-0.5px;">OCHRESHIFT AI</span>
+                  <p style="margin:4px 0 0 0; font-size:14px; opacity:0.9;">{title}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 32px; color:#cbd5e1; font-size:15px; line-height:1.6;">
+                  {body_html}
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color:#0f172a; padding:18px 32px; text-align:center; color:#64748b; font-size:12px; border-top:1px solid #334155;">
+                  Autonomous Conversational Intelligence &bull; Ochreshift AI
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+
+def send_payment_receipt_email(
+    to_email: str,
+    plan: str,
+    amount: str | float,
+    currency: str = "USD",
+    interval: str = "month",
+    receipt_url: str | None = None,
+) -> bool:
+    """Send branded payment confirmation receipt email."""
+    if not to_email:
+        return False
+    subject = f"Payment Confirmed: Your Ochreshift {plan.capitalize()} Subscription is Active"
+    app_url = os.getenv("NEXT_PUBLIC_APP_URL", "https://app.ochreshift.com")
+    billing_url = f"{app_url}/dashboard#billing"
+    receipt_btn = f'<a href="{receipt_url}" style="color:#60a5fa; text-decoration:underline;">View gateway receipt</a>' if receipt_url else ""
+
+    body = f"""
+    <h2 style="color:#f8fafc; font-size:20px; margin-top:0;">Thank you for your business!</h2>
+    <p>Your payment for the <strong>Ochreshift {plan.capitalize()} Plan</strong> ({interval}ly) was processed successfully.</p>
+    <div style="background-color:#0f172a; border-radius:10px; border:1px solid #334155; padding:20px; margin:24px 0;">
+      <table width="100%" cellpadding="6" cellspacing="0" style="color:#cbd5e1; font-size:14px;">
+        <tr><td style="color:#94a3b8;">Plan</td><td align="right" style="color:#f8fafc; font-weight:600;">{plan.capitalize()}</td></tr>
+        <tr><td style="color:#94a3b8;">Billing Cycle</td><td align="right" style="color:#f8fafc;">{interval.capitalize()}</td></tr>
+        <tr><td style="color:#94a3b8;">Amount Paid</td><td align="right" style="color:#34d399; font-weight:700;">{currency.upper()} {amount}</td></tr>
+        <tr><td style="color:#94a3b8;">Status</td><td align="right" style="color:#34d399; font-weight:600;">Paid & Active</td></tr>
+      </table>
+    </div>
+    <p>{receipt_btn}</p>
+    <div style="margin-top:28px;">
+      <a href="{billing_url}" style="display:inline-block; background-color:#4f46e5; color:#ffffff; font-weight:600; font-size:14px; padding:12px 24px; border-radius:8px; text-decoration:none;">Go to Dashboard</a>
+    </div>
+    """
+    html = _billing_email_wrapper("Subscription Payment Receipt", "Your payment was successful", body)
+    return send_generic_email(to_email, subject, html)
+
+
+def send_payment_failed_alert(to_email: str, plan: str, retry_url: str | None = None) -> bool:
+    """Send payment failure alert warning user of impending interruption."""
+    if not to_email:
+        return False
+    subject = f"Action Required: Payment failed for your Ochreshift {plan.capitalize()} Plan"
+    app_url = os.getenv("NEXT_PUBLIC_APP_URL", "https://app.ochreshift.com")
+    portal_url = retry_url or f"{app_url}/dashboard#billing"
+
+    body = f"""
+    <h2 style="color:#f87171; font-size:20px; margin-top:0;">Payment Attempt Failed</h2>
+    <p>We were unable to process the recurring renewal charge for your <strong>{plan.capitalize()} Plan</strong>.</p>
+    <p>To avoid any disruption to your live AI chatbot widgets or message throughput, please update your payment method.</p>
+    <div style="margin-top:28px;">
+      <a href="{portal_url}" style="display:inline-block; background-color:#ef4444; color:#ffffff; font-weight:600; font-size:14px; padding:12px 24px; border-radius:8px; text-decoration:none;">Update Payment Method</a>
+    </div>
+    """
+    html = _billing_email_wrapper("Billing Notice: Action Needed", "Your payment could not be processed", body)
+    return send_generic_email(to_email, subject, html)
+
+
+def send_subscription_canceled_email(to_email: str, plan: str, access_end_date: str | None = None) -> bool:
+    """Send subscription cancellation confirmation."""
+    if not to_email:
+        return False
+    subject = f"Subscription Canceled: Ochreshift {plan.capitalize()}"
+    end_text = f"You will continue to have full access to your plan features until <strong>{access_end_date}</strong>." if access_end_date else "Your account has transitioned to the forever-free tier."
+    app_url = os.getenv("NEXT_PUBLIC_APP_URL", "https://app.ochreshift.com")
+
+    body = f"""
+    <h2 style="color:#f8fafc; font-size:20px; margin-top:0;">Subscription Cancellation Confirmed</h2>
+    <p>We've received your request to cancel your <strong>{plan.capitalize()} Plan</strong>.</p>
+    <p>{end_text}</p>
+    <p>After that, your chatbots will remain accessible under the forever-free tier (1 bot, 50 messages/month). You can re-subscribe anytime without losing your bot configurations.</p>
+    <div style="margin-top:28px;">
+      <a href="{app_url}/dashboard#billing" style="display:inline-block; background-color:#4f46e5; color:#ffffff; font-weight:600; font-size:14px; padding:12px 24px; border-radius:8px; text-decoration:none;">View Billing Dashboard</a>
+    </div>
+    """
+    html = _billing_email_wrapper("Subscription Cancellation", "Your subscription has been canceled", body)
+    return send_generic_email(to_email, subject, html)
+
+
+def send_trial_expiring_warning(to_email: str, days_left: int, upgrade_url: str | None = None) -> bool:
+    """Send warning before 14-day Pro trial expires."""
+    if not to_email:
+        return False
+    subject = f"Reminder: Your Ochreshift Pro trial ends in {days_left} day{'s' if days_left > 1 else ''}"
+    app_url = os.getenv("NEXT_PUBLIC_APP_URL", "https://app.ochreshift.com")
+    link = upgrade_url or f"{app_url}/dashboard#billing"
+
+    body = f"""
+    <h2 style="color:#f59e0b; font-size:20px; margin-top:0;">Your 14-day Pro Trial is ending soon</h2>
+    <p>You have <strong>{days_left} day{'s' if days_left > 1 else ''}</strong> left of complimentary access to up to 5 chatbots and 10,000 monthly messages.</p>
+    <p>To ensure your website visitors experience no interruption, select a plan before your trial concludes.</p>
+    <div style="margin-top:28px;">
+      <a href="{link}" style="display:inline-block; background-color:#4f46e5; color:#ffffff; font-weight:600; font-size:14px; padding:12px 24px; border-radius:8px; text-decoration:none;">Upgrade to Keep Pro Features</a>
+    </div>
+    """
+    html = _billing_email_wrapper("Trial Ending Notice", f"Only {days_left} days left in your trial", body)
+    return send_generic_email(to_email, subject, html)
+
+
+def send_trial_expired_notice(to_email: str, upgrade_url: str | None = None) -> bool:
+    """Send notice when trial has completed and account transitions to free."""
+    if not to_email:
+        return False
+    subject = "Your Ochreshift Pro Trial has concluded — moved to Free tier"
+    app_url = os.getenv("NEXT_PUBLIC_APP_URL", "https://app.ochreshift.com")
+    link = upgrade_url or f"{app_url}/dashboard#billing"
+
+    body = f"""
+    <h2 style="color:#f8fafc; font-size:20px; margin-top:0;">Your Pro Trial has ended</h2>
+    <p>Your account has automatically moved to our <strong>Forever-Free tier</strong> (1 bot, 50 messages/month) so your primary chatbot remains online.</p>
+    <p>Need more bots, custom domains, CRM webhook syncing, or higher monthly message limits? Upgrade anytime.</p>
+    <div style="margin-top:28px;">
+      <a href="{link}" style="display:inline-block; background-color:#4f46e5; color:#ffffff; font-weight:600; font-size:14px; padding:12px 24px; border-radius:8px; text-decoration:none;">Explore Upgrades</a>
+    </div>
+    """
+    html = _billing_email_wrapper("Trial Concluded", "Your account is now on the Free tier", body)
+    return send_generic_email(to_email, subject, html)
+

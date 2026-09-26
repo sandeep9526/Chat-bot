@@ -7,6 +7,7 @@ interface SwitchProps {
   onCheckedChange: (v: boolean) => void;
   label: string;
   description?: string;
+  disabled?: boolean;
 }
 
 export function Switch({
@@ -14,9 +15,10 @@ export function Switch({
   onCheckedChange,
   label,
   description,
+  disabled,
 }: SwitchProps) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className={cn("flex items-center justify-between gap-3", disabled && "opacity-60 pointer-events-none")}>
       <span className="text-[12.5px] font-[650] text-fg">
         {label}
         {description && (
@@ -27,8 +29,10 @@ export function Switch({
       </span>
       <button
         type="button"
+        disabled={disabled}
         className={cn(
-          "w-10 h-[23px] rounded-full border-none cursor-pointer relative shrink-0 transition-colors duration-[180ms]",
+          "w-10 h-[23px] rounded-full border-none relative shrink-0 transition-colors duration-[180ms]",
+          disabled ? "cursor-not-allowed" : "cursor-pointer",
           "after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:w-[17px] after:h-[17px] after:rounded-full after:bg-white after:shadow-[0_1px_3px_rgba(0,0,0,.3)] after:transition-transform after:duration-[180ms]",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
           checked
@@ -38,7 +42,7 @@ export function Switch({
         role="switch"
         aria-label={label}
         aria-checked={checked}
-        onClick={() => onCheckedChange(!checked)}
+        onClick={() => !disabled && onCheckedChange(!checked)}
       />
     </div>
   );

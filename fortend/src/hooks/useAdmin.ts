@@ -17,12 +17,16 @@ import {
   fetchDocContent,
   deleteDocFile,
   createStripeCheckoutSession,
+  createStripePortalSession,
   createRazorpaySubscription,
+  cancelRazorpaySubscription,
+  downgradeToFree,
   fetchPlaygroundSessions,
   upsertPlaygroundSession,
   deletePlaygroundSession,
   type CreateBotPayload,
   type BillingPlan,
+  type BillingInterval,
 } from "@/lib/adminApi";
 
 export function useBots() {
@@ -109,15 +113,43 @@ export function useSubscription() {
 /** Global (non-India) upgrade — resolves to the Stripe Checkout URL to redirect to. */
 export function useCreateStripeCheckout() {
   return useMutation({
-    mutationFn: (v: { plan: BillingPlan; successUrl: string; cancelUrl: string }) =>
-      createStripeCheckoutSession(v.plan, v.successUrl, v.cancelUrl),
+    mutationFn: (v: { plan: BillingPlan; successUrl: string; cancelUrl: string; interval?: BillingInterval }) =>
+      createStripeCheckoutSession(v.plan, v.successUrl, v.cancelUrl, v.interval),
+  });
+}
+
+/** Opens Stripe Customer Billing Portal for managing invoices and payment methods. */
+export function useCreateStripePortalSession() {
+  return useMutation({
+    mutationFn: (returnUrl: string) => createStripePortalSession(returnUrl),
   });
 }
 
 /** India upgrade — resolves to the Razorpay subscription to open Checkout.js against. */
 export function useCreateRazorpaySubscription() {
   return useMutation({
-    mutationFn: (plan: BillingPlan) => createRazorpaySubscription(plan),
+    mutationFn: (v: { plan: BillingPlan; interval?: BillingInterval } | BillingPlan) => {
+      if (typeof v === "string") return createRazorpaySubscription(v);
+      return createRazorpaySubscription(v.plan, v.interval);
+    },
+  });
+}
+
+/** Graceful downgrade to the forever-free tier. */
+export function useDowngradeToFree() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => downgradeToFree(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "subscription"] }),
+  });
+}
+
+/** Explicit cancellation of active Razorpay subscription at billing cycle end. */
+export function useCancelRazorpaySubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelRazorpaySubscription(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "subscription"] }),
   });
 }
 

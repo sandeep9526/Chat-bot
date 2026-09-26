@@ -24,10 +24,13 @@ fortend/src/components/billing/), not something this backend module does.
 
 import hashlib
 import hmac
+import logging
 import os
 import time
 
 import db
+
+logger = logging.getLogger("ochreshift.billing")
 
 PADDLE_WEBHOOK_SECRET = os.getenv("PADDLE_WEBHOOK_SECRET")
 
@@ -66,33 +69,61 @@ def verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
 
 
 def handle_event(event: dict) -> None:
-    """Update `subscriptions` from a verified Paddle event. Expects
-    event['data']['custom_data']['owner_user_id'] to be set — that means the
-    checkout that created this subscription must have passed
-    customData: {owner_user_id: <our user id>} to Paddle.js, so Paddle hands
-    it back on every webhook for that subscription."""
+    """Update `subscriptions` from a verified Paddle event with atomic idempotency and audit logging."""
+    event_id = event.get("event_id") or event.get("id")
     event_type = event.get("event_type", "")
     data = event.get("data", {})
     owner_user_id = (data.get("custom_data") or {}).get("owner_user_id")
-    if not owner_user_id:
-        return  # not one of our checkouts (or custom_data wasn't wired yet) — ignore
 
-    if event_type == "subscription.created" or event_type == "subscription.updated":
-        price_id = (data.get("items") or [{}])[0].get("price", {}).get("id")
-        plan_info = PRICE_TO_PLAN.get(price_id, {})
-        db.upsert_subscription_from_paddle(
-            owner_user_id=owner_user_id,
-            plan=plan_info.get("plan", "unknown"),
-            status="active" if data.get("status") == "active" else data.get("status", "active"),
-            max_bots=plan_info.get("max_bots"),
-            max_messages_per_month=plan_info.get("max_messages_per_month"),
-            current_period_end=data.get("current_billing_period", {}).get("ends_at"),
-            paddle_subscription_id=data.get("id"),
-            paddle_customer_id=data.get("customer_id"),
-        )
-    elif event_type == "subscription.canceled":
-        db.upsert_subscription_from_paddle(
-            owner_user_id=owner_user_id,
-            status="canceled",
-            paddle_subscription_id=data.get("id"),
-        )
+    # 1. Atomic Idempotency check
+    if event_id:
+        acquired = db.acquire_webhook_lock("paddle", event_id, event_type, owner_user_id, event)
+        if not acquired:
+            logger.info("[paddle_billing] Skipping already processed webhook event: %s (%s)", event_id, event_type)
+            return
+
+    if not owner_user_id:
+        if event_id:
+            db.record_webhook_event("paddle", event_id, event_type, None, event, status="ignored")
+        return
+
+    # 2. Ownership verification against known subscription record
+    sub_id = data.get("id")
+    if owner_user_id and sub_id:
+        if not db.validate_subscription_ownership(owner_user_id, "paddle", sub_id):
+            logger.warning(
+                "[paddle_billing] Security: ownership validation failed for event %s: user %s does not own sub %s",
+                event_id, owner_user_id, sub_id
+            )
+            if event_id:
+                db.record_webhook_event("paddle", event_id, event_type, owner_user_id, event, status="rejected_ownership", error_message="Subscription ownership mismatch")
+            return
+
+    try:
+        if event_type in ("subscription.created", "subscription.updated"):
+            price_id = (data.get("items") or [{}])[0].get("price", {}).get("id")
+            plan_info = PRICE_TO_PLAN.get(price_id, {})
+            db.upsert_subscription_from_paddle(
+                owner_user_id=owner_user_id,
+                plan=plan_info.get("plan", "unknown"),
+                status="active" if data.get("status") == "active" else data.get("status", "active"),
+                max_bots=plan_info.get("max_bots"),
+                max_messages_per_month=plan_info.get("max_messages_per_month"),
+                current_period_end=data.get("current_billing_period", {}).get("ends_at"),
+                paddle_subscription_id=data.get("id"),
+                paddle_customer_id=data.get("customer_id"),
+            )
+        elif event_type == "subscription.canceled":
+            db.upsert_subscription_from_paddle(
+                owner_user_id=owner_user_id,
+                status="canceled",
+                paddle_subscription_id=data.get("id"),
+            )
+
+        if event_id:
+            db.record_webhook_event("paddle", event_id, event_type, owner_user_id, event, status="processed")
+    except Exception as e:
+        logger.error("[paddle_billing] Error handling webhook %s: %s", event_id, e, exc_info=True)
+        if event_id:
+            db.record_webhook_event("paddle", event_id, event_type, owner_user_id, event, status="failed", error_message=str(e))
+        raise

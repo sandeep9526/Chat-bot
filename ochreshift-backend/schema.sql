@@ -1,8 +1,65 @@
--- Ochreshift app schema (Postgres / Neon). Better Auth owns "user"/"session"/
--- "account"/"verification"/"jwks" (migrated separately via the Better Auth
--- CLI from the Next.js app) — this file owns the product tables and
--- references "user"(id) for bot ownership.
+-- Ochreshift app schema (Postgres / Neon).
 --
+-- Better Auth tables ("user", "session", "account", "verification", "jwks").
+-- Safe to re-run: CREATE ... IF NOT EXISTS.
+
+CREATE TABLE IF NOT EXISTS "user" (
+  "id"            TEXT NOT NULL PRIMARY KEY,
+  "name"          TEXT NOT NULL,
+  "email"         TEXT NOT NULL UNIQUE,
+  "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+  "image"         TEXT,
+  "createdAt"     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "session" (
+  "id"        TEXT NOT NULL PRIMARY KEY,
+  "expiresAt" TIMESTAMPTZ NOT NULL,
+  "token"     TEXT NOT NULL UNIQUE,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "ipAddress" TEXT,
+  "userAgent" TEXT,
+  "userId"    TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS "session_userId_idx" ON "session"("userId");
+
+CREATE TABLE IF NOT EXISTS "account" (
+  "id"                   TEXT NOT NULL PRIMARY KEY,
+  "accountId"            TEXT NOT NULL,
+  "providerId"           TEXT NOT NULL,
+  "userId"               TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "accessToken"          TEXT,
+  "refreshToken"         TEXT,
+  "idToken"              TEXT,
+  "accessTokenExpiresAt" TIMESTAMPTZ,
+  "refreshTokenExpiresAt" TIMESTAMPTZ,
+  "scope"                TEXT,
+  "password"             TEXT,
+  "createdAt"            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "account_userId_idx" ON "account"("userId");
+
+CREATE TABLE IF NOT EXISTS "verification" (
+  "id"         TEXT NOT NULL PRIMARY KEY,
+  "identifier" TEXT NOT NULL,
+  "value"      TEXT NOT NULL,
+  "expiresAt"  TIMESTAMPTZ NOT NULL,
+  "createdAt"  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON "verification"("identifier");
+
+CREATE TABLE IF NOT EXISTS "jwks" (
+  "id"         TEXT NOT NULL PRIMARY KEY,
+  "publicKey"  TEXT NOT NULL,
+  "privateKey" TEXT NOT NULL,
+  "createdAt"  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "expiresAt"  TIMESTAMPTZ
+);
+
 -- Safe to re-run: CREATE ... IF NOT EXISTS + DROP POLICY IF EXISTS before
 -- each CREATE POLICY.
 
@@ -233,6 +290,9 @@ ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_customer_id TEXT;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS currency TEXT;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS billing_interval TEXT DEFAULT 'month';
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancel_at_period_end BOOLEAN DEFAULT false;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS canceled_at TIMESTAMPTZ;
 
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions FORCE  ROW LEVEL SECURITY;
@@ -363,3 +423,22 @@ CREATE TABLE IF NOT EXISTS email_campaign_logs (
   sent_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, campaign_stage)
 );
+
+-- Webhook event audit log and idempotency deduplication table
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id             BIGSERIAL PRIMARY KEY,
+  gateway        TEXT NOT NULL,
+  event_id       TEXT NOT NULL,
+  event_type     TEXT NOT NULL,
+  owner_user_id  TEXT REFERENCES "user"(id) ON DELETE SET NULL,
+  payload        JSONB,
+  status         TEXT NOT NULL DEFAULT 'processed', -- processed | ignored | failed
+  error_message  TEXT,
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (gateway, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_events_gateway_id ON webhook_events (gateway, event_id);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON webhook_events TO ochreshift_app;
+GRANT USAGE, SELECT ON SEQUENCE webhook_events_id_seq TO ochreshift_app;

@@ -19,6 +19,7 @@ setting up a new environment — this module assumes the schema already
 exists and only opens a connection pool against it.
 """
 
+import datetime
 import os
 
 import psycopg
@@ -61,7 +62,27 @@ def init_db() -> None:
     try:
         with _get_pool().connection() as conn, conn.cursor() as cur:
             cur.execute("SELECT 1")
-        print("[db] Successfully connected to Postgres database.")
+            # Auto-ensure columns/tables for subscriptions and webhook_events
+            cur.execute("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS billing_interval TEXT DEFAULT 'month'")
+            cur.execute("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancel_at_period_end BOOLEAN DEFAULT false")
+            cur.execute("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS canceled_at TIMESTAMPTZ")
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS webhook_events (
+              id             BIGSERIAL PRIMARY KEY,
+              gateway        TEXT NOT NULL,
+              event_id       TEXT NOT NULL,
+              event_type     TEXT NOT NULL,
+              owner_user_id  TEXT REFERENCES "user"(id) ON DELETE SET NULL,
+              payload        JSONB,
+              status         TEXT NOT NULL DEFAULT 'processed',
+              error_message  TEXT,
+              created_at     TIMESTAMPTZ DEFAULT now(),
+              UNIQUE (gateway, event_id)
+            )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_webhook_events_gateway_id ON webhook_events (gateway, event_id)")
+            conn.commit()
+        print("[db] Successfully connected to Postgres database and verified schema.")
     except Exception as e:
         print(f"[db] Warning: Could not connect to Postgres database ({e}). Operating in degraded/offline fallback mode.")
 
@@ -114,7 +135,8 @@ class BotLimitExceeded(Exception):
 # negotiated deal gets exact custom caps via set_owner_plan()'s override args.
 #   plan: (max_bots, max_messages_per_month)
 PLAN_LIMITS: dict[str, tuple[int, int]] = {
-    "trial": (1, 500),
+    "free": (1, 50),
+    "trial": (5, 10_000),      # 14-day Pro trial overlay (5 bots, 10k messages)
     "starter": (1, 2_000),
     "pro": (5, 10_000),
     "business": (25, 50_000),
@@ -125,15 +147,17 @@ PLAN_LIMITS: dict[str, tuple[int, int]] = {
 # A platform-admin-suspended bot is always inactive, regardless of plan. A
 # bot with no owner (the pre-existing demo bots) is never license-gated —
 # treat it as always active. Otherwise, an owned bot is active if its
-# owner's subscription is a live trial or a paid period that hasn't lapsed.
+# owner's subscription is a live trial, active paid period, or forever-free tier.
 _IS_ACTIVE_SQL = """
   CASE
     WHEN b.suspended THEN false
     WHEN b.paused THEN false
     WHEN b.owner_user_id IS NULL THEN true
     WHEN s.status IS NULL THEN true
-    WHEN s.status = 'trialing' THEN true
+    WHEN s.status = 'trialing' AND (s.trial_ends_at IS NULL OR s.trial_ends_at > now()) THEN true
+    WHEN s.status = 'trialing' AND s.trial_ends_at <= now() THEN false
     WHEN s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > now()) THEN true
+    WHEN s.status = 'free' THEN true
     ELSE false
   END AS is_active
 """
@@ -335,21 +359,16 @@ def get_bot_for_owner(bot_id: str, owner_user_id: str) -> dict | None:
 
 
 def _ensure_trial_subscription(cur, owner_user_id: str) -> int:
-    """Idempotent: create a 14-day trial subscription for this owner if they
-    don't have one yet (called from within upsert_bot's transaction — same
-    cur, same app.user_id already set). Returns their current max_bots."""
+    """Idempotent: create a 14-day Pro trial subscription for this owner if they
+    don't have one yet (5 bots, 10,000 messages/month, white-label). Returns max_bots."""
     cur.execute("SELECT max_bots FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
     row = cur.fetchone()
     if row:
-        mb = row.get("max_bots") if isinstance(row, dict) else row[0]
-        if mb < 5:
-            cur.execute("UPDATE subscriptions SET max_bots = 5 WHERE owner_user_id = %s", (owner_user_id,))
-            return 5
-        return mb
+        return row.get("max_bots") if isinstance(row, dict) else row[0]
     cur.execute(
         """
-        INSERT INTO subscriptions (owner_user_id, plan, status, max_bots, trial_ends_at)
-        VALUES (%s, 'trial', 'trialing', 5, now() + interval '14 days')
+        INSERT INTO subscriptions (owner_user_id, plan, status, max_bots, max_messages_per_month, trial_ends_at)
+        VALUES (%s, 'trial', 'trialing', 5, 10000, now() + interval '14 days')
         RETURNING max_bots
         """,
         (owner_user_id,),
@@ -360,8 +379,8 @@ def _ensure_trial_subscription(cur, owner_user_id: str) -> int:
 
 def get_subscription(owner_user_id: str) -> dict | None:
     """The caller's own plan/status + actual usage — for the dashboard's
-    billing view. botsUsed/messagesThisMonth are real counts, not just the
-    plan's limits, so the UI can show e.g. '342 / 500 this month'."""
+    billing view. Automatically transitions expired 14-day Pro trials to the
+    forever-free tier (1 bot, 50 messages/month) so bots remain live."""
     with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         _set_owner(cur, owner_user_id)
         cur.execute("SELECT * FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
@@ -372,10 +391,26 @@ def get_subscription(owner_user_id: str) -> dict | None:
             row = cur.fetchone()
         if not row:
             return None
+
+        # Check for trial expiration -> auto-transition to forever-free tier
+        now_dt = datetime.datetime.now(datetime.timezone.utc)
+        sub_status = row.get("status")
+        trial_ends = row.get("trial_ends_at")
+        was_trial_expired = False
+        if sub_status == "trialing" and trial_ends and trial_ends <= now_dt:
+            was_trial_expired = True
+            cur.execute(
+                """
+                UPDATE subscriptions
+                SET plan = 'free', status = 'active', max_bots = 1, max_messages_per_month = 50, updated_at = now()
+                WHERE owner_user_id = %s
+                """,
+                (owner_user_id,),
+            )
+            cur.execute("SELECT * FROM subscriptions WHERE owner_user_id = %s", (owner_user_id,))
+            row = cur.fetchone()
+
         sub = dict(row)
-        if sub.get("max_bots", 0) < 5:
-            cur.execute("UPDATE subscriptions SET max_bots = 5 WHERE owner_user_id = %s", (owner_user_id,))
-            sub["max_bots"] = 5
         cur.execute("SELECT COUNT(*) AS n FROM bots WHERE owner_user_id = %s", (owner_user_id,))
         sub["bots_used"] = cur.fetchone()["n"]
         cur.execute(
@@ -387,6 +422,24 @@ def get_subscription(owner_user_id: str) -> dict | None:
             (owner_user_id,),
         )
         sub["messages_this_month"] = cur.fetchone()["n"]
+
+        # Enriched status metadata for psychological & conversion triggers in UI
+        sub["is_trialing"] = (sub.get("status") == "trialing")
+        sub["trial_expired"] = was_trial_expired
+        if sub.get("trial_ends_at") and sub.get("status") == "trialing":
+            td = sub["trial_ends_at"] - now_dt
+            sub["days_left_in_trial"] = max(0, td.days)
+        else:
+            sub["days_left_in_trial"] = 0
+
+        max_msgs = sub.get("max_messages_per_month") or 500
+        msgs_used = sub.get("messages_this_month") or 0
+        sub["usage_percent_messages"] = min(100, round((msgs_used / max_msgs) * 100)) if max_msgs > 0 else 0
+
+        max_b = sub.get("max_bots") or 1
+        b_used = sub.get("bots_used") or 0
+        sub["usage_percent_bots"] = min(100, round((b_used / max_b) * 100)) if max_b > 0 else 0
+
         return sub
 
 
@@ -411,6 +464,7 @@ def _upsert_subscription(
     subscription_id: str | None = None,
     customer_id: str | None = None,
     currency: str | None = None,
+    billing_interval: str | None = None,
 ) -> None:
     """Trusted write path shared by every subscription writer — the trial
     auto-provisioner never calls this (it INSERTs directly, see
@@ -453,6 +507,12 @@ def _upsert_subscription(
     params.append(currency)
     update_clauses.append("currency = COALESCE(excluded.currency, subscriptions.currency)")
 
+    if billing_interval:
+        columns.append("billing_interval")
+        placeholders.append("%s")
+        params.append(billing_interval)
+        update_clauses.append("billing_interval = COALESCE(excluded.billing_interval, subscriptions.billing_interval)")
+
     with _get_pool().connection() as conn, conn.cursor() as cur:
         _set_owner(cur, owner_user_id)
         cur.execute(
@@ -494,13 +554,14 @@ def upsert_subscription_from_razorpay(
     current_period_end: str | None = None,
     razorpay_subscription_id: str | None = None,
     razorpay_customer_id: str | None = None,
+    billing_interval: str | None = None,
 ) -> None:
     """Trusted write path for the Razorpay webhook handler ONLY (India) —
     see _upsert_subscription's docstring for the shared trust model."""
     _upsert_subscription(
         owner_user_id, "razorpay", plan, status, max_bots, max_messages_per_month,
         current_period_end, razorpay_subscription_id, razorpay_customer_id,
-        currency="INR",
+        currency="INR", billing_interval=billing_interval,
     )
 
 
@@ -513,6 +574,7 @@ def upsert_subscription_from_stripe(
     current_period_end: str | None = None,
     stripe_subscription_id: str | None = None,
     stripe_customer_id: str | None = None,
+    billing_interval: str | None = None,
 ) -> None:
     """Trusted write path for the Stripe webhook handler ONLY (global,
     non-India) — see _upsert_subscription's docstring for the shared trust
@@ -520,8 +582,254 @@ def upsert_subscription_from_stripe(
     _upsert_subscription(
         owner_user_id, "stripe", plan, status, max_bots, max_messages_per_month,
         current_period_end, stripe_subscription_id, stripe_customer_id,
-        currency="USD",
+        currency="USD", billing_interval=billing_interval,
     )
+
+
+def downgrade_to_free(owner_user_id: str, cancel_at_period_end: bool = False) -> dict | None:
+    """Downgrade an account to the forever-free tier (1 bot, 50 messages/month).
+    If cancel_at_period_end is True, records cancellation while keeping current paid limits
+    until current_period_end. If False, immediately resets to free tier limits atomically."""
+    free_bots, free_msgs = PLAN_LIMITS["free"]
+    with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        _set_owner(cur, owner_user_id)
+        if cancel_at_period_end:
+            cur.execute(
+                """
+                UPDATE subscriptions
+                SET cancel_at_period_end = true,
+                    canceled_at = now(),
+                    updated_at = now()
+                WHERE owner_user_id = %s
+                """,
+                (owner_user_id,),
+            )
+        else:
+            cur.execute(
+                """
+                INSERT INTO subscriptions (
+                    owner_user_id, gateway, plan, status, max_bots,
+                    max_messages_per_month, cancel_at_period_end, canceled_at, updated_at
+                )
+                VALUES (%s, 'manual', 'free', 'active', %s, %s, false, now(), now())
+                ON CONFLICT (owner_user_id) DO UPDATE SET
+                  gateway = 'manual',
+                  plan = 'free',
+                  status = 'active',
+                  max_bots = EXCLUDED.max_bots,
+                  max_messages_per_month = EXCLUDED.max_messages_per_month,
+                  cancel_at_period_end = false,
+                  canceled_at = now(),
+                  updated_at = now()
+                """,
+                (owner_user_id, free_bots, free_msgs),
+            )
+        conn.commit()
+    return get_subscription(owner_user_id)
+
+
+def acquire_webhook_lock(
+    gateway: str,
+    event_id: str,
+    event_type: str,
+    owner_user_id: str | None = None,
+    payload: dict | None = None,
+) -> bool:
+    """Atomically claim a webhook event. Returns True if this call acquired it (first processor),
+    False if already claimed (duplicate). Uses INSERT ON CONFLICT DO NOTHING RETURNING id."""
+    if _postgres_disabled or not event_id:
+        return True
+    import json
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO webhook_events (gateway, event_id, event_type, owner_user_id, payload, status)
+                VALUES (%s, %s, %s, %s, %s, 'processing')
+                ON CONFLICT (gateway, event_id) DO NOTHING
+                RETURNING id
+                """,
+                (
+                    gateway,
+                    event_id,
+                    event_type,
+                    owner_user_id,
+                    json.dumps(payload) if payload else None,
+                ),
+            )
+            row = cur.fetchone()
+            conn.commit()
+            return row is not None
+    except Exception as e:
+        print(f"[db] Error acquiring webhook lock: {e}")
+        raise
+
+
+def is_webhook_event_processed(gateway: str, event_id: str) -> bool:
+    """Check if a webhook event from gateway has already been processed or logged."""
+    if _postgres_disabled or not event_id:
+        return False
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM webhook_events WHERE gateway = %s AND event_id = %s",
+                (gateway, event_id),
+            )
+            return cur.fetchone() is not None
+    except Exception as e:
+        print(f"[db] Warning: error checking webhook idempotency: {e}")
+        return False
+
+
+def record_webhook_event(
+    gateway: str,
+    event_id: str,
+    event_type: str,
+    owner_user_id: str | None = None,
+    payload: dict | None = None,
+    status: str = "processed",
+    error_message: str | None = None,
+) -> None:
+    """Audit log or update status of a payment gateway webhook event."""
+    if _postgres_disabled or not event_id:
+        return
+    import json
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO webhook_events (gateway, event_id, event_type, owner_user_id, payload, status, error_message)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (gateway, event_id) DO UPDATE SET
+                  status = EXCLUDED.status,
+                  error_message = EXCLUDED.error_message,
+                  owner_user_id = COALESCE(EXCLUDED.owner_user_id, webhook_events.owner_user_id),
+                  payload = COALESCE(EXCLUDED.payload, webhook_events.payload)
+                """,
+                (
+                    gateway,
+                    event_id,
+                    event_type,
+                    owner_user_id,
+                    json.dumps(payload) if payload else None,
+                    status,
+                    error_message,
+                ),
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"[db] Warning: error recording webhook event: {e}")
+
+
+def validate_subscription_ownership(owner_user_id: str, gateway: str, subscription_id: str) -> bool:
+    """Check if this gateway subscription ID belongs to this owner (or is new / first activation).
+    Prevents cross-account subscription hijacking if metadata is tampered or leaked."""
+    if _postgres_disabled or not owner_user_id or not subscription_id:
+        return True
+    col_map = {
+        "stripe": "stripe_subscription_id",
+        "razorpay": "razorpay_subscription_id",
+        "paddle": "paddle_subscription_id",
+    }
+    sub_col = col_map.get(gateway)
+    if not sub_col:
+        return True
+    try:
+        with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            # Check if this subscription_id belongs to ANOTHER user
+            cur.execute(
+                f'SELECT owner_user_id FROM subscriptions WHERE {sub_col} = %s AND owner_user_id != %s',
+                (subscription_id, owner_user_id),
+            )
+            conflict = cur.fetchone()
+            if conflict:
+                return False
+
+            # Check this user's current subscription
+            cur.execute(
+                f'SELECT {sub_col}, gateway FROM subscriptions WHERE owner_user_id = %s',
+                (owner_user_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return True
+            existing_sub_id = row.get(sub_col)
+            if not existing_sub_id:
+                return True
+            return existing_sub_id == subscription_id
+    except Exception as e:
+        print(f"[db] Error in validate_subscription_ownership: {e}")
+        return False
+
+
+def get_user_email(user_id: str) -> str | None:
+    """Lookup a user's email. Used by webhook handlers for transactional notifications."""
+    if _postgres_disabled or not user_id:
+        return None
+    try:
+        with _get_pool().connection() as conn, conn.cursor() as cur:
+            cur.execute('SELECT email FROM "user" WHERE id = %s', (user_id,))
+            row = cur.fetchone()
+            return row[0] if row and row[0] else None
+    except Exception as e:
+        print(f"[db] Error in get_user_email: {e}")
+        return None
+
+
+def transition_period_end_cancellations() -> list[dict]:
+    """Transitions subscriptions that have cancel_at_period_end = true and whose
+    current_period_end has passed to the free tier."""
+    free_bots, free_msgs = PLAN_LIMITS["free"]
+    try:
+        with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                UPDATE subscriptions
+                SET plan = 'free',
+                    status = 'active',
+                    max_bots = %s,
+                    max_messages_per_month = %s,
+                    cancel_at_period_end = false,
+                    gateway = 'manual',
+                    updated_at = now()
+                WHERE cancel_at_period_end = true
+                  AND current_period_end IS NOT NULL
+                  AND current_period_end <= now()
+                  AND plan != 'free'
+                RETURNING owner_user_id, current_period_end
+                """,
+                (free_bots, free_msgs),
+            )
+            rows = cur.fetchall()
+            conn.commit()
+            return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"[db] Error in transition_period_end_cancellations: {e}")
+        return []
+
+
+def transition_expired_trials() -> list[dict]:
+    """Scans and transitions all expired trials to the forever-free tier.
+    Used by background cron workers (cron_trial_expiry.py)."""
+    if _postgres_disabled:
+        return []
+    try:
+        with _get_pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                UPDATE subscriptions
+                SET plan = 'free', status = 'active', max_bots = 1, max_messages_per_month = 50, updated_at = now()
+                WHERE status = 'trialing' AND trial_ends_at <= now()
+                RETURNING owner_user_id, plan, status, trial_ends_at
+                """
+            )
+            rows = cur.fetchall()
+            conn.commit()
+            return rows
+    except Exception as e:
+        print(f"[db] Warning: error transitioning expired trials: {e}")
+        return []
+
 
 
 def check_usage_limit(bot_id: str, owner_user_id: str, max_messages_per_month: int) -> bool:

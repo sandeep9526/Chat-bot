@@ -210,6 +210,19 @@ export interface Subscription {
   current_period_end?: string | null;
   bots_used?: number;
   messages_this_month?: number;
+  gateway?: string | null;
+  currency?: string | null;
+  billing_interval?: "month" | "year" | string | null;
+  is_trialing?: boolean;
+  trial_expired?: boolean;
+  days_left_in_trial?: number;
+  usage_percent_messages?: number;
+  usage_percent_bots?: number;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  razorpay_subscription_id?: string | null;
+  cancel_at_period_end?: boolean | null;
+  canceled_at?: string | null;
 }
 
 export async function fetchSubscription(): Promise<Subscription> {
@@ -217,7 +230,8 @@ export async function fetchSubscription(): Promise<Subscription> {
 }
 
 /** Self-serve plans a paying owner can pick in the upgrade flow. */
-export type BillingPlan = "starter" | "pro" | "business" | "enterprise";
+export type BillingPlan = "free" | "starter" | "pro" | "business" | "enterprise";
+export type BillingInterval = "month" | "year";
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const authHeaders = await getAuthHeaders();
@@ -269,19 +283,29 @@ export async function generateBotQuestions(botId: string): Promise<string[]> {
 /**
  * Global (non-India) checkout — creates a Stripe Checkout Session and
  * returns its hosted-page URL; the caller redirects the browser there.
- * Throws AdminApiError(400) if the plan has no Stripe price configured yet
- * (e.g. "enterprise" before a self-serve price exists — callers should fall
- * back to a "contact sales" link in that case).
+ * Supports monthly and annual billing intervals.
  */
 export async function createStripeCheckoutSession(
   plan: BillingPlan,
   successUrl: string,
   cancelUrl: string,
+  interval: BillingInterval = "month",
 ): Promise<string> {
   const { url } = await postJson<{ url: string }>("/billing/stripe/create-checkout-session", {
     plan,
     successUrl,
     cancelUrl,
+    interval,
+  });
+  return url;
+}
+
+/**
+ * Opens self-serve Stripe Billing Customer Portal for invoices, cards, and receipts.
+ */
+export async function createStripePortalSession(returnUrl: string): Promise<string> {
+  const { url } = await postJson<{ url: string }>("/billing/stripe/create-portal-session", {
+    returnUrl,
   });
   return url;
 }
@@ -289,16 +313,42 @@ export async function createStripeCheckoutSession(
 /**
  * India checkout — creates a Razorpay Subscription; the caller opens
  * Razorpay Checkout.js against the returned subscriptionId/keyId (see
- * BillingCard.tsx). Throws AdminApiError(400) if the plan has no Razorpay
- * plan configured yet.
+ * BillingCard.tsx). Supports monthly and annual intervals.
  */
 export async function createRazorpaySubscription(
   plan: BillingPlan,
+  interval: BillingInterval = "month",
 ): Promise<{ subscriptionId: string; keyId: string }> {
   return postJson<{ subscriptionId: string; keyId: string }>(
     "/billing/razorpay/create-subscription",
-    { plan },
+    { plan, interval },
   );
+}
+
+/**
+ * Gracefully downgrades an account to the forever-free tier (1 bot, 50 msgs/mo)
+ * to prevent abrupt service interruption.
+ */
+export async function downgradeToFree(): Promise<{ ok: boolean; subscription: Subscription }> {
+  return postJson<{ ok: boolean; subscription: Subscription }>("/billing/downgrade-to-free", {});
+}
+
+/**
+ * Verifies Razorpay checkout subscription signature on the server.
+ */
+export async function verifyRazorpayPayment(payload: {
+  subscriptionId: string;
+  paymentId: string;
+  signature: string;
+}): Promise<{ ok: boolean; subscription: Subscription }> {
+  return postJson<{ ok: boolean; subscription: Subscription }>("/billing/razorpay/verify", payload);
+}
+
+/**
+ * Explicitly cancels an active Razorpay subscription.
+ */
+export async function cancelRazorpaySubscription(): Promise<{ ok: boolean; subscription: Subscription }> {
+  return postJson<{ ok: boolean; subscription: Subscription }>("/billing/razorpay/cancel", {});
 }
 
 /** GDPR-style delete-on-request. Backend 404s if the lead doesn't exist or isn't yours. */

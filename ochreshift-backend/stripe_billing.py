@@ -1,35 +1,15 @@
 """
 Stripe billing integration (global, non-India) — Checkout Sessions for
-signup and a webhook receiver that keeps `subscriptions` in sync with real
-payment events. This is the global counterpart to razorpay_billing.py
-(India); main.py routes a checkout request to one or the other based on the
-plan the owner is paying for, chosen client-side (see BillingCard.tsx).
-
-STATUS: structurally complete, NOT live-tested — there is no Stripe account
-for this project yet, so nothing here has been exercised against Stripe's
-real servers. Webhook signature verification uses Stripe's own SDK
-(stripe.Webhook.construct_event) rather than a hand-rolled HMAC check, since
-that's Stripe-maintained and already covers the header format correctly —
-unlike billing.py's Paddle scheme or razorpay_billing.py's, there's nothing
-of ours to self-test here. Before going live:
-  1. Create a Stripe account, a Product with one recurring Price per plan in
-     PLAN_LIMITS (USD, monthly) — including "enterprise", or leave it out to
-     keep enterprise as a "contact sales"-only tier (BillingCard.tsx falls
-     back to that automatically when PLAN_TO_STRIPE_PRICE_ID has no entry).
-     Fill in each price id under PLAN_TO_STRIPE_PRICE_ID below.
-  2. Dashboard → Developers → Webhooks → add an endpoint at
-     POST {API_URL}/billing/stripe-webhook, subscribed to at least:
-     checkout.session.completed, customer.subscription.updated,
-     customer.subscription.deleted. Copy its signing secret into
-     STRIPE_WEBHOOK_SECRET.
-  3. Set STRIPE_SECRET_KEY (Dashboard → Developers → API keys) in .env.
-  4. Use `stripe trigger` or a real test-mode checkout to fire each event
-     above and watch the `subscriptions` table update correctly — do not
-     trust this file's event-shape assumptions until you've seen a real
-     payload; Stripe's docs are the source of truth at integration time.
+signup, Customer Portal sessions for self-serve management, and a webhook receiver
+that keeps `subscriptions` in sync with real payment events. This is the global
+counterpart to razorpay_billing.py (India); main.py routes a checkout request to
+one or the other based on the chosen gateway and plan (see BillingCard.tsx).
 """
 
+from __future__ import annotations
+
 import datetime
+import logging
 import os
 
 try:
@@ -37,17 +17,70 @@ try:
     stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 except ImportError:
     stripe = None
+
+import db
+from notifications import (
+    send_payment_receipt_email,
+    send_payment_failed_alert,
+    send_subscription_canceled_email,
+)
+
+logger = logging.getLogger("ochreshift.stripe_billing")
+
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-# Our plan name -> Stripe recurring Price id. Fill these in once real prices
-# exist in the Stripe dashboard. A plan with no entry here (e.g. "enterprise"
-# until a self-serve price is set up) simply can't self-serve checkout —
-# create_checkout_session raises and the frontend falls back to "contact us".
-PLAN_TO_STRIPE_PRICE_ID: dict[str, str] = {
-    "starter": "price_1Twz6jBDUfmAcUQEKs1x7iVC",
-    "pro": "price_1Twz8XBDUfmAcUQE03jR6x6A",
-    "enterprise": "price_1Twz95BDUfmAcUQEWnodECQF",
+# Predefined Stripe recurring Price IDs.
+# Can be overridden or supplied via environment variables:
+#   STRIPE_PRICE_{PLAN}_{INTERVAL} (e.g. STRIPE_PRICE_STARTER_MONTH, STRIPE_PRICE_PRO_YEAR)
+PLAN_INTERVAL_TO_STRIPE_PRICE_ID: dict[tuple[str, str], str] = {
+    ("starter", "month"): os.getenv("STRIPE_PRICE_STARTER_MONTH", "price_1Twz6jBDUfmAcUQEKs1x7iVC"),
+    ("starter", "year"): os.getenv("STRIPE_PRICE_STARTER_YEAR", "price_1Twz6jBDUfmAcUQEKs1x7iVC_annual"),
+    ("pro", "month"): os.getenv("STRIPE_PRICE_PRO_MONTH", "price_1Twz8XBDUfmAcUQE03jR6x6A"),
+    ("pro", "year"): os.getenv("STRIPE_PRICE_PRO_YEAR", "price_1Twz8XBDUfmAcUQE03jR6x6A_annual"),
+    ("business", "month"): os.getenv("STRIPE_PRICE_BUSINESS_MONTH", "price_1TwzBusinessMonth"),
+    ("business", "year"): os.getenv("STRIPE_PRICE_BUSINESS_YEAR", "price_1TwzBusinessYear"),
+    ("enterprise", "month"): os.getenv("STRIPE_PRICE_ENTERPRISE_MONTH", "price_1Twz95BDUfmAcUQEWnodECQF"),
+    ("enterprise", "year"): os.getenv("STRIPE_PRICE_ENTERPRISE_YEAR", "price_1Twz95BDUfmAcUQEWnodECQF_annual"),
 }
+
+_PLACEHOLDER_PRICE_IDS = {
+    "price_1Twz6jBDUfmAcUQEKs1x7iVC_annual",
+    "price_1Twz8XBDUfmAcUQE03jR6x6A_annual",
+    "price_1TwzBusinessMonth",
+    "price_1TwzBusinessYear",
+    "price_1Twz95BDUfmAcUQEWnodECQF_annual",
+}
+
+
+def is_valid_price_id(price_id: str | None) -> bool:
+    """True if price_id is non-empty and not an explicit placeholder or mock string."""
+    if not price_id:
+        return False
+    if price_id in _PLACEHOLDER_PRICE_IDS:
+        return False
+    if price_id.endswith("_annual") or "Business" in price_id:
+        return False
+    return True
+
+
+def _log_price_config_status() -> None:
+    for (plan, interval), price_id in PLAN_INTERVAL_TO_STRIPE_PRICE_ID.items():
+        if not is_valid_price_id(price_id):
+            logger.warning("[stripe_billing] ⚠️ Plan '%s' (%s) has placeholder price ID '%s' — checkout will fail", plan, interval, price_id)
+        else:
+            logger.info("[stripe_billing] ✓ Plan '%s' (%s) configured with price ID '%s'", plan, interval, price_id)
+
+
+_log_price_config_status()
+
+
+def get_stripe_price_id(plan: str, interval: str = "month") -> str | None:
+    norm_interval = "year" if interval in ("year", "annual", "yearly") else "month"
+    env_name = f"STRIPE_PRICE_{plan.upper()}_{norm_interval.upper()}"
+    env_val = os.getenv(env_name)
+    if env_val:
+        return env_val
+    return PLAN_INTERVAL_TO_STRIPE_PRICE_ID.get((plan, norm_interval))
 
 
 def create_checkout_session(
@@ -56,17 +89,26 @@ def create_checkout_session(
     owner_email: str | None,
     success_url: str,
     cancel_url: str,
+    interval: str = "month",
 ) -> str:
-    """Creates a Stripe Checkout Session (hosted page) and returns its URL —
-    the caller redirects the browser there (see BillingCard.tsx). Both
-    `client_reference_id` and `subscription_data.metadata` carry
-    owner_user_id/plan so the webhook handler below can recover them from
-    either the session itself (checkout.session.completed) or the
-    subscription object directly (customer.subscription.updated/deleted,
-    which don't include the originating session)."""
-    price_id = PLAN_TO_STRIPE_PRICE_ID.get(plan)
-    if not price_id:
-        raise ValueError(f"no Stripe price configured for '{plan}'")
+    """Creates a Stripe Checkout Session (hosted page) and returns its URL."""
+    if not stripe or not stripe.api_key:
+        raise RuntimeError("Stripe API key is not configured.")
+
+    if plan == "enterprise":
+        raise ValueError("Enterprise plan requires custom high-throughput deployment. Please contact sales at sales@ochreshift.in")
+
+    norm_interval = "year" if interval in ("year", "annual", "yearly") else "month"
+    price_id = get_stripe_price_id(plan, norm_interval)
+    if not price_id or not is_valid_price_id(price_id):
+        raise ValueError(f"Plan '{plan}' ({norm_interval}) configuration is currently being provisioned. Please contact support.")
+
+    metadata = {
+        "owner_user_id": owner_user_id,
+        "plan": plan,
+        "interval": norm_interval,
+    }
+
     session = stripe.checkout.Session.create(
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
@@ -74,19 +116,62 @@ def create_checkout_session(
         cancel_url=cancel_url,
         client_reference_id=owner_user_id,
         customer_email=owner_email,
-        subscription_data={"metadata": {"owner_user_id": owner_user_id, "plan": plan}},
-        metadata={"owner_user_id": owner_user_id, "plan": plan},
+        subscription_data={"metadata": metadata},
+        metadata=metadata,
         allow_promotion_codes=True,
     )
     return session.url
 
 
+def create_customer_portal_session(stripe_customer_id: str, return_url: str) -> str:
+    """Creates a self-serve Stripe Billing Customer Portal session."""
+    if not stripe or not stripe.api_key:
+        raise RuntimeError("Stripe API key is not configured.")
+    portal_session = stripe.billing_portal.Session.create(
+        customer=stripe_customer_id,
+        return_url=return_url,
+    )
+    return portal_session.url
+
+
+def cancel_subscription(stripe_subscription_id: str, at_period_end: bool = True) -> dict:
+    """Cancels a Stripe subscription either at period end or immediately."""
+    if not stripe or not stripe.api_key:
+        raise RuntimeError("Stripe API key is not configured.")
+    if at_period_end:
+        return stripe.Subscription.modify(stripe_subscription_id, cancel_at_period_end=True)
+    return stripe.Subscription.cancel(stripe_subscription_id)
+
+
+def modify_subscription_plan(
+    stripe_subscription_id: str,
+    new_plan: str,
+    new_interval: str = "month",
+) -> dict:
+    """Updates an existing subscription to a new plan/tier with immediate proration."""
+    if not stripe or not stripe.api_key:
+        raise RuntimeError("Stripe API key is not configured.")
+    price_id = get_stripe_price_id(new_plan, new_interval)
+    if not price_id or not is_valid_price_id(price_id):
+        raise ValueError(f"Cannot switch to '{new_plan}' — invalid price ID.")
+    sub = stripe.Subscription.retrieve(stripe_subscription_id)
+    items = sub.get("items", {}).get("data", [])
+    if not items:
+        raise RuntimeError("No items found on subscription to modify.")
+    item_id = items[0]["id"]
+    metadata = dict(sub.get("metadata") or {})
+    metadata.update({"plan": new_plan, "interval": new_interval})
+    return stripe.Subscription.modify(
+        stripe_subscription_id,
+        items=[{"id": item_id, "price": price_id}],
+        proration_behavior="always_invoice",
+        metadata=metadata,
+    )
+
+
 def verify_and_parse_event(raw_body: bytes, signature_header: str | None) -> dict | None:
-    """Verifies + decodes a Stripe webhook payload via Stripe's own SDK.
-    Returns None (never raises) on any failure — missing secret, missing/bad
-    signature header, or a tampered body — so main.py can turn that into a
-    uniform 401 without needing to know Stripe's exception types."""
-    if not STRIPE_WEBHOOK_SECRET or not signature_header:
+    """Verifies + decodes a Stripe webhook payload via Stripe's SDK."""
+    if not STRIPE_WEBHOOK_SECRET or not signature_header or not stripe:
         return None
     try:
         return stripe.Webhook.construct_event(raw_body, signature_header, STRIPE_WEBHOOK_SECRET)
@@ -112,40 +197,120 @@ _STATUS_MAP = {
 
 
 def handle_event(event: dict) -> None:
-    """Update `subscriptions` from a verified Stripe event."""
+    """Update `subscriptions` and send emails from a verified Stripe event with atomic idempotency."""
+    event_id = event.get("id")
     event_type = event.get("type", "")
     data = (event.get("data") or {}).get("object") or {}
 
-    if event_type == "checkout.session.completed":
-        owner_user_id = data.get("client_reference_id") or (data.get("metadata") or {}).get(
-            "owner_user_id"
-        )
-        plan = (data.get("metadata") or {}).get("plan", "unknown")
-        if not owner_user_id:
+    metadata = data.get("metadata") or (data.get("subscription_details") or {}).get("metadata") or {}
+    owner_user_id = data.get("client_reference_id") or metadata.get("owner_user_id")
+
+    # 1. Atomic Idempotency claim
+    if event_id:
+        acquired = db.acquire_webhook_lock("stripe", event_id, event_type, owner_user_id, event)
+        if not acquired:
+            logger.info("[stripe_billing] Skipping already processed webhook event: %s (%s)", event_id, event_type)
             return
-        max_bots, max_msgs = db.PLAN_LIMITS.get(plan, db.PLAN_LIMITS["trial"])
-        db.upsert_subscription_from_stripe(
-            owner_user_id=owner_user_id,
-            plan=plan,
-            status="active",
-            max_bots=max_bots,
-            max_messages_per_month=max_msgs,
-            stripe_subscription_id=data.get("subscription"),
-            stripe_customer_id=data.get("customer"),
-        )
-    elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
-        owner_user_id = (data.get("metadata") or {}).get("owner_user_id")
-        if not owner_user_id:
+
+    # 2. Ownership verification against known subscription record
+    sub_id = data.get("subscription") if event_type in ("checkout.session.completed", "invoice.payment_failed", "invoice.payment_succeeded") else data.get("id")
+    if owner_user_id and sub_id:
+        if not db.validate_subscription_ownership(owner_user_id, "stripe", sub_id):
+            logger.warning(
+                "[stripe_billing] Security: ownership validation failed for event %s: user %s does not own sub %s",
+                event_id, owner_user_id, sub_id
+            )
+            if event_id:
+                db.record_webhook_event("stripe", event_id, event_type, owner_user_id, event, status="rejected_ownership", error_message="Subscription ownership mismatch")
             return
-        status = (
-            "canceled"
-            if event_type == "customer.subscription.deleted"
-            else _STATUS_MAP.get(data.get("status"), "active")
-        )
-        db.upsert_subscription_from_stripe(
-            owner_user_id=owner_user_id,
-            status=status,
-            current_period_end=_epoch_to_iso(data.get("current_period_end")),
-            stripe_subscription_id=data.get("id"),
-            stripe_customer_id=data.get("customer"),
-        )
+
+    try:
+        if event_type == "checkout.session.completed":
+            plan = metadata.get("plan", "unknown")
+            interval = metadata.get("interval", "month")
+            if owner_user_id:
+                max_bots, max_msgs = db.PLAN_LIMITS.get(plan, db.PLAN_LIMITS["trial"])
+                db.upsert_subscription_from_stripe(
+                    owner_user_id=owner_user_id,
+                    plan=plan,
+                    status="active",
+                    max_bots=max_bots,
+                    max_messages_per_month=max_msgs,
+                    stripe_subscription_id=data.get("subscription"),
+                    stripe_customer_id=data.get("customer"),
+                    billing_interval=interval,
+                )
+                customer_email = data.get("customer_details", {}).get("email") or data.get("customer_email")
+                if customer_email:
+                    amount_total = (data.get("amount_total") or 0) / 100.0
+                    currency = (data.get("currency") or "usd").upper()
+                    send_payment_receipt_email(customer_email, plan, amount_total, currency, interval)
+
+        elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
+            status = (
+                "canceled"
+                if event_type == "customer.subscription.deleted"
+                else _STATUS_MAP.get(data.get("status"), "active")
+            )
+            plan = metadata.get("plan")
+            interval = metadata.get("interval")
+            max_bots, max_msgs = (None, None)
+            if plan and plan in db.PLAN_LIMITS:
+                max_bots, max_msgs = db.PLAN_LIMITS[plan]
+
+            if owner_user_id:
+                db.upsert_subscription_from_stripe(
+                    owner_user_id=owner_user_id,
+                    plan=plan,
+                    status=status,
+                    max_bots=max_bots,
+                    max_messages_per_month=max_msgs,
+                    current_period_end=_epoch_to_iso(data.get("current_period_end")),
+                    stripe_subscription_id=data.get("id"),
+                    stripe_customer_id=data.get("customer"),
+                    billing_interval=interval,
+                )
+                if event_type == "customer.subscription.deleted" and plan:
+                    end_iso = _epoch_to_iso(data.get("current_period_end"))
+                    c_email = metadata.get("customer_email")
+                    if c_email:
+                        send_subscription_canceled_email(c_email, plan, end_iso)
+
+        elif event_type == "invoice.payment_failed":
+            customer_id = data.get("customer")
+            subscription_id = data.get("subscription")
+            customer_email = data.get("customer_email")
+            plan = metadata.get("plan", "subscription")
+            if owner_user_id:
+                db.upsert_subscription_from_stripe(
+                    owner_user_id=owner_user_id,
+                    status="past_due",
+                    stripe_subscription_id=subscription_id,
+                    stripe_customer_id=customer_id,
+                )
+            if customer_email:
+                send_payment_failed_alert(customer_email, plan)
+
+        elif event_type == "invoice.payment_succeeded":
+            customer_email = data.get("customer_email")
+            lines = (data.get("lines") or {}).get("data") or []
+            plan = "subscription"
+            interval = "month"
+            if lines and lines[0].get("metadata"):
+                plan = lines[0]["metadata"].get("plan", plan)
+                interval = lines[0]["metadata"].get("interval", interval)
+            amount = (data.get("amount_paid") or 0) / 100.0
+            currency = (data.get("currency") or "usd").upper()
+            receipt_url = data.get("hosted_invoice_url")
+            if customer_email and amount > 0:
+                send_payment_receipt_email(customer_email, plan, amount, currency, interval, receipt_url)
+
+        # Record successful processing
+        if event_id:
+            db.record_webhook_event("stripe", event_id, event_type, owner_user_id, event, status="processed")
+    except Exception as e:
+        logger.error("[stripe_billing] Error handling webhook %s: %s", event_id, e, exc_info=True)
+        if event_id:
+            db.record_webhook_event("stripe", event_id, event_type, owner_user_id, event, status="failed", error_message=str(e))
+        raise
+

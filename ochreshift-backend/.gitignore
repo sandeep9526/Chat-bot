@@ -1,5 +1,6 @@
 # Secrets — kabhi commit mat karo
 .env
+provisioned_billing_ids.env
 
 # Virtual environment
 venv/
