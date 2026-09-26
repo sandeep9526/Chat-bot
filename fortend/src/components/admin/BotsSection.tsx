@@ -28,6 +28,7 @@ import { AdminApiError, type AdminBot } from "@/lib/adminApi";
 import { cn } from "@/lib/cn";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { CreationChoiceModal } from "./CreationChoiceModal";
+import { VerificationRequiredModal } from "./VerificationRequiredModal";
 import { AdvancedCreateModal } from "./AdvancedCreateModal";
 import { EditBotModal } from "./EditBotModal";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -37,6 +38,7 @@ import {
   stashBotDesign,
 } from "@/lib/pendingDesign";
 import type { OchreshiftConfig } from "@/lib/types";
+import { useSession } from "@/lib/auth-client";
 
 export interface BotInitial {
   name: string;
@@ -49,7 +51,7 @@ export interface BotInitial {
 let autoOpenConsumed = false;
 
 type ModalState = {
-  mode: "choice" | "wizard" | "advanced" | "edit";
+  mode: "choice" | "wizard" | "advanced" | "edit" | "verify";
   bot?: AdminBot;
   initial?: BotInitial;
   fromPending?: boolean;
@@ -94,6 +96,7 @@ export function BotsSection({
   onTestAgent,
 }: BotsSectionProps) {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
 
   const [modal, setModal] = useState<ModalState | null>(() =>
     autoOpenConsumed ? null : pendingModal(),
@@ -269,7 +272,13 @@ export function BotsSection({
           {!atLimit && (
             <button
               type="button"
-              onClick={() => setModal({ mode: "choice" })}
+              onClick={async () => {
+                if (session?.user && !session.user.emailVerified) {
+                  setModal({ mode: "verify" });
+                } else {
+                  setModal({ mode: "choice" });
+                }
+              }}
               className="group flex min-h-[310px] flex-col items-center justify-center gap-3.5 rounded-2xl border-2 border-dashed border-border/80 bg-surface/40 p-6 text-muted hover:border-accent hover:bg-panel/40 hover:shadow-sm transition-all duration-200 cursor-pointer"
             >
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-panel border border-border text-muted group-hover:text-accent group-hover:border-accent/40 group-hover:scale-105 transition-all shadow-2xs">
@@ -292,6 +301,13 @@ export function BotsSection({
       )}
 
       {/* Modals */}
+      {modal?.mode === "verify" && (
+        <VerificationRequiredModal 
+          onClose={() => setModal(null)} 
+          onSuccess={() => setModal({ mode: "choice" })} 
+        />
+      )}
+
       {modal?.mode === "choice" && (
         <CreationChoiceModal
           onClose={() => setModal(null)}
