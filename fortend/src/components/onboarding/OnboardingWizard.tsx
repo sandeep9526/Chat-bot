@@ -54,6 +54,20 @@ export function OnboardingWizard({ onClose, onSaved }: OnboardingWizardProps) {
   const { data: docs = [] } = useDocs(botId || "");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [error, setError] = useState("");
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
+
+  useEffect(() => {
+    setIsDarkTheme(document.documentElement.getAttribute("data-theme") === "dark");
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.attributeName === "data-theme") {
+          setIsDarkTheme(document.documentElement.getAttribute("data-theme") === "dark");
+        }
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
 
   const stepsList = [
     { id: "intro", title: "Business", subtitle: "Step 1", icon: Globe },
@@ -992,16 +1006,43 @@ export function OnboardingWizard({ onClose, onSaved }: OnboardingWizardProps) {
                         </div>
                       </>
                     )}
-                    {isVideoPlaying && (
-                      <video
-                        className="absolute inset-0 w-full h-full object-cover z-20 rounded-[24px]"
-                        autoPlay
-                        controls
-                        playsInline
-                      >
-                        <source src="/demo.mp4" type="video/mp4" />
-                      </video>
-                    )}
+                    {isVideoPlaying && (() => {
+                      const videoSrc = isDarkTheme 
+                        ? process.env.NEXT_PUBLIC_DEMO_VIDEO_DARK || "/demo.mp4" 
+                        : process.env.NEXT_PUBLIC_DEMO_VIDEO_LIGHT || "/demo.mp4";
+                        
+                      const isYouTube = videoSrc.includes("youtube.com") || videoSrc.includes("youtu.be");
+
+                      if (isYouTube) {
+                        // Ensure autoplay works and minimize YouTube branding/UI
+                        let ytSrc = videoSrc.includes("?") ? `${videoSrc}&autoplay=1` : `${videoSrc}?autoplay=1`;
+                        ytSrc += "&modestbranding=1&rel=0&iv_load_policy=3";
+                        
+                        return (
+                          <iframe
+                            key={isDarkTheme ? "dark" : "light"}
+                            className="absolute inset-0 w-full h-full z-20 rounded-[24px]"
+                            src={ytSrc}
+                            title="Demo Video"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        );
+                      }
+
+                      return (
+                        <video
+                          key={isDarkTheme ? "dark" : "light"}
+                          className="absolute inset-0 w-full h-full object-cover z-20 rounded-[24px]"
+                          autoPlay
+                          controls
+                          playsInline
+                        >
+                          <source src={videoSrc} type="video/mp4" />
+                        </video>
+                      );
+                    })()}
                   </div>
                 </div>
               ) : step === "appearance" ? (
