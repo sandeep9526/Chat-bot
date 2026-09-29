@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 import { getPendingDesign } from "@/lib/pendingDesign";
@@ -25,9 +25,27 @@ export function DashboardTour({
   userKey: string;
   onGoto: (section: string) => void;
 }) {
+  // Keep onGoto in a ref so the effect doesn't re-fire when the parent passes
+  // a new inline arrow on every render.
+  const onGotoRef = useRef(onGoto);
+  onGotoRef.current = onGoto;
+
+  // Track the active driver instance so we can tear it down on cleanup.
+  const activeDriverRef = useRef<ReturnType<typeof driver> | null>(null);
+
   useEffect(() => {
     const seenKey = seenKeyFor(userKey);
-    const start = () => runTour(hasBots, onGoto, seenKey);
+
+    const start = () => {
+      // Destroy any previous driver instance before starting a new one —
+      // prevents multiple overlapping tour popovers.
+      if (activeDriverRef.current) {
+        try { activeDriverRef.current.destroy(); } catch { /* already gone */ }
+        activeDriverRef.current = null;
+      }
+      activeDriverRef.current = runTour(hasBots, (s) => onGotoRef.current(s), seenKey);
+    };
+
     window.addEventListener("ochreshift:start-tour", start);
 
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -49,17 +67,24 @@ export function DashboardTour({
     return () => {
       window.removeEventListener("ochreshift:start-tour", start);
       if (timer) clearTimeout(timer);
+      // Clean up the driver instance when the component unmounts or effect re-runs.
+      if (activeDriverRef.current) {
+        try { activeDriverRef.current.destroy(); } catch { /* already gone */ }
+        activeDriverRef.current = null;
+      }
     };
-  }, [hasBots, userKey, onGoto]);
+  }, [hasBots, userKey]); // onGoto removed — read from ref instead
 
   return null;
 }
 
+/** Creates and starts the tour, returning the driver instance so the caller can
+ *  destroy it later if needed. */
 function runTour(
   hasBots: boolean,
   onGoto: (section: string) => void,
   seenKey: string,
-) {
+): ReturnType<typeof driver> {
   const steps: any[] = [
     {
       popover: {
@@ -133,12 +158,12 @@ function runTour(
         title: hasBots ? "You're all set" : "Create your first agent",
         description: hasBots
           ? "That's the tour. You can replay it anytime from Settings."
-          : "Head to the Agents tab and hit “New agent” — it takes about a minute to get live.",
+          : "Head to the Agents tab and hit \u201CNew agent\u201D — it takes about a minute to get live.",
       },
     },
   ].filter((step) => {
     // Skip the bot-switcher step if they have no bots, as it won't render
-    if (!hasBots && step.element === '[data-tour="bot-switcher"]') return false;
+    if (!hasBots && (step.element === '[data-tour="bot-switcher"]')) return false;
     return true;
   });
 
@@ -163,4 +188,5 @@ function runTour(
   });
 
   d.drive();
+  return d;
 }
