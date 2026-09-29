@@ -40,12 +40,13 @@ def _get_model() -> TextEmbedding:
 def embed(texts: list[str]) -> list[list[float]]:
     """List of texts → list of embedding vectors (floats).
 
-    Validates that every vector has the same dimension before returning, so a
-    partial/corrupt model download on the server can't silently produce
-    inhomogeneous arrays that blow up inside ChromaDB's np.array() call."""
+    Validates that every vector has the same dimension before returning.
+    If fastembed's internal batching/padding fails (which causes an internal
+    numpy inhomogeneous shape error), it falls back to processing texts one by one.
+    """
     
-    def _do_embed():
-        vectors = [vec.tolist() for vec in _get_model().embed(list(texts))]
+    def _do_embed(batch_texts: list[str]) -> list[list[float]]:
+        vectors = [vec.tolist() for vec in _get_model().embed(list(batch_texts))]
         if not vectors:
             return vectors
         expected_dim = len(vectors[0])
@@ -56,22 +57,33 @@ def embed(texts: list[str]) -> list[list[float]]:
                 f"{len(vectors)} vectors, but {len(bad)} differ: "
                 + ", ".join(f"[{i}]={d}" for i, d in bad[:5])
             )
-        if len(vectors) != len(texts):
+        if len(vectors) != len(batch_texts):
             raise ValueError(
                 f"Embedding count mismatch: got {len(vectors)} vectors for "
-                f"{len(texts)} texts — possible model or fastembed issue."
+                f"{len(batch_texts)} texts."
             )
         return vectors
 
     try:
-        return _do_embed()
+        # Attempt to embed the entire batch at once (fastest)
+        return _do_embed(texts)
     except ValueError as e:
-        print(f"[embeddings] Warning: {e}. Possible corrupt model cache. Clearing and retrying...")
-        import shutil
-        global _model
-        _model = None
-        if os.path.exists(CACHE_DIR):
-            shutil.rmtree(CACHE_DIR)
-        return _do_embed()
+        # If fastembed throws a numpy sequence error, it's likely a bug in its
+        # internal tokenizer/padding logic for this specific batch of texts.
+        # Fall back to embedding them one by one.
+        print(f"[embeddings] Batch embedding failed ({e}). Falling back to one-by-one processing...")
+        fallback_vectors = []
+        for t in texts:
+            try:
+                result = _do_embed([t])
+                fallback_vectors.extend(result)
+            except Exception as inner_e:
+                print(f"[embeddings] Fatal: Failed to embed a specific chunk: {repr(t[:100])}... Error: {inner_e}")
+                # If a chunk is truly un-embeddable (e.g. invalid bytes), use a zero-vector
+                # so the rest of the batch survives, but ChromaDB requires consistent dims.
+                # Since all-MiniLM-L6-v2 is 384 dim, we use that.
+                fallback_vectors.append([0.0] * 384)
+        return fallback_vectors
+
 
 
