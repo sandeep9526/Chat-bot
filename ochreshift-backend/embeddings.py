@@ -43,25 +43,35 @@ def embed(texts: list[str]) -> list[list[float]]:
     Validates that every vector has the same dimension before returning, so a
     partial/corrupt model download on the server can't silently produce
     inhomogeneous arrays that blow up inside ChromaDB's np.array() call."""
-    vectors = [vec.tolist() for vec in _get_model().embed(list(texts))]
-
-    if not vectors:
+    
+    def _do_embed():
+        vectors = [vec.tolist() for vec in _get_model().embed(list(texts))]
+        if not vectors:
+            return vectors
+        expected_dim = len(vectors[0])
+        bad = [(i, len(v)) for i, v in enumerate(vectors) if len(v) != expected_dim]
+        if bad:
+            raise ValueError(
+                f"Embedding dimension mismatch: expected {expected_dim} for all "
+                f"{len(vectors)} vectors, but {len(bad)} differ: "
+                + ", ".join(f"[{i}]={d}" for i, d in bad[:5])
+            )
+        if len(vectors) != len(texts):
+            raise ValueError(
+                f"Embedding count mismatch: got {len(vectors)} vectors for "
+                f"{len(texts)} texts — possible model or fastembed issue."
+            )
         return vectors
 
-    expected_dim = len(vectors[0])
-    bad = [(i, len(v)) for i, v in enumerate(vectors) if len(v) != expected_dim]
-    if bad:
-        raise ValueError(
-            f"Embedding dimension mismatch: expected {expected_dim} for all "
-            f"{len(vectors)} vectors, but {len(bad)} differ: "
-            + ", ".join(f"[{i}]={d}" for i, d in bad[:5])
-        )
+    try:
+        return _do_embed()
+    except ValueError as e:
+        print(f"[embeddings] Warning: {e}. Possible corrupt model cache. Clearing and retrying...")
+        import shutil
+        global _model
+        _model = None
+        if os.path.exists(CACHE_DIR):
+            shutil.rmtree(CACHE_DIR)
+        return _do_embed()
 
-    if len(vectors) != len(texts):
-        raise ValueError(
-            f"Embedding count mismatch: got {len(vectors)} vectors for "
-            f"{len(texts)} texts — possible model or fastembed issue."
-        )
-
-    return vectors
 
