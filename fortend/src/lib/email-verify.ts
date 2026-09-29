@@ -29,6 +29,25 @@ async function getDisposableDomains(): Promise<Set<string>> {
   return localBlacklist;
 }
 
+const TRUSTED_DOMAINS = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'google.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'msn.com',
+  'yahoo.com',
+  'ymail.com',
+  'icloud.com',
+  'me.com',
+  'mac.com',
+  'proton.me',
+  'protonmail.com',
+  'aol.com',
+  'zoho.com',
+]);
+
 export async function verifyEmailForFree(email: string): Promise<boolean> {
   const domain = email.split('@')[1]?.toLowerCase();
   if (!domain) return false;
@@ -36,6 +55,9 @@ export async function verifyEmailForFree(email: string): Promise<boolean> {
   // Check 1: Community Blacklist Check
   const blacklist = await getDisposableDomains();
   if (blacklist.has(domain)) return false;
+
+  // Fast-path: Trusted major providers are guaranteed valid and never disposable
+  if (TRUSTED_DOMAINS.has(domain)) return true;
 
   try {
     // Check 2: Live MX Record Lookup (Completely Free DNS Query)

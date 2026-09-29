@@ -58,7 +58,7 @@ const socialProviders: NonNullable<Parameters<typeof betterAuth>[0]["socialProvi
  * - JWKS endpoint for token verification
  */
 import { APIError } from "better-auth/api";
-import { normalizeEmail, verifyEmailForFree } from "./email-verify";
+import { verifyEmailForFree } from "./email-verify";
 
 export const auth = betterAuth({
   // Database: Postgres (Neon) — shared with the FastAPI backend's tables so
@@ -69,18 +69,26 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          const email = user.email;
+          const email = user.email?.toLowerCase().trim();
           if (!email) return { data: user };
 
-          const normalized = normalizeEmail(email);
-          
-          if (email !== normalized) {
+          // 1. Social/OAuth signups (Google, GitHub, Apple, etc.):
+          // Provider has already authenticated and verified the user. Never block OAuth users!
+          if (user.emailVerified) {
+            return { data: user };
+          }
+
+          // 2. Manual credentials signup:
+          // Disallow plus (+) aliases (e.g. user+spam@gmail.com) to prevent free-trial abuse.
+          const localPart = email.split("@")[0] || "";
+          if (localPart.includes("+")) {
             throw new APIError("BAD_REQUEST", {
-              message: "Please enter your Gmail address without any dots (.) or plus (+) aliases. Google ignores dots, so it is the exact same inbox! This helps us prevent spam.",
+              message: "Email aliases with '+' are not allowed. Please use your standard email address.",
             });
           }
 
-          const isValid = await verifyEmailForFree(normalized);
+          // 3. Block disposable or invalid domains (MX check & blacklist)
+          const isValid = await verifyEmailForFree(email);
           if (!isValid) {
             throw new APIError("BAD_REQUEST", {
               message: "Disposable or invalid email addresses are not allowed. Please use a real work or personal email.",
