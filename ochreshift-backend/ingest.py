@@ -101,7 +101,25 @@ def ingest_bot(bot_id: str) -> dict:
             metas.append({"source": fname, "chunk": i, "bot_id": bot_id})
 
     if docs:
-        col.add(ids=ids, documents=docs, metadatas=metas, embeddings=embed(docs))
+        # Process in batches to avoid memory spikes and to make failures easier
+        # to diagnose (the error will point to a specific batch range).
+        BATCH = 100
+        for start in range(0, len(docs), BATCH):
+            end = min(start + BATCH, len(docs))
+            batch_docs = docs[start:end]
+            batch_ids = ids[start:end]
+            batch_metas = metas[start:end]
+            try:
+                batch_embeddings = embed(batch_docs)
+            except ValueError as e:
+                print(f"[ingest] ✗ bot '{bot_id}': embedding failed for chunks {start}-{end}: {e}")
+                raise
+            col.add(
+                ids=batch_ids,
+                documents=batch_docs,
+                metadatas=batch_metas,
+                embeddings=batch_embeddings,
+            )
         print(f"[ingest] ✓ bot '{bot_id}': {len(docs)} chunks from {len(files)} files")
     else:
         print(f"[ingest] Warning: bot '{bot_id}' has {len(files)} files but 0 chunks after processing")
