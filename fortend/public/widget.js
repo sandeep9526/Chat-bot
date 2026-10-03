@@ -108,6 +108,8 @@
     draggable: getAttr("data-draggable", "off") === "on",
     logo: getAttr("data-logo", ""),
     consent: getAttr("data-consent", "off") === "on",
+    greeting: getAttr("data-greeting", ""),
+    greetingDelay: toPx(getAttr("data-greeting-delay", "3000"), 3000),
   };
 
   var HAS_FETCH = typeof fetch === "function";
@@ -117,6 +119,39 @@
     return String(str == null ? "" : str).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  /**
+   * Lightweight markdown-to-HTML for assistant messages.
+   * Supports: **bold**, *italic*, `inline code`, line breaks,
+   * and unordered list items (lines starting with "- ").
+   * Input is escaped first for XSS safety.
+   */
+  function renderMarkdown(raw) {
+    var s = escapeHtml(raw || "");
+    // Bold: **text** or __text__
+    s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/__(.+?)__/g, "<strong>$1</strong>");
+    // Italic: *text* or _text_ (but not inside words for _)
+    s = s.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, "<em>$1</em>");
+    s = s.replace(/(?<!\w)_(.+?)_(?!\w)/g, "<em>$1</em>");
+    // Inline code: `code`
+    s = s.replace(/`([^`]+)`/g, '<code style="background:var(--ring);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:0.9em;">$1</code>');
+    // Convert list items: lines starting with "- " into <li> wrapped in <ul>
+    s = s.replace(/((?:^|\n)- .+(?:\n- .+)*)/g, function (block) {
+      var items = block.split(/\n/).filter(function (l) { return l.trim(); });
+      var lis = items.map(function (l) {
+        return "<li>" + l.replace(/^-\s+/, "") + "</li>";
+      }).join("");
+      return '<ul style="margin:6px 0;padding-left:18px;list-style:disc;">' + lis + "</ul>";
+    });
+    // Line breaks (but not inside <ul> blocks)
+    s = s.replace(/\n/g, "<br>");
+    // Clean up <br> right before/after <ul>/<li> tags
+    s = s.replace(/<br>\s*<ul/g, "<ul");
+    s = s.replace(/<\/ul>\s*<br>/g, "</ul>");
+    s = s.replace(/<br>\s*<li/g, "<li");
+    return s;
   }
 
   /** Darken a hex colour by `amt` (0-1) — mirrors src/lib/color.ts shade(). */
@@ -172,6 +207,8 @@
     configErrorMessage: "",
     isOpen: false,
     isScanning: false,
+    greetingDismissed: false,
+    greetingTimer: null,
   };
 
   var SESSION_ID = (function () {
@@ -194,6 +231,7 @@
   // — never lead-form field values, so no PII sits in storage longer than a
   // single form submission.
   var HISTORY_KEY = "ochreshift_hist_" + BOT_ID;
+  var GREETING_DISMISS_KEY = "ochreshift_greet_" + BOT_ID;
   var MAX_HISTORY = 24;
 
   function loadHistory() {
@@ -376,6 +414,11 @@
       ".ochreshift-msg-assistant-head{position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;padding:4px;box-shadow:0 1px 2px rgba(0,0,0,.05);}" +
       ".ochreshift-msg-assistant-head>svg{width:100%;height:100%;color:var(--text);}" +
       ".ochreshift-msg-assistant-text{padding-top:2px;font-size:15px;font-weight:500;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word;}" +
+      ".ochreshift-msg-assistant-text strong{font-weight:700;}" +
+      ".ochreshift-msg-assistant-text em{font-style:italic;}" +
+      ".ochreshift-msg-assistant-text ul{white-space:normal;}" +
+      ".ochreshift-msg-assistant-text li{margin:3px 0;}" +
+      ".ochreshift-msg-assistant-text br+br{display:block;content:'';margin-top:4px;}" +
       ".ochreshift-guardrail{margin-top:12px;display:flex;align-items:center;gap:10px;border:1px dashed var(--border);border-radius:var(--r2);padding:10px 12px;font-size:12.5px;color:var(--muted);}" +
       ".ochreshift-guardrail svg{width:16px;height:16px;color:#f59e0b;flex-shrink:0;}" +
       ".ochreshift-connector{position:relative;margin:8px 0 8px 7px;width:2px;height:16px;background:linear-gradient(var(--accent),transparent);}" +
@@ -436,6 +479,30 @@
       ".ochreshift-footer-brand{display:flex;align-items:center;flex-shrink:0;text-decoration:none;color:var(--faint);}" +
       ".ochreshift-footer-brand:hover{color:var(--muted);}" +
       ".ochreshift-footer-brand svg{transition:opacity .15s;}" +
+      // Greeting bubble
+      ".ochreshift-launcher-wrap{display:flex;align-items:flex-end;gap:14px;justify-content:flex-end;}" +
+      ".ochreshift-anchor[data-pos-h='left'] .ochreshift-launcher-wrap{justify-content:flex-start;}" +
+      ".ochreshift-anchor[data-pos-h='left'] .ochreshift-greeting{order:1;transform:translateX(-20px) scale(.9);}" +
+      ".ochreshift-greeting{position:relative;max-width:280px;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 12px 40px -10px rgba(0,0,0,.15),0 4px 12px -4px rgba(0,0,0,.08);opacity:0;transform:translateX(20px) scale(.9);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1),box-shadow .3s ease;pointer-events:none;}" +
+      ".ochreshift-greeting.ochreshift-glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);}" +
+      ".ochreshift-greeting.ochreshift-visible{opacity:1;transform:translateX(0) scale(1);pointer-events:auto;}" +
+      ".ochreshift-greeting.ochreshift-visible:hover{box-shadow:0 16px 48px -10px rgba(0,0,0,.2),0 6px 16px -4px rgba(0,0,0,.1);transform:translateX(0) scale(1.02);}" +
+      ".ochreshift-greeting-accent{position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--accent),var(--accent-strong));border-radius:4px 0 0 4px;}" +
+      ".ochreshift-greeting-accent::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(255,255,255,.4),transparent);animation:ochreshift-shimmer 2.5s ease-in-out infinite;}" +
+      ".ochreshift-greeting-inner{display:flex;gap:12px;padding:14px 36px 14px 18px;align-items:flex-start;}" +
+      ".ochreshift-greeting-wave{font-size:24px;line-height:1;flex-shrink:0;display:inline-block;animation:ochreshift-wave 1.8s ease-in-out .6s 2;transform-origin:70% 70%;}" +
+      ".ochreshift-greeting-body{flex:1;min-width:0;}" +
+      ".ochreshift-greeting-text{margin:0;font-size:14px;font-weight:500;line-height:1.5;color:var(--text);}" +
+      ".ochreshift-greeting-cta{margin:8px 0 0;font-size:12.5px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:4px;}" +
+      ".ochreshift-greeting-cta svg{width:14px;height:14px;transition:transform .2s ease;}" +
+      ".ochreshift-greeting.ochreshift-visible:hover .ochreshift-greeting-cta svg{transform:translateX(3px);}" +
+      ".ochreshift-greeting-close{all:unset;box-sizing:border-box;position:absolute;right:8px;top:8px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--faint);cursor:pointer;opacity:0;transition:opacity .2s,background .15s,color .15s;z-index:1;}" +
+      ".ochreshift-greeting:hover .ochreshift-greeting-close{opacity:1;}" +
+      ".ochreshift-greeting-close:hover{background:var(--ring);color:var(--text);}" +
+      ".ochreshift-greeting-close:focus-visible{outline:2px solid var(--accent);opacity:1;}" +
+      "@keyframes ochreshift-wave{0%{transform:rotate(0)}10%{transform:rotate(14deg)}20%{transform:rotate(-8deg)}30%{transform:rotate(14deg)}40%{transform:rotate(-4deg)}50%{transform:rotate(10deg)}60%,100%{transform:rotate(0)}}" +
+      "@keyframes ochreshift-shimmer{0%,100%{opacity:0}50%{opacity:1}}" +
+      "@media(max-width:480px){.ochreshift-greeting{display:none !important;}}" +
       // Keyframes
       "@keyframes ochreshift-breathe{0%,100%{box-shadow:var(--shadow),0 0 0 0 var(--accent-soft);}50%{box-shadow:var(--shadow),0 0 0 9px transparent;}}" +
       "@keyframes ochreshift-blink{0%,100%{opacity:1;}50%{opacity:.25;}}" +
@@ -495,6 +562,7 @@
     anchorEl.style.flexDirection = direction;
     anchorEl.style.alignItems = align;
     anchorEl.style.setProperty("--panel-origin", (v === "top" ? "top" : "bottom") + " " + (h === "left" ? "left" : "right"));
+    anchorEl.setAttribute("data-pos-h", h);
   }
 
   // =======================================================================
@@ -735,7 +803,8 @@
     anchorEl.appendChild(panelEl);
 
     launcherWrapEl = document.createElement("div");
-    launcherWrapEl.innerHTML = buildLauncherHtml();
+    launcherWrapEl.className = "ochreshift-launcher-wrap";
+    launcherWrapEl.innerHTML = buildGreetingHtml() + buildLauncherHtml();
     anchorEl.appendChild(launcherWrapEl);
 
     streamEl = shadow.getElementById("ochreshift-stream");
@@ -754,6 +823,22 @@
     var launcherBtn = shadow.getElementById("ochreshift-launcher-btn");
     if (launcherBtn) launcherBtn.addEventListener("click", openPanel);
     if (RAW.draggable && launcherBtn) setupDrag(launcherBtn);
+
+    // Greeting bubble event listeners
+    var greetingCloseBtn = shadow.getElementById("ochreshift-greeting-close");
+    if (greetingCloseBtn) {
+      greetingCloseBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        hideGreeting(true);
+      });
+    }
+    var greetingEl = shadow.getElementById("ochreshift-greeting");
+    if (greetingEl) {
+      greetingEl.addEventListener("click", function () {
+        hideGreeting(true);
+        openPanel();
+      });
+    }
 
     // Escape-to-close + a focus trap so Tab/Shift+Tab can't leave the panel
     // while it's open (previously a keyboard user could tab straight out
@@ -842,6 +927,7 @@
   function openPanel() {
     if (state.isOpen) return;
     state.isOpen = true;
+    hideGreeting(true);
     panelEl.classList.add("ochreshift-open");
     panelEl.setAttribute("aria-hidden", "false");
     panelEl.removeAttribute("inert");
@@ -996,6 +1082,67 @@
       var footerLeft = shadow.getElementById("ochreshift-footer-left");
       if (footerLeft) footerLeft.style.display = "none";
     }
+  }
+
+  // =======================================================================
+  // Greeting bubble — auto-shows after config loads to nudge first-time visitors
+  // =======================================================================
+  function isGreetingDismissed() {
+    try { return sessionStorage.getItem(GREETING_DISMISS_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function getDefaultGreeting() {
+    var name = state.name && state.name !== "Chat with us" ? state.name : "";
+    if (name) return "Hi there! I\u2019m " + name + ". Got questions? I\u2019m here to help!";
+    return "Hi there! Got questions? I\u2019m here to help!";
+  }
+
+  function buildGreetingHtml() {
+    var text = RAW.greeting || getDefaultGreeting();
+    var ARROW_RIGHT = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    return (
+      '<div class="ochreshift-greeting' + (RAW.glass ? " ochreshift-glass" : "") + '" id="ochreshift-greeting" role="status">' +
+      '<div class="ochreshift-greeting-accent"></div>' +
+      '<button type="button" class="ochreshift-greeting-close" id="ochreshift-greeting-close" aria-label="Dismiss">&times;</button>' +
+      '<div class="ochreshift-greeting-inner">' +
+      '<span class="ochreshift-greeting-wave" aria-hidden="true">&#x1F44B;</span>' +
+      '<div class="ochreshift-greeting-body">' +
+      '<p class="ochreshift-greeting-text" id="ochreshift-greeting-text">' + escapeHtml(text) + '</p>' +
+      '<div class="ochreshift-greeting-cta">Ask me anything ' + ARROW_RIGHT + '</div>' +
+      '</div>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function showGreeting() {
+    if (state.greetingDismissed || state.isOpen || isGreetingDismissed()) return;
+    var el = shadow && shadow.getElementById("ochreshift-greeting");
+    if (el) el.classList.add("ochreshift-visible");
+  }
+
+  function hideGreeting(permanent) {
+    var el = shadow && shadow.getElementById("ochreshift-greeting");
+    if (el) el.classList.remove("ochreshift-visible");
+    if (permanent) {
+      state.greetingDismissed = true;
+      if (state.greetingTimer) { clearTimeout(state.greetingTimer); state.greetingTimer = null; }
+      try { sessionStorage.setItem(GREETING_DISMISS_KEY, "1"); } catch (e) { /* ignore */ }
+    }
+  }
+
+  function scheduleGreeting() {
+    if (isGreetingDismissed() || RAW.launcher === "bar") return;
+    if (state.greetingTimer) clearTimeout(state.greetingTimer);
+    state.greetingTimer = setTimeout(function () {
+      if (!state.isOpen) showGreeting();
+    }, RAW.greetingDelay);
+  }
+
+  function updateGreetingText() {
+    var el = shadow && shadow.getElementById("ochreshift-greeting-text");
+    if (!el) return;
+    el.textContent = RAW.greeting || getDefaultGreeting();
   }
 
   function renderEmptyState() {
@@ -1201,6 +1348,9 @@
 
     refreshBranding();
     refreshEmptyStateIfUntouched();
+    if (cfg.greeting) RAW.greeting = cfg.greeting;
+    updateGreetingText();
+    scheduleGreeting();
   }
 
   function onConfigFailed(reason) {
@@ -1252,7 +1402,7 @@
 
   function typewriter(el, text, onComplete) {
     if (prefersReducedMotion() || !text) {
-      el.textContent = text || "";
+      el.innerHTML = renderMarkdown(text || "");
       if (onComplete) onComplete();
       return;
     }
@@ -1260,7 +1410,7 @@
     var i = 0;
     var iv = setInterval(function () {
       i++;
-      el.textContent = words.slice(0, i).join(" ");
+      el.innerHTML = renderMarkdown(words.slice(0, i).join(" "));
       scrollToBottom();
       if (i >= words.length) {
         clearInterval(iv);
@@ -1597,7 +1747,7 @@
     if (isRestore) {
       // Rehydrating from cache: render instantly, no typing animation and no
       // screen-reader announcement (nothing "just happened" on a page load).
-      textSpan.textContent = payload.text || "";
+      textSpan.innerHTML = renderMarkdown(payload.text || "");
     } else {
       typewriter(textSpan, payload.text, function () {
         announceToScreenReader(payload.text);

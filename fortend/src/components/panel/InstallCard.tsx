@@ -9,7 +9,7 @@ import { buildEmbedRows } from "@/lib/embed";
 import type { OchreshiftConfig } from "@/lib/types";
 import { DEFAULTS } from "@/lib/defaults";
 
-const WIDGET_SRC = "https://www.ochreshift.app/widget.js";
+const WIDGET_SRC = "https://www.ochreshift.com/widget.js";
 
 export type PlatformKey = "html" | "wordpress" | "shopify" | "react" | "vue" | "angular";
 
